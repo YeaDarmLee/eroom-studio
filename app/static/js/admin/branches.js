@@ -34,6 +34,9 @@ document.addEventListener('alpine:init', () => {
             description: '',
             floor: '1F'
         },
+        roomImages: [], // Array of {file: File, preview: string}
+        existingRoomImages: [], // Array of {id: number, url: string}
+        isDraggingRoomImage: false,
 
         // Floor Plan Management
         selectedFloor: '1F',
@@ -148,21 +151,33 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        isDraggingImage: false, // For drag and drop UI state
+
         handleImageUpload(event) {
             const file = event.target.files[0]
+            this.processImageFile(file)
+            // Reset input value to allow selecting the same file again if needed
+            event.target.value = ''
+        },
+
+        handleImageDrop(event) {
+            this.isDraggingImage = false
+            const file = event.dataTransfer.files[0]
+            this.processImageFile(file)
+        },
+
+        processImageFile(file) {
             if (!file) return
 
             // Validate file size (5MB)
             if (file.size > 5 * 1024 * 1024) {
                 alert('파일 크기는 5MB를 초과할 수 없습니다.')
-                event.target.value = ''
                 return
             }
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
                 alert('이미지 파일만 업로드 가능합니다.')
-                event.target.value = ''
                 return
             }
 
@@ -174,6 +189,90 @@ document.addEventListener('alpine:init', () => {
                 this.imagePreview = e.target.result
             }
             reader.readAsDataURL(file)
+        },
+
+        // ==================== Room Image Methods ====================
+
+        handleRoomImageUpload(event) {
+            const files = Array.from(event.target.files)
+            this.processRoomImageFiles(files)
+            event.target.value = ''
+        },
+
+        handleRoomImageDrop(event) {
+            this.isDraggingRoomImage = false
+            const files = Array.from(event.dataTransfer.files)
+            this.processRoomImageFiles(files)
+        },
+
+        processRoomImageFiles(files) {
+            files.forEach(file => {
+                if (!file.type.startsWith('image/')) {
+                    alert('이미지 파일만 업로드 가능합니다.')
+                    return
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('파일 크기는 5MB를 초과할 수 없습니다.')
+                    return
+                }
+
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    this.roomImages.push({
+                        file: file,
+                        preview: e.target.result
+                    })
+                }
+                reader.readAsDataURL(file)
+            })
+        },
+
+        removeRoomImage(index) {
+            this.roomImages.splice(index, 1)
+        },
+
+        async deleteExistingRoomImage(imageId, roomId) {
+            if (!confirm('이 이미지를 삭제하시겠습니까?')) return
+
+            const token = localStorage.getItem('token')
+            try {
+                const response = await fetch(`/admin/api/rooms/${roomId}/images/${imageId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + token }
+                })
+
+                if (response.ok) {
+                    this.existingRoomImages = this.existingRoomImages.filter(img => img.id !== imageId)
+                } else {
+                    alert('이미지 삭제에 실패했습니다.')
+                }
+            } catch (error) {
+                console.error('Error deleting image:', error)
+                alert('오류가 발생했습니다.')
+            }
+        },
+
+        async uploadRoomImages(roomId) {
+            const token = localStorage.getItem('token')
+            const formData = new FormData()
+
+            this.roomImages.forEach(img => {
+                formData.append('images', img.file)
+            })
+
+            try {
+                const response = await fetch(`/admin/api/rooms/${roomId}/images`, {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token },
+                    body: formData
+                })
+
+                if (!response.ok) {
+                    console.error('Failed to upload images')
+                }
+            } catch (error) {
+                console.error('Error uploading images:', error)
+            }
         },
 
         removeImage() {
@@ -319,6 +418,8 @@ document.addEventListener('alpine:init', () => {
             this.roomEditMode = true
             this.currentRoom = room
             this.roomFormData = { ...room }
+            this.roomImages = []
+            this.existingRoomImages = room.images ? [...room.images] : []
             this.showRoomFormModal = true
         },
 
@@ -348,7 +449,17 @@ document.addEventListener('alpine:init', () => {
                 })
 
                 if (response.ok) {
+                    const data = await response.json()
+                    const roomId = this.roomEditMode ? this.currentRoom.id : data.id
+
+                    // Upload images if any
+                    if (this.roomImages.length > 0) {
+                        await this.uploadRoomImages(roomId)
+                    }
+
                     this.showRoomFormModal = false
+                    this.roomImages = []
+                    this.existingRoomImages = []
                     await this.loadBranchRooms(this.currentBranch)
                 } else {
                     const data = await response.json()

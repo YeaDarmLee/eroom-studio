@@ -66,6 +66,18 @@ class Room(db.Model):
     height = db.Column(db.Float, default=10)
     
     contracts = db.relationship('Contract', backref='room', lazy='dynamic')
+    images = db.relationship('RoomImage', backref='room', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<Room {self.name}>'
+
+class RoomImage(db.Model):
+    __tablename__ = 'room_images'
+
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
+    image_url = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<RoomImage {self.id} for Room {self.room_id}>'

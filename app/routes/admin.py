@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
 from app.models import db
 from app.models.user import User
-from app.models.branch import Branch, Room, BranchFloor
+from app.models.branch import Branch, Room, BranchFloor, RoomImage
 from app.models.contract import Contract
 from app.models.request import Request
 from app.routes.auth import admin_required
@@ -142,7 +142,8 @@ def get_branch(current_user, id):
             'position_x': room.position_x,
             'position_y': room.position_y,
             'width': room.width,
-            'height': room.height
+            'height': room.height,
+            'images': [{'id': img.id, 'url': img.image_url} for img in room.images]
         })
     
     # Get floor plans
@@ -161,7 +162,8 @@ def get_branch(current_user, id):
             'name': r.name,
             'price': r.price,
             'status': r.status,
-            'floor': r.floor
+            'floor': r.floor,
+            'images': [{'id': img.id, 'url': img.image_url} for img in r.images]
         } for r in branch.rooms],
         'rooms_by_floor': rooms_by_floor,
         'floor_plans': floor_plans,
@@ -364,3 +366,51 @@ def delete_branch_floor(current_user, id, floor):
     db.session.commit()
     
     return jsonify({'message': 'Floor deleted'})
+
+@admin_bp.route('/api/rooms/<int:id>/images', methods=['POST'])
+@admin_required
+def upload_room_images(current_user, id):
+    """Upload multiple images for a room"""
+    room = Room.query.get_or_404(id)
+    
+    if 'images' not in request.files:
+        return jsonify({'error': 'No images provided'}), 400
+    
+    files = request.files.getlist('images')
+    uploaded_images = []
+    
+    for file in files:
+        if file and file.filename:
+            filename = secure_filename(f"room_{id}_{file.filename}")
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'rooms')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            file_path = os.path.join(upload_folder, filename)
+            file.save(file_path)
+            
+            image_url = f"/static/uploads/rooms/{filename}"
+            room_image = RoomImage(room_id=id, image_url=image_url)
+            db.session.add(room_image)
+            uploaded_images.append({'url': image_url})
+    
+    db.session.commit()
+    return jsonify({'message': 'Images uploaded', 'images': uploaded_images}), 201
+
+@admin_bp.route('/api/rooms/<int:room_id>/images/<int:image_id>', methods=['DELETE'])
+@admin_required
+def delete_room_image(current_user, room_id, image_id):
+    """Delete a room image"""
+    room_image = RoomImage.query.filter_by(id=image_id, room_id=room_id).first_or_404()
+    
+    # Optionally delete the file from disk
+    try:
+        if room_image.image_url:
+            file_path = os.path.join(current_app.root_path, room_image.image_url.lstrip('/'))
+            if os.path.exists(file_path):
+                os.remove(file_path)
+    except Exception as e:
+        print(f"Error deleting file: {e}")
+    
+    db.session.delete(room_image)
+    db.session.commit()
+    return jsonify({'message': 'Image deleted'})
