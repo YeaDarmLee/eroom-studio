@@ -1,6 +1,6 @@
 from app.extensions import db
 from .user import User
-from .branch import Branch, Room, RoomImage
+from .branch import Branch, Room, RoomImage, BranchFloor, BranchService, BranchImage
 from .contract import Contract
 from .request import Request
 from .tenant_link import TenantRoomLinkRequest

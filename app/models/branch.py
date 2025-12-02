@@ -14,6 +14,7 @@ class Branch(db.Model):
     
     rooms = db.relationship('Room', backref='branch', lazy='dynamic')
     services = db.relationship('BranchService', backref='branch', lazy='dynamic', cascade='all, delete-orphan')
+    images = db.relationship('BranchImage', backref='branch', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<Branch {self.name}>'
@@ -81,3 +82,15 @@ class RoomImage(db.Model):
 
     def __repr__(self):
         return f'<RoomImage {self.id} for Room {self.room_id}>'
+
+class BranchImage(db.Model):
+    __tablename__ = 'branch_images'
+
+    id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    image_url = db.Column(db.String(255), nullable=False)
+    order_index = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<BranchImage {self.id} for Branch {self.branch_id}>'

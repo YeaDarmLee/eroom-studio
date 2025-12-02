@@ -20,6 +20,9 @@ document.addEventListener('alpine:init', () => {
         newFloorInput: '', // For inline floor addition
         imageFile: null,
         imagePreview: null,
+        branchImages: [], // Array of {file: File, preview: string}
+        existingBranchImages: [], // Array of {id: number, url: string}
+        isDraggingBranchImage: false,
 
         // Room Management
         showRoomModal: false,
@@ -98,6 +101,8 @@ document.addEventListener('alpine:init', () => {
             }
             this.imageFile = null
             this.imagePreview = null
+            this.branchImages = []
+            this.existingBranchImages = []
             this.showModal = true
         },
 
@@ -107,6 +112,8 @@ document.addEventListener('alpine:init', () => {
             this.formData = { ...branch }
             this.imageFile = null
             this.imagePreview = null
+            this.branchImages = []
+            this.existingBranchImages = branch.images ? [...branch.images] : []
             this.showModal = true
         },
 
@@ -137,9 +144,19 @@ document.addEventListener('alpine:init', () => {
                 })
 
                 if (response.ok) {
+                    const data = await response.json()
+                    const branchId = this.editMode ? this.currentBranch.id : data.id
+
+                    // Upload images if any
+                    if (this.branchImages.length > 0) {
+                        await this.uploadBranchImages(branchId)
+                    }
+
                     this.showModal = false
                     this.imageFile = null
                     this.imagePreview = null
+                    this.branchImages = []
+                    this.existingBranchImages = []
                     await this.loadBranches()
                 } else {
                     const data = await response.json()
@@ -186,9 +203,92 @@ document.addEventListener('alpine:init', () => {
             // Create preview
             const reader = new FileReader()
             reader.onload = (e) => {
-                this.imagePreview = e.target.result
+            },
+                reader.readAsDataURL(file)
+        },
+
+        // ==================== Branch Multi-Image Methods ====================
+
+        handleBranchImageUpload(event) {
+            const files = Array.from(event.target.files)
+            this.processBranchImageFiles(files)
+            event.target.value = ''
+        },
+
+        handleBranchImageDrop(event) {
+            this.isDraggingBranchImage = false
+            const files = Array.from(event.dataTransfer.files)
+            this.processBranchImageFiles(files)
+        },
+
+        processBranchImageFiles(files) {
+            files.forEach(file => {
+                if (!file.type.startsWith('image/')) {
+                    alert('이미지 파일만 업로드 가능합니다.')
+                    return
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('파일 크기는 5MB를 초과할 수 없습니다.')
+                    return
+                }
+
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    this.branchImages.push({
+                        file: file,
+                        preview: e.target.result
+                    })
+                }
+                reader.readAsDataURL(file)
+            })
+        },
+
+        removeBranchImage(index) {
+            this.branchImages.splice(index, 1)
+        },
+
+        async deleteExistingBranchImage(imageId, branchId) {
+            if (!confirm('이 이미지를 삭제하시겠습니까?')) return
+
+            const token = localStorage.getItem('token')
+            try {
+                const response = await fetch(`/admin/api/branches/${branchId}/images/${imageId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + token }
+                })
+
+                if (response.ok) {
+                    this.existingBranchImages = this.existingBranchImages.filter(img => img.id !== imageId)
+                } else {
+                    alert('이미지 삭제에 실패했습니다.')
+                }
+            } catch (error) {
+                console.error('Error deleting image:', error)
+                alert('오류가 발생했습니다.')
             }
-            reader.readAsDataURL(file)
+        },
+
+        async uploadBranchImages(branchId) {
+            const token = localStorage.getItem('token')
+            const formData = new FormData()
+
+            this.branchImages.forEach(img => {
+                formData.append('images', img.file)
+            })
+
+            try {
+                const response = await fetch(`/admin/api/branches/${branchId}/images`, {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + token },
+                    body: formData
+                })
+
+                if (!response.ok) {
+                    console.error('Failed to upload images')
+                }
+            } catch (error) {
+                console.error('Error uploading images:', error)
+            }
         },
 
         // ==================== Room Image Methods ====================

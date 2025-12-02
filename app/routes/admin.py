@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
 from app.models import db
 from app.models.user import User
-from app.models.branch import Branch, Room, BranchFloor, RoomImage
+from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchService, BranchImage
 from app.models.contract import Contract
 from app.models.request import Request
 from app.routes.auth import admin_required
@@ -78,7 +78,10 @@ def get_branches(current_user):
         'id': b.id,
         'name': b.name,
         'address': b.address,
+        'facilities': b.facilities,
+        'description': b.description,
         'image_url': b.image_url,
+        'images': [{'id': img.id, 'url': img.image_url} for img in b.images],
         'room_count': b.rooms.count()
     } for b in branches])
 
@@ -167,7 +170,9 @@ def get_branch(current_user, id):
         } for r in branch.rooms],
         'rooms_by_floor': rooms_by_floor,
         'floor_plans': floor_plans,
-        'floors': [f.floor for f in branch.floors]
+        'floors': [f.floor for f in branch.floors],
+        'image_url': branch.image_url,
+        'images': [{'id': img.id, 'url': img.image_url} for img in branch.images]
     })
 
 @admin_bp.route('/api/branches/<int:id>', methods=['PUT'])
@@ -202,6 +207,57 @@ def update_branch(current_user, id):
     
     db.session.commit()
     return jsonify({'message': 'Branch updated'})
+
+@admin_bp.route('/api/branches/<int:id>/images', methods=['POST'])
+@admin_required
+def upload_branch_images(current_user, id):
+    branch = Branch.query.get_or_404(id)
+    
+    if 'images' not in request.files:
+        return jsonify({'error': 'No images provided'}), 400
+    
+    files = request.files.getlist('images')
+    uploaded_images = []
+    
+    for file in files:
+        if file and file.filename:
+            filename = secure_filename(f"branch_{id}_{file.filename}")
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            file_path = os.path.join(upload_folder, filename)
+            file.save(file_path)
+            
+            image_url = f"/static/uploads/branches/{filename}"
+            
+            # Create BranchImage record
+            branch_image = BranchImage(branch_id=branch.id, image_url=image_url)
+            db.session.add(branch_image)
+            uploaded_images.append(image_url)
+            
+            # If it's the first image and branch has no main image, set it
+            if not branch.image_url:
+                branch.image_url = image_url
+    
+    db.session.commit()
+    return jsonify({'message': 'Images uploaded successfully', 'images': uploaded_images}), 201
+
+@admin_bp.route('/api/branches/<int:branch_id>/images/<int:image_id>', methods=['DELETE'])
+@admin_required
+def delete_branch_image(current_user, branch_id, image_id):
+    image = BranchImage.query.filter_by(id=image_id, branch_id=branch_id).first_or_404()
+    
+    # Optional: Delete file from filesystem
+    try:
+        file_path = os.path.join(current_app.root_path, image.image_url.lstrip('/'))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        print(f"Error deleting file: {e}")
+    
+    db.session.delete(image)
+    db.session.commit()
+    return jsonify({'message': 'Image deleted successfully'})
 
 @admin_bp.route('/api/branches/<int:id>', methods=['DELETE'])
 @admin_required
