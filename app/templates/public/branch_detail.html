@@ -67,13 +67,33 @@
             <i class="ri-arrow-left-line text-xl mr-2"></i>
             <span>메인으로</span>
         </a>
-        <div class="flex space-x-1 bg-gray-100 p-1 rounded-full overflow-x-auto">
-            <button
-                class="px-4 py-1.5 bg-white text-gray-900 rounded-full shadow-sm whitespace-nowrap text-sm font-medium">{{
-                branch.name }}</button>
-            <!-- Placeholder for other branches -->
-            <button class="px-4 py-1.5 text-gray-600 hover:text-gray-900 whitespace-nowrap text-sm">부천점</button>
-            <button class="px-4 py-1.5 text-gray-600 hover:text-gray-900 whitespace-nowrap text-sm">홍대점</button>
+        <div class="flex space-x-1 bg-gray-100 p-1 rounded-full overflow-x-auto" x-data="{
+            branches: [],
+            currentBranchId: {{ branch.id }},
+            async init() {
+                try {
+                    const response = await fetch('/api/public/branches');
+                    if (response.ok) {
+                        this.branches = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error loading branches:', error);
+                }
+            },
+            navigateToBranch(branchId) {
+                if (branchId !== this.currentBranchId) {
+                    window.location.href = `/branches/${branchId}`;
+                }
+            }
+        }">
+            <template x-for="b in branches" :key="b.id">
+                <button 
+                    @click="navigateToBranch(b.id)"
+                    :class="b.id === currentBranchId ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-600 hover:text-gray-900'"
+                    class="px-4 py-1.5 rounded-full whitespace-nowrap text-sm transition-all"
+                    x-text="b.name">
+                </button>
+            </template>
         </div>
     </div>
 </div>
