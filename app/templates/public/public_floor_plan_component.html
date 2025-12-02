@@ -1,0 +1,393 @@
+<!-- Public Floor Plan Component -->
+<!-- This replaces the SVG-based floor plan with real admin-configured data -->
+
+<style>
+    .public-floor-plan-container {
+        position: relative;
+        width: 100%;
+        height: 480px;
+        background-color: #f3f4f6;
+        background-image:
+            linear-gradient(rgba(0, 0, 0, .03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 0, 0, .03) 1px, transparent 1px);
+        background-size: 20px 20px;
+        overflow: visible;
+        border-radius: 0.5rem;
+    }
+    
+    .public-floor-plan-wrapper {
+        position: relative;
+        width: 100%;
+        height: 480px;
+        overflow: hidden;
+        border-radius: 0.5rem;
+    }
+
+    .public-floor-plan-container.no-image {
+        background-color: #e5e7eb;
+        background-image: none;
+    }
+
+    .public-floor-plan-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+    }
+
+    .public-room-box {
+        position: absolute;
+        background-color: rgba(59, 130, 246, 0.25);
+        border: 2px solid #3b82f6;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-center;
+        text-align: center;
+        padding: 0.5rem;
+    }
+
+    .public-room-box:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        background-color: rgba(59, 130, 246, 0.4);
+        transform: translateY(-2px);
+        z-index: 100;
+    }
+
+    .public-room-box.available {
+        background-color: rgba(39, 174, 96, 0.25);
+        border-color: #27AE60;
+    }
+
+    .public-room-box.available:hover {
+        background-color: rgba(39, 174, 96, 0.35);
+    }
+
+    .public-room-box.occupied {
+        background-color: rgba(127, 140, 141, 0.25);
+        border-color: #7F8C8D;
+        cursor: not-allowed;
+    }
+
+    .public-room-box.occupied:hover {
+        background-color: rgba(127, 140, 141, 0.25);
+        transform: none;
+    }
+
+    .public-room-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #1e40af;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .public-room-box.available .public-room-label {
+        color: #27AE60;
+    }
+
+    .public-room-box.occupied .public-room-label {
+        color: #7F8C8D;
+    }
+
+    .public-floor-tab {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .public-floor-tab.active {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .public-floor-tab:not(.active) {
+        background-color: #e5e7eb;
+        color: #6b7280;
+    }
+
+    .public-floor-tab:not(.active):hover {
+        background-color: #d1d5db;
+    }
+
+    .public-room-box.occupied:hover {
+        background-color: rgba(127, 140, 141, 0.25);
+        transform: none;
+    }
+
+    .room-tooltip {
+        position: fixed;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        white-space: nowrap;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .public-room-box:hover .room-tooltip {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-12px);
+    }
+
+
+
+    .room-tooltip-title {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #111827;
+        margin-bottom: 0.5rem;
+    }
+
+    .room-tooltip-info {
+        font-size: 0.75rem;
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    .room-tooltip-status {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+
+    .room-tooltip-status.available {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+
+    .room-tooltip-status.occupied {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .public-room-box.occupied .public-room-label {
+        color: #7F8C8D;
+    }
+
+</style>
+
+<!-- Floor Plan Section -->
+<div class="mb-16" id="floor-plan-section" x-data="{
+    selectedFloor: '1F',
+    floorPlans: {},
+    roomsByFloor: {},
+    branchData: null,
+    
+    async init() {
+        await this.loadBranchData();
+    },
+    
+    async loadBranchData() {
+        try {
+            const branchId = {{ branch.id }};
+            const response = await fetch(`/api/public/branches/${branchId}`);
+            if (response.ok) {
+                this.branchData = await response.json();
+                this.roomsByFloor = this.branchData.rooms_by_floor || {};
+                this.floorPlans = this.branchData.floor_plans || {};
+                
+                // Set first available floor as selected (prefer floorPlans, fallback to roomsByFloor)
+                const availableFloors = Object.keys(this.floorPlans).length > 0 
+                    ? Object.keys(this.floorPlans) 
+                    : Object.keys(this.roomsByFloor);
+                if (availableFloors.length > 0) {
+                    this.selectedFloor = availableFloors[0];
+                }
+            }
+        } catch (error) {
+            console.error('Error loading branch data:', error);
+        }
+    },
+    
+    selectFloor(floor) {
+        this.selectedFloor = floor;
+    },
+    
+    getRoomStatusClass(status) {
+        if (status === 'available') return 'available';
+        if (status === 'occupied') return 'occupied';
+        return '';
+    },
+    
+    viewRoomDetail(roomId) {
+        window.location.href = `/rooms/${roomId}`;
+    }
+}">
+    <h2 class="text-2xl font-bold mb-6">연습실 배치도</h2>
+
+    <!-- Check if any rooms with positions exist -->
+    <template x-if="Object.keys(roomsByFloor).length === 0">
+        <div class="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+            <i class="ri-image-line text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 font-medium mb-2">배치도가 준비 중입니다</p>
+            <p class="text-gray-400 text-sm">아래 룸 목록에서 연습실을 확인하실 수 있습니다</p>
+        </div>
+    </template>
+
+    <!-- Floor Plan View (Shows even without floor plan image if rooms have positions) -->
+    <template x-if="Object.keys(roomsByFloor).length > 0">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 relative bg-white rounded-lg border border-gray-100 p-6">
+                <!-- Floor Tabs -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <template x-for="(rooms, floor) in roomsByFloor" :key="floor">
+                        <button @click="selectFloor(floor)" :class="selectedFloor === floor ? 'active' : ''"
+                            class="public-floor-tab" x-text="floor">
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Floor Plan Canvas -->
+                <div class="public-floor-plan-wrapper">
+                    <div class="public-floor-plan-container" :class="{ 'no-image': !floorPlans[selectedFloor] }">
+                    <!-- Floor Plan Background Image -->
+                    <img x-show="floorPlans[selectedFloor]" :src="floorPlans[selectedFloor]"
+                        class="public-floor-plan-image" alt="Floor Plan">
+
+                    
+                    <!-- No Floor Plan Message (but rooms exist) -->
+                    <div 
+                        x-show="!floorPlans[selectedFloor] && (roomsByFloor[selectedFloor] || []).length > 0"
+                        class="absolute top-4 left-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 z-10">
+                        <i class="ri-information-line mr-1"></i>
+                        도면 이미지는 준비 중이며, 방 위치만 표시됩니다
+                    </div>
+
+                    <!-- Room Boxes -->
+                    <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
+                        <div class="public-room-box" :class="getRoomStatusClass(room.status)"
+                            :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
+                            @click="room.status !== 'occupied' ? viewRoomDetail(room.id) : null">
+
+                            <!-- Hover Tooltip -->
+                            <div class="room-tooltip" 
+                                x-ref="tooltip"
+                                @mouseenter.window="
+                                    const rect = $el.parentElement.getBoundingClientRect();
+                                    $el.style.left = rect.left + (rect.width / 2) + 'px';
+                                    $el.style.top = rect.top - 10 + 'px';
+                                    $el.style.transform = 'translate(-50%, -100%)';
+                                "
+                                @mouseleave.window="
+                                    $el.style.opacity = '0';
+                                ">
+                                <div class="room-tooltip-title" x-text="room.name"></div>
+                                <div class="room-tooltip-info">
+                                    <div>월 임대료: <span class="font-semibold" x-text="'₩' + room.price.toLocaleString()"></span></div>
+                                    <div x-show="room.description">설명: <span x-text="room.description"></span></div>
+                                    <div>층: <span x-text="room.floor"></span></div>
+                                </div>
+                                <div class="room-tooltip-status" :class="room.status">
+                                    <span x-show="room.status === 'available'">✓ 계약 가능</span>
+                                    <span x-show="room.status === 'occupied'">✕ 계약 완료</span>
+                                    <span x-show="room.status === 'reserved'">⏳ 검토 중</span>
+                                </div>
+                            </div>
+
+                            <!-- Room Label -->
+                            <div class="public-room-label">
+                                <div x-text="room.name"></div>
+                                <div class="text-xs opacity-75" x-text="'₩' + (room.price / 10000) + '만'"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- No Rooms Message -->
+                    <div x-show="!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0"
+                        class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="text-center bg-white/90 p-6 rounded-lg">
+                            <i class="ri-door-line text-4xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500 font-medium">이 층에 등록된 방이 없습니다</p>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex">
+                        <i class="ri-information-line text-blue-600 mr-3 mt-0.5"></i>
+                        <div class="text-sm text-blue-800">
+                            <p class="font-semibold mb-1">도면 사용 방법:</p>
+                            <ul class="list-disc list-inside space-y-1 text-xs">
+                                <li>방 박스를 <strong>클릭</strong>하면 상세 정보를 확인할 수 있습니다</li>
+                                <li><span class="text-green-600 font-semibold">초록색</span> 방은 계약 가능한 방입니다</li>
+                                <li><span class="text-gray-600 font-semibold">회색</span> 방은 이미 계약된 방입니다</li>
+                                <li x-show="!floorPlans[selectedFloor]" class="text-blue-600">도면 이미지는 준비 중이며, 방 위치는 참고용입니다</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Room Status Legend -->
+            <div class="bg-white rounded-lg border border-gray-100 p-6">
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-4">상태 안내</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded bg-[#27AE60]"></div>
+                            <span class="text-gray-600">계약 가능</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded bg-[#7F8C8D]"></div>
+                            <span class="text-gray-600">계약 완료</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Floor Info -->
+                <div class="border-t border-gray-200 pt-6">
+                    <h3 class="text-lg font-medium mb-4">
+                        <span x-text="selectedFloor"></span> 정보
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">총 방 개수</span>
+                            <span class="font-medium" x-text="(roomsByFloor[selectedFloor] || []).length + '개'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">계약 가능</span>
+                            <span class="font-medium text-green-600"
+                                x-text="(roomsByFloor[selectedFloor] || []).filter(r => r.status === 'available').length + '개'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">계약 완료</span>
+                            <span class="font-medium text-gray-600"
+                                x-text="(roomsByFloor[selectedFloor] || []).filter(r => r.status === 'occupied').length + '개'"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="border-t border-gray-200 pt-6 mt-6">
+                    <a href="#room-list"
+                        class="w-full block text-center rounded-button py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors mb-3">
+                        <i class="ri-list-check mr-2"></i>
+                        룸 목록 보기
+                    </a>
+                    <a href="/login"
+                        class="w-full block text-center rounded-button py-2 bg-primary text-white hover:bg-primary/90 transition-colors">
+                        <i class="ri-file-text-line mr-2"></i>
+                        계약 신청하기
+                    </a>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>

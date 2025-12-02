@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="relative h-[680px] flex items-center overflow-hidden"
+    style="background-image: url('https://readdy.ai/api/search-image?query=modern%20music%20studio%20interior%20with%20natural%20light%2C%20minimalist%20design%2C%20high-end%20equipment%2C%20clean%20and%20professional%20atmosphere%2C%20soft%20lighting%2C%20wooden%20elements%2C%20glass%20walls%2C%20perfect%20balance%20of%20aesthetics%20and%20functionality%2C%20left%20side%20has%20smooth%20gradient%20for%20text%20overlay%2C%20orange%20and%20green%20color%20accents&width=1920&height=680&seq=1&orientation=landscape'); background-size: cover; background-position: center;">
+    <div class="absolute inset-0 bg-gradient-to-r from-white/95 to-transparent"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-2xl">
+            <h1 class="text-5xl md:text-6xl font-bold mb-8 leading-tight">당신의 음악을 위한<br>프리미엄 연습 공간</h1>
+            <p class="text-xl text-gray-600 mb-10 leading-relaxed">전문 음향 시설과 최적의 연습 환경을 갖춘<br>이룸 스튜디오에서 음악의 꿈을 키워보세요</p>
+            <a href="#locations"
+                class="!rounded-button px-8 py-4 bg-primary text-white text-lg hover:bg-highlight transition-colors shadow-md flex items-center w-fit">
+                지점 살펴보기
+                <i class="ri-arrow-right-line ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Benefits Section -->
+<section id="benefits" class="py-24 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="w-12 h-12 flex items-center justify-center bg-secondary/10 rounded-full mb-4">
+                    <i class="ri-calendar-line text-xl text-secondary"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">월 단위 대여</h3>
+                <p class="text-gray-600">최소 1개월부터 장기 계약까지<br>유연한 이용 기간 선택 가능</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full mb-4">
+                    <i class="ri-shield-check-line text-xl text-primary"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">기본 규정</h3>
+                <p class="text-gray-600">소음/출입/흡연 등에 대한<br>명확한 가이드라인 제공</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full mb-4">
+                    <i class="ri-bank-card-line text-xl text-primary"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">간편 결제</h3>
+                <p class="text-gray-600">신용카드, 계좌이체 등<br>다양한 결제 수단 지원</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full mb-4">
+                    <i class="ri-customer-service-line text-xl text-primary"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">24/7 고객 지원</h3>
+                <p class="text-gray-600">카카오톡, 전화, 이메일로<br>언제든 문의 가능</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Process Section -->
+<section id="process" class="py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-4xl font-bold text-center mb-20">이용 절차</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div
+                    class="w-16 h-16 flex items-center justify-center bg-secondary text-white text-xl font-bold rounded-full mx-auto mb-6 shadow-sm">
+                    1</div>
+                <h3 class="text-lg font-semibold mb-3">방 선택</h3>
+                <p class="text-gray-600">원하는 지점과 연습실을<br>온라인으로 확인하세요</p>
+            </div>
+            <div class="text-center">
+                <div
+                    class="w-16 h-16 flex items-center justify-center bg-primary text-white text-xl font-bold rounded-full mx-auto mb-6">
+                    2</div>
+                <h3 class="text-lg font-semibold mb-3">계약 신청</h3>
+                <p class="text-gray-600">간단한 정보 입력으로<br>계약을 신청하세요</p>
+            </div>
+            <div class="text-center">
+                <div
+                    class="w-16 h-16 flex items-center justify-center bg-primary text-white text-xl font-bold rounded-full mx-auto mb-6">
+                    3</div>
+                <h3 class="text-lg font-semibold mb-3">심사/보증금</h3>
+                <p class="text-gray-600">기본 심사 후 보증금<br>입금을 진행합니다</p>
+            </div>
+            <div class="text-center">
+                <div
+                    class="w-16 h-16 flex items-center justify-center bg-primary text-white text-xl font-bold rounded-full mx-auto mb-6">
+                    4</div>
+                <h3 class="text-lg font-semibold mb-3">입실</h3>
+                <p class="text-gray-600">계약서 작성 후<br>즉시 입실 가능합니다</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Locations Section -->
+<section id="locations" class="py-28 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-4xl font-bold text-center mb-20">지점 안내</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <!-- Dynamic Branches if available, else static fallback -->
+            {% if branches %}
+            {% for branch in branches %}
+            <div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div class="h-48 relative"
+                    style="background-image: url('https://readdy.ai/api/search-image?query=modern%20music%20practice%20room%20interior%20with%20professional%20equipment%2C%20acoustic%20treatment%2C%20clean%20and%20minimalist%20design%2C%20warm%20lighting&width=400&height=300&seq={{ loop.index + 1 }}&orientation=landscape'); background-size: cover; background-position: center;">
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold mb-2">{{ branch.name }}</h3>
+                    <p class="text-gray-600 mb-4">{{ branch.address or '주소 정보 없음' }}</p>
+                    <div class="flex items-center text-sm text-gray-500 mb-4">
+                        <i class="ri-time-line mr-2"></i>
+                        24시간 운영
+                    </div>
+                    <a href="/branches/{{ branch.id }}" class="block">
+                        <button
+                            class="w-full !rounded-button py-2 text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors">자세히
+                            보기</button>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <!-- Fallback Static Content if no branches in DB -->
+            <div class="col-span-3 text-center text-gray-500">
+                등록된 지점이 없습니다. 관리자 페이지에서 지점을 등록해주세요.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

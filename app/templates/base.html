@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이룸 스튜디오 - 프리미엄 음악 연습실</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+    <style>
+        :where([class^="ri-"])::before {
+            content: "\f3c2";
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        /* 부드러운 트랜지션 효과 */
+        * {
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        a,
+        button {
+            transition: all 0.3s ease;
+        }
+
+        a:hover,
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F39C12',
+                        secondary: '#27AE60',
+                        highlight: '#F1C40F',
+                        gray: {
+                            100: '#F7FAFC',
+                            200: '#EDF2F7',
+                            300: '#E2E8F0',
+                            400: '#CBD5E0',
+                            500: '#A0AEC0',
+                            600: '#718096',
+                            700: '#4A5568',
+                            800: '#2D3748',
+                            900: '#1A202C'
+                        }
+                    },
+                    borderRadius: {
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-white" x-data="headerData()">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm z-50 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <a href="/" class="text-2xl font-['Pacifico'] text-secondary hover:scale-110 transition-all">이룸</a>
+
+                <!-- Desktop Nav -->
+                <nav class="hidden md:flex space-x-8">
+                    <a href="/#about" class="text-gray-700 hover:text-primary transition-all">소개</a>
+                    <a href="/#process" class="text-gray-700 hover:text-primary transition-all">이용절차</a>
+                    <a href="/#benefits" class="text-gray-700 hover:text-primary transition-all">혜택</a>
+                    <a href="/#locations" class="text-gray-700 hover:text-primary transition-all">지점안내</a>
+                </nav>
+
+                <!-- Auth Buttons / User Menu -->
+                <div class="hidden md:flex items-center space-x-3">
+                    <!-- Logged In -->
+                    <template x-if="isLoggedIn">
+                        <div class="flex items-center space-x-3">
+                            <a x-bind:href="userRole === 'admin' ? '/admin' : '/my/room'"
+                                class="flex items-center space-x-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-button hover:bg-gray-50 transition-all">
+                                <i class="ri-user-line"></i>
+                                <span x-text="userName"></span>
+                            </a>
+                            <button x-on:click="logout()"
+                                class="px-4 py-2 text-gray-700 border border-gray-300 rounded-button hover:bg-gray-50 transition-all">
+                                <i class="ri-logout-box-line mr-1"></i>
+                                로그아웃
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- Logged Out -->
+                    <template x-if="!isLoggedIn">
+                        <div class="flex items-center space-x-3">
+                            <a href="/login"
+                                class="px-4 py-2 text-gray-700 border border-gray-300 rounded-button hover:bg-gray-50 transition-all">로그인</a>
+                            <a href="/login"
+                                class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-all shadow-sm">회원가입</a>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden">
+                    <button x-on:click="mobileMenuOpen = !mobileMenuOpen"
+                        class="text-gray-700 hover:text-primary transition-all">
+                        <i class="ri-menu-line text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div x-show="mobileMenuOpen" x-cloak x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+            class="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 shadow-lg">
+            <a href="/#about" class="block text-gray-700 hover:text-primary transition-all">소개</a>
+            <a href="/#process" class="block text-gray-700 hover:text-primary transition-all">이용절차</a>
+            <a href="/#benefits" class="block text-gray-700 hover:text-primary transition-all">혜택</a>
+            <a href="/#locations" class="block text-gray-700 hover:text-primary transition-all">지점안내</a>
+
+            <div class="border-t border-gray-100 pt-4 space-y-2">
+                <template x-if="isLoggedIn">
+                    <div class="space-y-2">
+                        <a x-bind:href="userRole === 'admin' ? '/admin' : '/my/room'"
+                            class="flex items-center justify-center space-x-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-button hover:bg-gray-50 transition-all">
+                            <i class="ri-user-line"></i>
+                            <span x-text="userName"></span>
+                        </a>
+                        <button x-on:click="logout()"
+                            class="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded-button hover:bg-gray-50 transition-all">
+                            <i class="ri-logout-box-line mr-1"></i>
+                            로그아웃
+                        </button>
+                    </div>
+                </template>
+
+                <template x-if="!isLoggedIn">
+                    <div class="space-y-2">
+                        <a href="/login"
+                            class="block text-center px-4 py-2 text-gray-700 border border-gray-300 rounded-button hover:bg-gray-50 transition-all">로그인</a>
+                        <a href="/login"
+                            class="block text-center px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-all shadow-sm">회원가입</a>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-16">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-xl font-['Pacifico'] mb-4">이룸</h3>
+                    <p class="text-gray-400">프리미엄 음악 연습실</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">고객 지원</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li>이용 안내</li>
+                        <li>자주 묻는 질문</li>
+                        <li>공지사항</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">연락처</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li>전화: 1544-0000</li>
+                        <li>이메일: contact@eroom.kr</li>
+                        <li>카카오톡: @이룸스튜디오</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">소셜 미디어</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
+                            <i class="ri-instagram-line text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
+                            <i class="ri-facebook-line text-xl"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
+                            <i class="ri-youtube-line text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-gray-400 text-sm">
+                <p>© 2025 이룸 스튜디오. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function headerData() {
+            return {
+                mobileMenuOpen: false,
+                isLoggedIn: false,
+                userName: '',
+                userRole: '',
+
+                init() {
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                        fetch('/api/auth/me', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        })
+                            .then(r => r.ok ? r.json() : Promise.reject())
+                            .then(data => {
+                                this.isLoggedIn = true;
+                                this.userName = data.name || '사용자';
+                                this.userRole = data.role;
+                            })
+                            .catch(() => {
+                                localStorage.removeItem('token');
+                                this.isLoggedIn = false;
+                            });
+                    }
+                },
+
+                logout() {
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
