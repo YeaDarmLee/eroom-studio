@@ -207,6 +207,70 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // ==================== Floor Management Methods ====================
+
+        async addFloor() {
+            const floor = prompt('추가할 층 이름을 입력하세요 (예: 2F, B1):')
+            if (!floor) return
+
+            const token = localStorage.getItem('token')
+            try {
+                const response = await fetch(`/admin/api/branches/${this.currentBranch.id}/floors`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ floor })
+                })
+
+                if (response.ok) {
+                    await this.loadBranches() // Reload to get updated floors
+                    // Also update currentBranch.floors locally if needed
+                    const updatedBranch = this.branches.find(b => b.id === this.currentBranch.id)
+                    if (updatedBranch) {
+                        this.currentBranch = updatedBranch
+                        this.formData = { ...updatedBranch }
+                    }
+                    alert('층이 추가되었습니다.')
+                } else {
+                    const data = await response.json()
+                    alert(data.error || '층 추가에 실패했습니다.')
+                }
+            } catch (error) {
+                console.error('Error adding floor:', error)
+                alert('오류가 발생했습니다.')
+            }
+        },
+
+        async removeFloor(floor) {
+            if (!confirm(`"${floor}" 층을 삭제하시겠습니까?`)) return
+
+            const token = localStorage.getItem('token')
+            try {
+                const response = await fetch(`/admin/api/branches/${this.currentBranch.id}/floors/${floor}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bearer ' + token }
+                })
+
+                if (response.ok) {
+                    await this.loadBranches()
+                    const updatedBranch = this.branches.find(b => b.id === this.currentBranch.id)
+                    if (updatedBranch) {
+                        this.currentBranch = updatedBranch
+                        this.formData = { ...updatedBranch }
+                    }
+                    alert('층이 삭제되었습니다.')
+                } else {
+                    const data = await response.json()
+                    alert(data.error || '층 삭제에 실패했습니다.')
+                }
+            } catch (error) {
+                console.error('Error deleting floor:', error)
+                alert('오류가 발생했습니다.')
+            }
+        },
+
         // ==================== Room Management Methods ====================
 
         async loadBranchRooms(branch) {
@@ -221,6 +285,8 @@ document.addEventListener('alpine:init', () => {
                     this.branchRooms = data.rooms || []
                     this.roomsByFloor = data.rooms_by_floor || {}
                     this.floorPlans = data.floor_plans || {}
+                    this.currentBranch.floors = data.floors || [] // Ensure floors are up to date
+                    this.selectedFloor = this.currentBranch.floors.length > 0 ? this.currentBranch.floors[0] : '1F'
                     this.showRoomModal = true
                 }
             } catch (error) {
@@ -242,7 +308,7 @@ document.addEventListener('alpine:init', () => {
                 name: '',
                 price: '',
                 description: '',
-                floor: '1F'
+                floor: this.selectedFloor || '1F'
             }
             this.showRoomFormModal = true
         },

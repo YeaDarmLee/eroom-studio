@@ -164,7 +164,8 @@ def get_branch(current_user, id):
             'floor': r.floor
         } for r in branch.rooms],
         'rooms_by_floor': rooms_by_floor,
-        'floor_plans': floor_plans
+        'floor_plans': floor_plans,
+        'floors': [f.floor for f in branch.floors]
     })
 
 @admin_bp.route('/api/branches/<int:id>', methods=['PUT'])
@@ -323,3 +324,43 @@ def update_room_positions(current_user, id, floor):
             
     db.session.commit()
     return jsonify({'message': 'Positions updated'})
+
+@admin_bp.route('/api/branches/<int:id>/floors', methods=['POST'])
+@admin_required
+def add_branch_floor(current_user, id):
+    """Add a floor to a branch"""
+    data = request.get_json()
+    floor_name = data.get('floor')
+    
+    if not floor_name:
+        return jsonify({'error': 'Floor name is required'}), 400
+        
+    # Check if floor already exists
+    existing = BranchFloor.query.filter_by(branch_id=id, floor=floor_name).first()
+    if existing:
+        return jsonify({'error': 'Floor already exists'}), 400
+        
+    branch_floor = BranchFloor(branch_id=id, floor=floor_name)
+    db.session.add(branch_floor)
+    db.session.commit()
+    
+    return jsonify({'message': 'Floor added', 'floor': floor_name}), 201
+
+@admin_bp.route('/api/branches/<int:id>/floors/<floor>', methods=['DELETE'])
+@admin_required
+def delete_branch_floor(current_user, id, floor):
+    """Delete a floor from a branch"""
+    branch_floor = BranchFloor.query.filter_by(branch_id=id, floor=floor).first()
+    
+    if not branch_floor:
+        return jsonify({'error': 'Floor not found'}), 404
+        
+    # Check if there are rooms on this floor
+    rooms_on_floor = Room.query.filter_by(branch_id=id, floor=floor).count()
+    if rooms_on_floor > 0:
+        return jsonify({'error': 'Cannot delete floor with existing rooms'}), 400
+        
+    db.session.delete(branch_floor)
+    db.session.commit()
+    
+    return jsonify({'message': 'Floor deleted'})
