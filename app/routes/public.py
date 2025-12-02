@@ -39,7 +39,8 @@ def get_branch(branch_id):
             'position_x': room.position_x,
             'position_y': room.position_y,
             'width': room.width,
-            'height': room.height
+            'height': room.height,
+            'images': [{'id': img.id, 'url': img.image_url} for img in room.images]
         })
     
     # Get floor plans
@@ -69,7 +70,8 @@ def get_branch_rooms(branch_id):
             'name': room.name,
             'price': room.price,
             'status': room.status,
-            'description': room.description
+            'description': room.description,
+            'images': [{'id': img.id, 'url': img.image_url} for img in room.images]
         })
     return jsonify(result)
 
@@ -82,5 +84,6 @@ def get_room(room_id):
         'name': room.name,
         'price': room.price,
         'status': room.status,
-        'description': room.description
+        'description': room.description,
+        'images': [{'id': img.id, 'url': img.image_url} for img in room.images]
     })

@@ -214,6 +214,7 @@
             <table class="w-full">
                 <thead>
                     <tr class="border-b border-gray-200">
+                        <th class="py-4 px-6 text-left font-medium text-gray-500">이미지</th>
                         <th class="py-4 px-6 text-left font-medium text-gray-500">룸 타입</th>
                         <th class="py-4 px-6 text-left font-medium text-gray-500">월 임대료</th>
                         <th class="py-4 px-6 text-left font-medium text-gray-500">시간당</th>
@@ -226,6 +227,16 @@
                     {% for room in branch.rooms %}
                     <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                         onclick="location.href='/rooms/{{ room.id }}'">
+                        <td class="py-4 px-6">
+                            {% set room_images = room.images.all() if room.images else [] %}
+                            {% if room_images|length > 0 %}
+                            <img src="{{ room_images[0].image_url }}" alt="{{ room.name }}" class="w-16 h-16 object-cover rounded-lg">
+                            {% else %}
+                            <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                                <i class="ri-image-line text-gray-400"></i>
+                            </div>
+                            {% endif %}
+                        </td>
                         <td class="py-4 px-6">
                             <div class="font-medium">{{ room.name }}</div>
                             <div class="text-sm text-gray-500">{{ room.description or 'Standard Room' }}</div>
@@ -249,6 +260,11 @@
                     {% else %}
                     <!-- Fallback Static Data if no rooms -->
                     <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                        <td class="py-4 px-6">
+                            <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                                <i class="ri-image-line text-gray-400"></i>
+                            </div>
+                        </td>
                         <td class="py-4 px-6">
                             <div class="font-medium">A타입</div>
                             <div class="text-sm text-gray-500">보컬 연습실</div>

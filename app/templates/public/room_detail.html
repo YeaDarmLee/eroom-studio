@@ -5,11 +5,50 @@
     <div class="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8">
         <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
             <!-- Image gallery -->
-            <div class="flex flex-col-reverse">
-                <div class="w-full aspect-w-1 aspect-h-1">
-                    <img src="https://via.placeholder.com/600x400" alt="{{ room.name }}"
-                        class="w-full h-full object-center object-cover sm:rounded-lg">
+            <div class="flex flex-col-reverse" x-data="{ currentImage: 0, images: [{% for img in room.images %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}] }">
+                <!-- Main Image -->
+                <div class="w-full aspect-w-1 aspect-h-1 relative">
+                    <template x-if="images.length > 0">
+                        <img :src="images[currentImage].url" :alt="'{{ room.name }} - Image ' + (currentImage + 1)"
+                            class="w-full h-full object-center object-cover sm:rounded-lg">
+                    </template>
+                    <template x-if="images.length === 0">
+                        <div class="w-full h-full bg-gray-200 flex items-center justify-center sm:rounded-lg">
+                            <div class="text-center">
+                                <i class="ri-image-line text-6xl text-gray-400 mb-2"></i>
+                                <p class="text-gray-500">이미지가 없습니다</p>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <!-- Navigation Arrows -->
+                    <template x-if="images.length > 1">
+                        <div>
+                            <button @click="currentImage = (currentImage - 1 + images.length) % images.length"
+                                class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all">
+                                <i class="ri-arrow-left-s-line text-2xl text-gray-800"></i>
+                            </button>
+                            <button @click="currentImage = (currentImage + 1) % images.length"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all">
+                                <i class="ri-arrow-right-s-line text-2xl text-gray-800"></i>
+                            </button>
+                        </div>
+                    </template>
                 </div>
+                
+                <!-- Thumbnail Gallery -->
+                <template x-if="images.length > 1">
+                    <div class="mt-4 grid grid-cols-4 gap-2">
+                        <template x-for="(img, index) in images" :key="img.id">
+                            <button @click="currentImage = index"
+                                :class="currentImage === index ? 'ring-2 ring-indigo-500' : 'ring-1 ring-gray-200'"
+                                class="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden hover:opacity-75 transition-all">
+                                <img :src="img.url" :alt="'{{ room.name }} thumbnail ' + (index + 1)"
+                                    class="w-full h-full object-center object-cover">
+                            </button>
+                        </template>
+                    </div>
+                </template>
             </div>
 
             <!-- Room info -->
