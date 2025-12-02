@@ -688,6 +688,16 @@
                                                     </div>
                                                 </template>
                                             </div>
+                                            <!-- Empty State for List View -->
+                                            <template x-if="branchRooms.filter(r => r.floor === selectedFloor).length === 0">
+                                                <div class="text-center py-12">
+                                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <i class="ri-inbox-line text-3xl text-gray-400"></i>
+                                                    </div>
+                                                    <p class="text-lg font-medium text-gray-900">이 층에 등록된 방이 없습니다</p>
+                                                    <p class="text-sm text-gray-500 mt-1">상단의 "방 추가" 버튼을 클릭하여 방을 등록하세요.</p>
+                                                </div>
+                                            </template>
                                         </div>
 
                                         <!-- Floor Plan View -->
@@ -731,6 +741,16 @@
                                                                     x-text="room.name"></span>
                                                                 <div class="absolute bottom-0 right-0 w-4 h-4 bg-primary cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity resize-handle rounded-tl-sm"
                                                                     @mousedown.stop="startResize(room, 'se', $event)">
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                        <!-- Empty State: Floor plan exists but no rooms -->
+                                                        <template x-if="(!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0)">
+                                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                <div class="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg text-center">
+                                                                    <i class="ri-inbox-line text-4xl text-gray-400 mb-2"></i>
+                                                                    <p class="text-lg font-medium text-gray-900">이 층에 등록된 방이 없습니다</p>
+                                                                    <p class="text-sm text-gray-500 mt-1">방을 추가하고 도면 위에 배치하세요.</p>
                                                                 </div>
                                                             </div>
                                                         </template>
