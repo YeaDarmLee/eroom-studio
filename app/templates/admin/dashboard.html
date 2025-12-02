@@ -508,26 +508,38 @@
                                         </div>
                                         <!-- Floor Management Section (Only in Edit Mode) -->
                                         <template x-if="editMode">
-                                            <div class="mb-4">
+                                            <div class="mb-6">
                                                 <label class="block text-gray-700 text-sm font-bold mb-2">층 관리</label>
-                                                <div class="bg-gray-50 p-4 rounded-lg">
-                                                    <div class="flex flex-wrap gap-2 mb-3">
+                                                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                                    <div class="flex gap-2 mb-4">
+                                                        <input type="text" x-model="newFloorInput"
+                                                            @keyup.enter="addFloor"
+                                                            class="flex-1 shadow-sm appearance-none border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                            placeholder="층 이름 입력 (예: 2F)">
+                                                        <button @click="addFloor" type="button"
+                                                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center">
+                                                            <i class="ri-add-line mr-1"></i> 추가
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="flex flex-wrap gap-2">
                                                         <template x-for="floor in (currentBranch?.floors || [])"
                                                             :key="floor">
                                                             <div
-                                                                class="flex items-center bg-white border rounded px-3 py-1">
-                                                                <span x-text="floor" class="mr-2"></span>
+                                                                class="group flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1.5 shadow-sm hover:shadow-md transition-all duration-200">
+                                                                <span x-text="floor"
+                                                                    class="font-medium text-gray-700 mr-2"></span>
                                                                 <button @click="removeFloor(floor)"
-                                                                    class="text-red-500 hover:text-red-700">
-                                                                    <i class="ri-close-line"></i>
+                                                                    class="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors">
+                                                                    <i class="ri-close-line text-lg"></i>
                                                                 </button>
                                                             </div>
                                                         </template>
+                                                        <div x-show="(currentBranch?.floors || []).length === 0"
+                                                            class="text-sm text-gray-400 py-2 w-full text-center italic">
+                                                            등록된 층이 없습니다.
+                                                        </div>
                                                     </div>
-                                                    <button @click="addFloor" type="button"
-                                                        class="text-sm bg-blue-500 hover:bg-blue-700 text-white py-1 px-3 rounded focus:outline-none focus:shadow-outline">
-                                                        <i class="ri-add-line mr-1"></i> 층 추가
-                                                    </button>
                                                 </div>
                                             </div>
                                         </template>

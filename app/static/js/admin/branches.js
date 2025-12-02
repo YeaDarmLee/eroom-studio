@@ -17,6 +17,7 @@ document.addEventListener('alpine:init', () => {
             description: '',
             image_url: ''
         },
+        newFloorInput: '', // For inline floor addition
         imageFile: null,
         imagePreview: null,
 
@@ -210,7 +211,7 @@ document.addEventListener('alpine:init', () => {
         // ==================== Floor Management Methods ====================
 
         async addFloor() {
-            const floor = prompt('추가할 층 이름을 입력하세요 (예: 2F, B1):')
+            const floor = this.newFloorInput.trim()
             if (!floor) return
 
             const token = localStorage.getItem('token')
@@ -232,7 +233,8 @@ document.addEventListener('alpine:init', () => {
                         this.currentBranch = updatedBranch
                         this.formData = { ...updatedBranch }
                     }
-                    alert('층이 추가되었습니다.')
+                    this.newFloorInput = '' // Clear input
+                    // alert('층이 추가되었습니다.') // Optional: remove alert for smoother UX
                 } else {
                     const data = await response.json()
                     alert(data.error || '층 추가에 실패했습니다.')
