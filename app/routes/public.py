@@ -13,7 +13,8 @@ def get_branches():
             'name': branch.name,
             'description': branch.description,
             'address': branch.address,
-            'facilities': branch.facilities
+            'facilities': branch.facilities,
+            'image_url': branch.image_url
         })
     return jsonify(result)
 

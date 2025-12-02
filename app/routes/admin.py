@@ -78,6 +78,7 @@ def get_branches(current_user):
         'id': b.id,
         'name': b.name,
         'address': b.address,
+        'image_url': b.image_url,
         'room_count': b.rooms.count()
     } for b in branches])
 
@@ -85,13 +86,35 @@ def get_branches(current_user):
 @admin_required
 def create_branch(current_user):
     """Create new branch"""
-    data = request.get_json()
+    # Handle multipart/form-data
+    name = request.form.get('name')
+    address = request.form.get('address')
+    facilities = request.form.get('facilities')
+    description = request.form.get('description')
+    
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+    
     branch = Branch(
-        name=data['name'],
-        address=data.get('address'),
-        facilities=data.get('facilities'),
-        description=data.get('description')
+        name=name,
+        address=address,
+        facilities=facilities,
+        description=description
     )
+    
+    # Handle image upload
+    if 'image' in request.files:
+        file = request.files['image']
+        if file and file.filename:
+            filename = secure_filename(f"branch_{name}_{file.filename}")
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            file_path = os.path.join(upload_folder, filename)
+            file.save(file_path)
+            
+            branch.image_url = f"/static/uploads/branches/{filename}"
+    
     db.session.add(branch)
     db.session.commit()
     return jsonify({'message': 'Branch created', 'id': branch.id}), 201
@@ -149,17 +172,31 @@ def get_branch(current_user, id):
 def update_branch(current_user, id):
     """Update branch"""
     branch = Branch.query.get_or_404(id)
-    data = request.get_json()
     
-    if 'name' in data:
-        branch.name = data['name']
-    if 'address' in data:
-        branch.address = data['address']
-    if 'facilities' in data:
-        branch.facilities = data['facilities']
-    if 'description' in data:
-        branch.description = data['description']
+    # Handle multipart/form-data
+    if request.form:
+        if 'name' in request.form:
+            branch.name = request.form['name']
+        if 'address' in request.form:
+            branch.address = request.form['address']
+        if 'facilities' in request.form:
+            branch.facilities = request.form['facilities']
+        if 'description' in request.form:
+            branch.description = request.form['description']
         
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                filename = secure_filename(f"branch_{branch.name}_{file.filename}")
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                file_path = os.path.join(upload_folder, filename)
+                file.save(file_path)
+                
+                branch.image_url = f"/static/uploads/branches/{filename}"
+    
     db.session.commit()
     return jsonify({'message': 'Branch updated'})
 

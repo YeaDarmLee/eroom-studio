@@ -100,9 +100,15 @@
             {% if branches %}
             {% for branch in branches %}
             <div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                {% if branch.image_url %}
                 <div class="h-48 relative"
-                    style="background-image: url('https://readdy.ai/api/search-image?query=modern%20music%20practice%20room%20interior%20with%20professional%20equipment%2C%20acoustic%20treatment%2C%20clean%20and%20minimalist%20design%2C%20warm%20lighting&width=400&height=300&seq={{ loop.index + 1 }}&orientation=landscape'); background-size: cover; background-position: center;">
+                    style="background-image: url('{{ branch.image_url }}'); background-size: cover; background-position: center;">
                 </div>
+                {% else %}
+                <div class="h-48 relative bg-gray-200 flex items-center justify-center">
+                    <i class="ri-image-line text-4xl text-gray-400"></i>
+                </div>
+                {% endif %}
                 <div class="p-6">
                     <h3 class="text-xl font-semibold mb-2">{{ branch.name }}</h3>
                     <p class="text-gray-600 mb-4">{{ branch.address or '주소 정보 없음' }}</p>

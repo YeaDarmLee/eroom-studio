@@ -14,8 +14,11 @@ document.addEventListener('alpine:init', () => {
             name: '',
             address: '',
             facilities: '',
-            description: ''
+            description: '',
+            image_url: ''
         },
+        imageFile: null,
+        imagePreview: null,
 
         // Room Management
         showRoomModal: false,
@@ -86,8 +89,11 @@ document.addEventListener('alpine:init', () => {
                 name: '',
                 address: '',
                 facilities: '',
-                description: ''
+                description: '',
+                image_url: ''
             }
+            this.imageFile = null
+            this.imagePreview = null
             this.showModal = true
         },
 
@@ -95,6 +101,8 @@ document.addEventListener('alpine:init', () => {
             this.editMode = true
             this.currentBranch = branch
             this.formData = { ...branch }
+            this.imageFile = null
+            this.imagePreview = null
             this.showModal = true
         },
 
@@ -106,17 +114,28 @@ document.addEventListener('alpine:init', () => {
             const method = this.editMode ? 'PUT' : 'POST'
 
             try {
+                const formData = new FormData()
+                formData.append('name', this.formData.name)
+                formData.append('address', this.formData.address || '')
+                formData.append('facilities', this.formData.facilities || '')
+                formData.append('description', this.formData.description || '')
+
+                if (this.imageFile) {
+                    formData.append('image', this.imageFile)
+                }
+
                 const response = await fetch(url, {
                     method,
                     headers: {
-                        'Content-Type': 'application/json',
                         Authorization: 'Bearer ' + token
                     },
-                    body: JSON.stringify(this.formData)
+                    body: formData
                 })
 
                 if (response.ok) {
                     this.showModal = false
+                    this.imageFile = null
+                    this.imagePreview = null
                     await this.loadBranches()
                 } else {
                     const data = await response.json()
@@ -126,6 +145,40 @@ document.addEventListener('alpine:init', () => {
                 console.error('Error saving branch:', error)
                 alert('오류가 발생했습니다.')
             }
+        },
+
+        handleImageUpload(event) {
+            const file = event.target.files[0]
+            if (!file) return
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('파일 크기는 5MB를 초과할 수 없습니다.')
+                event.target.value = ''
+                return
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('이미지 파일만 업로드 가능합니다.')
+                event.target.value = ''
+                return
+            }
+
+            this.imageFile = file
+
+            // Create preview
+            const reader = new FileReader()
+            reader.onload = (e) => {
+                this.imagePreview = e.target.result
+            }
+            reader.readAsDataURL(file)
+        },
+
+        removeImage() {
+            this.imageFile = null
+            this.imagePreview = null
+            this.formData.image_url = ''
         },
 
         confirmDelete(branch) {
