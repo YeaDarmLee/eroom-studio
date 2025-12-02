@@ -1,127 +1,225 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="bg-white">
-    <div class="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8">
-        <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
-            <!-- Image gallery -->
-            <div class="flex flex-col-reverse" x-data="{ currentImage: 0, images: [{% for img in room.images %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}] }">
-                <!-- Main Image -->
-                <div class="w-full aspect-w-1 aspect-h-1 relative">
-                    <template x-if="images.length > 0">
-                        <img :src="images[currentImage].url" :alt="'{{ room.name }} - Image ' + (currentImage + 1)"
-                            class="w-full h-full object-center object-cover sm:rounded-lg">
-                    </template>
-                    <template x-if="images.length === 0">
-                        <div class="w-full h-full bg-gray-200 flex items-center justify-center sm:rounded-lg">
-                            <div class="text-center">
-                                <i class="ri-image-line text-6xl text-gray-400 mb-2"></i>
-                                <p class="text-gray-500">이미지가 없습니다</p>
+<div class="bg-gradient-to-b from-gray-50 to-white min-h-screen">
+    <!-- Back Navigation -->
+    <div class="bg-white border-b border-gray-100 sticky top-20 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center">
+            <a href="/branches/{{ room.branch_id }}"
+                class="flex items-center text-gray-700 hover:text-primary transition-colors">
+                <i class="ri-arrow-left-line text-xl mr-2"></i>
+                <span>지점으로 돌아가기</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <!-- Image Gallery Section -->
+            <div class="lg:col-span-3">
+                <div class="sticky top-32"
+                    x-data="{ currentImage: 0, images: [{% for img in room.images %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}] }">
+                    <!-- Main Image -->
+                    <div class="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-2xl mb-4">
+                        <template x-if="images.length > 0">
+                            <div class="relative w-full h-full">
+                                <img :src="images[currentImage].url"
+                                    :alt="'{{ room.name }} - Image ' + (currentImage + 1)"
+                                    class="w-full h-full object-cover">
+
+                                <!-- Image Counter Badge -->
+                                <div
+                                    class="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium">
+                                    <span x-text="currentImage + 1"></span> / <span x-text="images.length"></span>
+                                </div>
                             </div>
-                        </div>
-                    </template>
-                    
-                    <!-- Navigation Arrows -->
-                    <template x-if="images.length > 1">
-                        <div>
-                            <button @click="currentImage = (currentImage - 1 + images.length) % images.length"
-                                class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all">
-                                <i class="ri-arrow-left-s-line text-2xl text-gray-800"></i>
-                            </button>
-                            <button @click="currentImage = (currentImage + 1) % images.length"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all">
-                                <i class="ri-arrow-right-s-line text-2xl text-gray-800"></i>
-                            </button>
-                        </div>
-                    </template>
-                </div>
-                
-                <!-- Thumbnail Gallery -->
-                <template x-if="images.length > 1">
-                    <div class="mt-4 grid grid-cols-4 gap-2">
-                        <template x-for="(img, index) in images" :key="img.id">
-                            <button @click="currentImage = index"
-                                :class="currentImage === index ? 'ring-2 ring-indigo-500' : 'ring-1 ring-gray-200'"
-                                class="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden hover:opacity-75 transition-all">
-                                <img :src="img.url" :alt="'{{ room.name }} thumbnail ' + (index + 1)"
-                                    class="w-full h-full object-center object-cover">
-                            </button>
+                        </template>
+                        <template x-if="images.length === 0">
+                            <div class="w-full h-full flex items-center justify-center">
+                                <div class="text-center">
+                                    <i class="ri-image-line text-6xl text-gray-300 mb-3"></i>
+                                    <p class="text-gray-400 font-medium">등록된 이미지가 없습니다</p>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Navigation Arrows -->
+                        <template x-if="images.length > 1">
+                            <div>
+                                <button @click="currentImage = (currentImage - 1 + images.length) % images.length"
+                                    class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110">
+                                    <i class="ri-arrow-left-s-line text-2xl text-gray-800"></i>
+                                </button>
+                                <button @click="currentImage = (currentImage + 1) % images.length"
+                                    class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110">
+                                    <i class="ri-arrow-right-s-line text-2xl text-gray-800"></i>
+                                </button>
+                            </div>
                         </template>
                     </div>
-                </template>
+
+                    <!-- Thumbnail Gallery -->
+                    <template x-if="images.length > 1">
+                        <div class="grid grid-cols-4 gap-3">
+                            <template x-for="(img, index) in images" :key="img.id">
+                                <button @click="currentImage = index"
+                                    :class="currentImage === index ? 'ring-2 ring-primary ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-300'"
+                                    class="aspect-square rounded-lg overflow-hidden transition-all">
+                                    <img :src="img.url" :alt="'{{ room.name }} thumbnail ' + (index + 1)"
+                                        class="w-full h-full object-cover">
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
             </div>
 
-            <!-- Room info -->
-            <div class="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
-                <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">{{ room.name }}</h1>
-
-                <div class="mt-3">
-                    <h2 class="sr-only">Product information</h2>
-                    <p class="text-3xl text-gray-900">₩{{ room.price }} <span class="text-base text-gray-500">/
-                            month</span></p>
-                </div>
-
-                <div class="mt-6">
-                    <h3 class="sr-only">Description</h3>
-                    <div class="text-base text-gray-700 space-y-6">
-                        <p>{{ room.description }}</p>
+            <!-- Room Info Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg p-6 lg:p-8 sticky top-32">
+                    <!-- Room Title -->
+                    <div class="mb-6">
+                        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ room.name }}</h1>
+                        <div class="flex items-center gap-2">
+                            {% if room.status == 'available' %}
+                            <span
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <i class="ri-checkbox-circle-line mr-1"></i>
+                                계약가능
+                            </span>
+                            {% elif room.status == 'reserved' %}
+                            <span
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                                <i class="ri-time-line mr-1"></i>
+                                검토중
+                            </span>
+                            {% else %}
+                            <span
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                                <i class="ri-close-circle-line mr-1"></i>
+                                계약완료
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
 
-                <div class="mt-6">
-                    <div class="flex items-center">
-                        <h3 class="text-sm text-gray-900 font-medium mr-2">Status:</h3>
-                        <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            {{ room.status }}
-                        </span>
+                    <!-- Price -->
+                    <div class="mb-6 pb-6 border-b border-gray-100">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-bold text-primary">₩{{ "{:,}".format(room.price) }}</span>
+                            <span class="text-lg text-gray-500">/월</span>
+                        </div>
                     </div>
-                </div>
 
-                <div class="mt-10">
+                    <!-- Description -->
+                    {% if room.description %}
+                    <div class="mb-6 pb-6 border-b border-gray-100">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-2 uppercase tracking-wide">설명</h3>
+                        <p class="text-gray-600 leading-relaxed">{{ room.description }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Room Details -->
+                    <div class="mb-6 pb-6 border-b border-gray-100">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wide">상세 정보</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 flex items-center">
+                                    <i class="ri-building-line mr-2 text-gray-400"></i>
+                                    층수
+                                </span>
+                                <span class="font-medium text-gray-900">{{ room.floor or '1F' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 flex items-center">
+                                    <i class="ri-ruler-line mr-2 text-gray-400"></i>
+                                    면적
+                                </span>
+                                <span class="font-medium text-gray-900">약 15㎡</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 flex items-center">
+                                    <i class="ri-group-line mr-2 text-gray-400"></i>
+                                    수용인원
+                                </span>
+                                <span class="font-medium text-gray-900">2인</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contract Form -->
                     {% if room.status == 'available' %}
-                    <form class="space-y-6" x-data="{ months: 1, startDate: '' }">
+                    <form class="space-y-4" x-data="{ months: 1, startDate: '' }">
                         <div>
-                            <label for="start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
-                            <div class="mt-1">
-                                <input type="date" id="start-date" name="start-date" x-model="startDate"
-                                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                            <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="ri-calendar-line mr-1"></i>
+                                입주 희망일
+                            </label>
+                            <input type="date" id="start-date" name="start-date" x-model="startDate"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                        </div>
+
+                        <div>
+                            <label for="months" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="ri-time-line mr-1"></i>
+                                계약 기간
+                            </label>
+                            <select id="months" name="months" x-model="months"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                <option value="1">1개월</option>
+                                <option value="2">2개월</option>
+                                <option value="3">3개월</option>
+                                <option value="6">6개월</option>
+                                <option value="12">12개월</option>
+                            </select>
+                        </div>
+
+                        <!-- Total Price -->
+                        <div class="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700">총 계약금액</span>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-primary">
+                                        ₩<span x-text="(months * {{ room.price }}).toLocaleString()"></span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        <span x-text="months"></span>개월 기준
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label for="months" class="block text-sm font-medium text-gray-700">Duration
-                                (Months)</label>
-                            <div class="mt-1">
-                                <select id="months" name="months" x-model="months"
-                                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                    <option value="1">1 Month</option>
-                                    <option value="2">2 Months</option>
-                                    <option value="3">3 Months</option>
-                                    <option value="6">6 Months</option>
-                                    <option value="12">12 Months</option>
-                                </select>
-                            </div>
+                        <!-- Action Buttons -->
+                        <div class="space-y-3 pt-2">
+                            <button type="button"
+                                class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                <i class="ri-file-text-line mr-2"></i>
+                                계약 신청하기
+                            </button>
+                            <button type="button"
+                                class="w-full bg-white text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-200 hover:border-primary hover:text-primary transition-all">
+                                <i class="ri-customer-service-line mr-2"></i>
+                                문의하기
+                            </button>
                         </div>
-
-                        <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 rounded-md">
-                            <dt class="text-sm font-medium text-gray-500">Total Price</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-bold">
-                                ₩<span x-text="months * {{ room.price }}"></span>
-                            </dd>
-                        </div>
-
-                        <button type="button"
-                            class="w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Apply for Contract
-                        </button>
-                        <p class="text-xs text-gray-500 text-center mt-2">Login required to apply.</p>
+                        <p class="text-xs text-center text-gray-500 mt-3">
+                            <i class="ri-information-line mr-1"></i>
+                            계약 신청은 로그인이 필요합니다
+                        </p>
                     </form>
                     {% else %}
-                    <button type="button" disabled
-                        class="w-full bg-gray-300 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white cursor-not-allowed">
-                        Not Available
-                    </button>
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ri-close-circle-line text-3xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">현재 계약 불가</h3>
+                        <p class="text-gray-500 mb-4">이 방은 현재 계약이 불가능합니다</p>
+                        <button type="button"
+                            class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all">
+                            <i class="ri-notification-line mr-2"></i>
+                            알림 받기
+                        </button>
+                    </div>
                     {% endif %}
                 </div>
             </div>

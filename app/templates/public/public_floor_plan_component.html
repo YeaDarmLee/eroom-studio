@@ -14,7 +14,7 @@
         overflow: visible;
         border-radius: 0.5rem;
     }
-    
+
     .public-floor-plan-wrapper {
         position: relative;
         width: 100%;
@@ -178,12 +178,11 @@
     .public-room-box.occupied .public-room-label {
         color: #7F8C8D;
     }
-
 </style>
 
 <!-- Floor Plan Section -->
 <div class="mb-16" id="floor-plan-section" x-data="{
-    selectedFloor: '1F',
+    selectedFloor: null,
     floorPlans: {},
     roomsByFloor: {},
     branchData: null,
@@ -255,66 +254,63 @@
                 <!-- Floor Plan Canvas -->
                 <div class="public-floor-plan-wrapper">
                     <div class="public-floor-plan-container" :class="{ 'no-image': !floorPlans[selectedFloor] }">
-                    <!-- Floor Plan Background Image -->
-                    <img x-show="floorPlans[selectedFloor]" :src="floorPlans[selectedFloor]"
-                        class="public-floor-plan-image" alt="Floor Plan">
+                        <!-- Floor Plan Background Image -->
+                        <img x-show="floorPlans[selectedFloor]" :src="floorPlans[selectedFloor]"
+                            class="public-floor-plan-image" alt="Floor Plan">
 
-                    
-                    <!-- No Floor Plan Message (but rooms exist) -->
-                    <div 
-                        x-show="!floorPlans[selectedFloor] && (roomsByFloor[selectedFloor] || []).length > 0"
-                        class="absolute top-4 left-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 z-10">
-                        <i class="ri-information-line mr-1"></i>
-                        도면 이미지는 준비 중이며, 방 위치만 표시됩니다
-                    </div>
 
-                    <!-- Room Boxes -->
-                    <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
-                        <div class="public-room-box" :class="getRoomStatusClass(room.status)"
-                            :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
-                            @click="room.status !== 'occupied' ? viewRoomDetail(room.id) : null">
+                        <!-- No Floor Plan Message (but rooms exist) -->
+                        <div x-show="!floorPlans[selectedFloor] && (roomsByFloor[selectedFloor] || []).length > 0"
+                            class="absolute top-4 left-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 z-10">
+                            <i class="ri-information-line mr-1"></i>
+                            도면 이미지는 준비 중이며, 방 위치만 표시됩니다
+                        </div>
 
-                            <!-- Hover Tooltip -->
-                            <div class="room-tooltip" 
-                                x-ref="tooltip"
-                                @mouseenter.window="
+                        <!-- Room Boxes -->
+                        <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
+                            <div class="public-room-box" :class="getRoomStatusClass(room.status)"
+                                :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
+                                @click="room.status !== 'occupied' ? viewRoomDetail(room.id) : null">
+
+                                <!-- Hover Tooltip -->
+                                <div class="room-tooltip" x-ref="tooltip" @mouseenter.window="
                                     const rect = $el.parentElement.getBoundingClientRect();
                                     $el.style.left = rect.left + (rect.width / 2) + 'px';
                                     $el.style.top = rect.top - 10 + 'px';
                                     $el.style.transform = 'translate(-50%, -100%)';
-                                "
-                                @mouseleave.window="
+                                " @mouseleave.window="
                                     $el.style.opacity = '0';
                                 ">
-                                <div class="room-tooltip-title" x-text="room.name"></div>
-                                <div class="room-tooltip-info">
-                                    <div>월 임대료: <span class="font-semibold" x-text="'₩' + room.price.toLocaleString()"></span></div>
-                                    <div x-show="room.description">설명: <span x-text="room.description"></span></div>
-                                    <div>층: <span x-text="room.floor"></span></div>
+                                    <div class="room-tooltip-title" x-text="room.name"></div>
+                                    <div class="room-tooltip-info">
+                                        <div>월 임대료: <span class="font-semibold"
+                                                x-text="'₩' + room.price.toLocaleString()"></span></div>
+                                        <div x-show="room.description">설명: <span x-text="room.description"></span></div>
+                                        <div>층: <span x-text="room.floor"></span></div>
+                                    </div>
+                                    <div class="room-tooltip-status" :class="room.status">
+                                        <span x-show="room.status === 'available'">✓ 계약 가능</span>
+                                        <span x-show="room.status === 'occupied'">✕ 계약 완료</span>
+                                        <span x-show="room.status === 'reserved'">⏳ 검토 중</span>
+                                    </div>
                                 </div>
-                                <div class="room-tooltip-status" :class="room.status">
-                                    <span x-show="room.status === 'available'">✓ 계약 가능</span>
-                                    <span x-show="room.status === 'occupied'">✕ 계약 완료</span>
-                                    <span x-show="room.status === 'reserved'">⏳ 검토 중</span>
+
+                                <!-- Room Label -->
+                                <div class="public-room-label">
+                                    <div x-text="room.name"></div>
+                                    <div class="text-xs opacity-75" x-text="'₩' + (room.price / 10000) + '만'"></div>
                                 </div>
                             </div>
+                        </template>
 
-                            <!-- Room Label -->
-                            <div class="public-room-label">
-                                <div x-text="room.name"></div>
-                                <div class="text-xs opacity-75" x-text="'₩' + (room.price / 10000) + '만'"></div>
+                        <!-- No Rooms Message -->
+                        <div x-show="!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0"
+                            class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div class="text-center bg-white/90 p-6 rounded-lg">
+                                <i class="ri-door-line text-4xl text-gray-300 mb-2"></i>
+                                <p class="text-gray-500 font-medium">이 층에 등록된 방이 없습니다</p>
                             </div>
                         </div>
-                    </template>
-
-                    <!-- No Rooms Message -->
-                    <div x-show="!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0"
-                        class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div class="text-center bg-white/90 p-6 rounded-lg">
-                            <i class="ri-door-line text-4xl text-gray-300 mb-2"></i>
-                            <p class="text-gray-500 font-medium">이 층에 등록된 방이 없습니다</p>
-                        </div>
-                    </div>
                     </div>
                 </div>
 
@@ -328,7 +324,8 @@
                                 <li>방 박스를 <strong>클릭</strong>하면 상세 정보를 확인할 수 있습니다</li>
                                 <li><span class="text-green-600 font-semibold">초록색</span> 방은 계약 가능한 방입니다</li>
                                 <li><span class="text-gray-600 font-semibold">회색</span> 방은 이미 계약된 방입니다</li>
-                                <li x-show="!floorPlans[selectedFloor]" class="text-blue-600">도면 이미지는 준비 중이며, 방 위치는 참고용입니다</li>
+                                <li x-show="!floorPlans[selectedFloor]" class="text-blue-600">도면 이미지는 준비 중이며, 방 위치는
+                                    참고용입니다</li>
                             </ul>
                         </div>
                     </div>
