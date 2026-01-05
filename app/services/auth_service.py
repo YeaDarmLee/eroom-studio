@@ -10,7 +10,7 @@ class AuthService:
         payload = {
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1),
             'iat': datetime.datetime.utcnow(),
-            'sub': user_id
+            'sub': str(user_id)  # JWT 표준에서는 sub가 문자열이어야 함
         }
         return jwt.encode(
             payload,

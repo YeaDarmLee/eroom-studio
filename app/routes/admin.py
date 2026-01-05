@@ -22,29 +22,78 @@ def dashboard(current_user):
 @admin_required
 def get_stats(current_user):
     """Get dashboard stats"""
+    from datetime import datetime, timedelta
+    
     total_users = User.query.count()
     active_contracts = Contract.query.filter_by(status='active').count()
     pending_requests = Request.query.filter_by(status='submitted').count()
     
-    # Calculate monthly revenue from active contracts
+    # Calculate total monthly revenue from active contracts
     active_contracts_list = Contract.query.filter_by(status='active').all()
-    monthly_revenue = sum(c.room.price for c in active_contracts_list if c.room and c.room.price)
+    total_monthly_revenue = sum(c.room.price for c in active_contracts_list if c.room and c.room.price)
     
-    # Room status for pie chart
-    occupied_rooms = Room.query.filter_by(status='occupied').count()
-    available_rooms = Room.query.filter_by(status='available').count()
+    # Calculate total deposit from active contracts
+    total_deposit = sum(c.room.deposit or 0 for c in active_contracts_list if c.room)
+    
+    # Get all room IDs with active contracts
+    occupied_room_ids = set(c.room_id for c in active_contracts_list if c.room_id)
+    
+    # Calculate expiring contracts (ending within 1 month)
+    one_month_from_now = (datetime.utcnow() + timedelta(days=30)).date()
+    expiring_contracts = [c for c in active_contracts_list if c.end_date and c.end_date <= one_month_from_now]
+    expiring_count = len(expiring_contracts)
+
+    
+    # Get all branches with their revenue and room status
+    branches = Branch.query.all()
+    branch_data = []
+    
+    for branch in branches:
+        # Get active contracts for this branch
+        branch_contracts = [c for c in active_contracts_list if c.room and c.room.branch_id == branch.id]
+        
+        # Calculate revenue and deposit for this branch
+        branch_monthly_revenue = sum(c.room.price for c in branch_contracts if c.room and c.room.price)
+        branch_deposit = sum(c.room.deposit or 0 for c in branch_contracts if c.room)
+        
+        # Get room status for this branch (based on active contracts)
+        branch_room_ids = [r.id for r in branch.rooms]
+        total_rooms = len(branch_room_ids)
+        occupied_rooms = sum(1 for room_id in branch_room_ids if room_id in occupied_room_ids)
+        available_rooms = total_rooms - occupied_rooms
+        
+        # Calculate expiring contracts for this branch
+        branch_expiring = sum(1 for c in branch_contracts if c.end_date and c.end_date <= one_month_from_now)
+        
+        branch_data.append({
+            'id': branch.id,
+            'name': branch.name,
+            'monthly_revenue': branch_monthly_revenue,
+            'deposit': branch_deposit,
+            'total_rooms': total_rooms,
+            'occupied_rooms': occupied_rooms,
+            'available_rooms': available_rooms,
+            'expiring_contracts': branch_expiring
+        })
+    
+    # Overall room status (based on active contracts)
+    total_rooms = Room.query.count()
+    occupied_rooms = len(occupied_room_ids)
+    available_rooms = total_rooms - occupied_rooms
     
     return jsonify({
         'stats': {
             'totalUsers': total_users,
             'activeContracts': active_contracts,
             'pendingRequests': pending_requests,
-            'monthlyRevenue': monthly_revenue
+            'expiringContracts': expiring_count,
+            'monthlyRevenue': total_monthly_revenue,
+            'totalDeposit': total_deposit,
+            'totalRooms': total_rooms,
+            'occupiedRooms': occupied_rooms,
+            'availableRooms': available_rooms
         },
-        'roomStatus': [
-            {'value': occupied_rooms, 'name': '사용 중'},
-            {'value': available_rooms, 'name': '빈 방'}
-        ]
+        'branchData': branch_data
     })
 
 @admin_bp.route('/api/contracts', methods=['GET'])
@@ -383,8 +432,23 @@ def delete_branch_image(current_user, branch_id, image_id):
 def delete_branch(current_user, id):
     """Delete branch"""
     branch = Branch.query.get_or_404(id)
-    if branch.rooms:
-        return jsonify({'error': 'Cannot delete branch with rooms'}), 400
+    force = request.args.get('force', 'false').lower() == 'true'
+    
+    # Convert to list to get the count
+    rooms = list(branch.rooms)
+    room_count = len(rooms)
+    
+    # If branch has rooms and force is not true, return room count info
+    if room_count > 0 and not force:
+        return jsonify({
+            'error': 'Branch has rooms',
+            'room_count': room_count
+        }), 400
+    
+    # Delete all rooms first if force is true
+    if force and room_count > 0:
+        for room in rooms:
+            db.session.delete(room)
     
     db.session.delete(branch)
     db.session.commit()

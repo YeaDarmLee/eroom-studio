@@ -10,7 +10,6 @@
 
     <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
 
@@ -18,12 +17,15 @@
     <link rel="stylesheet" as="style" crossorigin
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 
-    <!-- Custom JS Components -->
+    <!-- Custom JS Components (must load BEFORE Alpine.js) -->
     <script src="{{ url_for('static', filename='js/admin/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin/dashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin/contracts.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin/requests.js') }}"></script>
     <script src="{{ url_for('static', filename='js/admin/branches.js') }}"></script>
+
+    <!-- Alpine.js MUST be loaded AFTER custom components -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -176,12 +178,6 @@
                     <div class="flex items-center space-x-4">
                         <a href="/"
                             class="text-sm font-medium text-gray-500 hover:text-primary transition-colors">메인으로</a>
-                        <div class="h-8 w-px bg-gray-200"></div>
-                        <button class="relative p-2 text-gray-400 hover:text-gray-500">
-                            <i class="ri-notification-3-line text-xl"></i>
-                            <span
-                                class="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-                        </button>
                     </div>
                 </div>
             </header>
@@ -192,15 +188,46 @@
                 <!-- Dashboard Tab -->
                 <div x-show="activeTab === 'dashboard'" x-data="dashboardTab" class="space-y-6 animate-fade-in">
                     <!-- Stats Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                         <template x-for="(stat, key) in [
-                            { label: '총 사용자', value: stats.totalUsers, icon: 'ri-user-smile-line', color: 'bg-blue-500' },
-                            { label: '활성 계약', value: stats.activeContracts, icon: 'ri-file-text-line', color: 'bg-green-500' },
-                            { label: '대기 요청', value: stats.pendingRequests, icon: 'ri-time-line', color: 'bg-yellow-500' },
-                            { label: '이번 달 매출', value: '₩' + stats.monthlyRevenue.toLocaleString(), icon: 'ri-money-won-circle-line', color: 'bg-purple-500' }
-                        ]">
+                            { 
+                                label: '총 방 개수', 
+                                value: stats.totalRooms, 
+                                icon: 'ri-door-line', 
+                                color: 'bg-blue-500',
+                                tooltip: `계약중: ${stats.occupiedRooms}개\n공실: ${stats.availableRooms}개`
+                            },
+                            { 
+                                label: '활성 계약', 
+                                value: stats.activeContracts, 
+                                icon: 'ri-file-text-line', 
+                                color: 'bg-green-500',
+                                tooltip: `현재 계약 진행중인 방 개수`
+                            },
+                            { 
+                                label: '만료 예정', 
+                                value: stats.expiringContracts, 
+                                icon: 'ri-alarm-warning-line', 
+                                color: 'bg-orange-500',
+                                tooltip: `1개월 이내 종료 예정 계약`
+                            },
+                            { 
+                                label: '대기 요청', 
+                                value: stats.pendingRequests, 
+                                icon: 'ri-time-line', 
+                                color: 'bg-yellow-500',
+                                tooltip: `처리 대기중인 요청 건수`
+                            },
+                            { 
+                                label: '월세 합계', 
+                                value: '₩' + stats.monthlyRevenue.toLocaleString(), 
+                                icon: 'ri-money-won-circle-line', 
+                                color: 'bg-purple-500',
+                                tooltip: `보증금 합계: ₩${stats.totalDeposit.toLocaleString()}\n\n현재 활성 계약 기준`
+                            }
+                        ]">>
                             <div
-                                class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group">
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <p class="text-sm font-medium text-gray-500" x-text="stat.label"></p>
@@ -211,19 +238,164 @@
                                         <i :class="stat.icon" class="text-2xl"></i>
                                     </div>
                                 </div>
+                                <!-- Tooltip -->
+                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-pre-line z-50 shadow-xl min-w-max"
+                                    x-show="stat.tooltip" x-text="stat.tooltip">
+                                </div>
                             </div>
                         </template>
                     </div>
 
-                    <!-- Charts Grid -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-bold text-gray-900 mb-4">월별 매출 추이</h3>
-                            <div id="revenueChart" class="w-full h-80"></div>
+                    <!-- Branch Data Table -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                            <h3 class="text-lg font-bold text-gray-900">지점별 상세 현황</h3>
+                            <p class="text-sm text-gray-500 mt-1">전체 <span x-text="branchData.length"></span>개 지점</p>
                         </div>
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-bold text-gray-900 mb-4">방 점유율</h3>
-                            <div id="roomStatusChart" class="w-full h-80"></div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            지점명</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            전체 방</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            계약중</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            공실</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            점유율</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            만료 예정</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            월세 합계</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            보증금 합계</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <template x-for="branch in branchData" :key="branch.id">
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    <div
+                                                        class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3">
+                                                        <i class="ri-building-line text-primary"></i>
+                                                    </div>
+                                                    <div class="font-medium text-gray-900" x-text="branch.name"></div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <span x-text="branch.total_rooms"></span>개
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span
+                                                    class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-blue-100 text-blue-800">
+                                                    <span x-text="branch.occupied_rooms"></span>개
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span
+                                                    class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-gray-100 text-gray-600">
+                                                    <span x-text="branch.available_rooms"></span>개
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <div class="flex items-center">
+                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div class="bg-blue-600 h-2 rounded-full transition-all"
+                                                            :style="`width: ${branch.total_rooms > 0 ? (branch.occupied_rooms / branch.total_rooms * 100) : 0}%`">
+                                                        </div>
+                                                    </div>
+                                                    <span class="text-xs font-medium"
+                                                        x-text="branch.total_rooms > 0 ? Math.round(branch.occupied_rooms / branch.total_rooms * 100) + '%' : '0%'"></span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span
+                                                    :class="branch.expiring_contracts > 0 ? 'px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-orange-100 text-orange-800' : 'text-sm text-gray-400'">
+                                                    <span x-text="branch.expiring_contracts"></span><span
+                                                        x-show="branch.expiring_contracts > 0">개</span>
+                                                    <span x-show="branch.expiring_contracts === 0">-</span>
+                                                </span>
+                                            </td>
+                                            <td
+                                                class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-blue-600">
+                                                ₩<span x-text="branch.monthly_revenue.toLocaleString()"></span>
+                                            </td>
+                                            <td
+                                                class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-purple-600">
+                                                ₩<span x-text="branch.deposit.toLocaleString()"></span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <!-- Total Row -->
+                                    <tr class="bg-gray-50 font-bold border-t-2 border-gray-300">
+                                        <td class="px-6 py-4 whitespace-nowrap text-gray-900">
+                                            전체 합계
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <span x-text="stats.totalRooms"></span>개
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span
+                                                class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-blue-100 text-blue-800">
+                                                <span x-text="stats.occupiedRooms"></span>개
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span
+                                                class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-gray-100 text-gray-600">
+                                                <span x-text="stats.availableRooms"></span>개
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <div class="flex items-center">
+                                                <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                    <div class="bg-blue-600 h-2 rounded-full transition-all"
+                                                        :style="`width: ${stats.totalRooms > 0 ? (stats.occupiedRooms / stats.totalRooms * 100) : 0}%`">
+                                                    </div>
+                                                </div>
+                                                <span class="text-xs font-medium"
+                                                    x-text="stats.totalRooms > 0 ? Math.round(stats.occupiedRooms / stats.totalRooms * 100) + '%' : '0%'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span
+                                                :class="stats.expiringContracts > 0 ? 'px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-orange-100 text-orange-800' : 'text-sm text-gray-400'">
+                                                <span x-text="stats.expiringContracts"></span><span
+                                                    x-show="stats.expiringContracts > 0">개</span>
+                                                <span x-show="stats.expiringContracts === 0">-</span>
+                                            </span>
+                                        </td>
+                                        <td
+                                            class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-blue-600">
+                                            ₩<span x-text="stats.monthlyRevenue.toLocaleString()"></span>
+                                        </td>
+                                        <td
+                                            class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-purple-600">
+                                            ₩<span x-text="stats.totalDeposit.toLocaleString()"></span>
+                                        </td>
+                                    </tr>
+                                    <template x-if="branchData.length === 0">
+                                        <tr>
+                                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                                                <i class="ri-building-line text-4xl block mb-2 opacity-20"></i>
+                                                등록된 지점이 없습니다
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -677,7 +849,7 @@
                 </div>
 
                 <!-- Branches Tab -->
-                <div x-show="activeTab === 'branches'" x-data="branchesPage" class="space-y-6">
+                <div x-show="activeTab === 'branches'" x-data="branchesPage()" class="space-y-6">
                     <!-- Branch List Header -->
                     <div
                         class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -1465,6 +1637,50 @@
                     </div>
                 </div>
         </main>
+    </div>
+
+    <!-- Alert Modal (Global) -->
+    <div style="display: none"
+        x-data="{ alert: { show: false, title: '', message: '', type: 'success', onConfirm: null } }"
+        x-init="$el.style.display = ''; window.showAlert = (title, message, type = 'success', onConfirm = null) => { alert = { show: true, title, message, type, onConfirm }; }">
+        <div x-show="alert.show" class="fixed inset-0 z-[9999] overflow-y-auto"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm" @click="alert.show = false">
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                <div class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-3xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+
+                    <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <h3 class="text-xl font-black text-gray-900" x-text="alert.title"></h3>
+                        <button @click="alert.show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <i class="ri-close-line text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="px-8 py-8">
+                        <p class="text-gray-700 whitespace-pre-line" x-text="alert.message"></p>
+                    </div>
+
+                    <div class="px-8 py-6 bg-gray-50/50 flex justify-end items-center gap-3 rounded-b-3xl">
+                        <button @click="alert.show = false"
+                            class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">취소</button>
+                        <button @click="if (alert.onConfirm) alert.onConfirm(); alert.show = false"
+                            class="px-10 py-3 text-white text-sm font-black rounded-xl shadow-xl transition-all" :class="{
+                                    'bg-green-500 hover:scale-[1.02] shadow-green-500/20': alert.type === 'success',
+                                    'bg-red-500 hover:scale-[1.02] shadow-red-500/20': alert.type === 'error',
+                                    'bg-yellow-500 hover:scale-[1.02] shadow-yellow-500/20': alert.type === 'warning'
+                                }">확인</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 

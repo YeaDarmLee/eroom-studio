@@ -27,16 +27,25 @@ document.addEventListener('alpine:init', () => {
 
         async checkAuth() {
             const token = localStorage.getItem('token');
+            console.log('Admin checkAuth - Token exists:', token ? 'Yes' : 'No');
+            console.log('Admin checkAuth - Token value:', token ? token.substring(0, 20) + '...' : 'null');
+
             if (!token) {
+                console.log('No token found, redirecting to login...');
                 window.location.href = '/login';
                 return;
             }
             try {
+                console.log('Calling /api/auth/me with token...');
                 const response = await fetch('/api/auth/me', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
+                console.log('Response status:', response.status);
+
                 if (!response.ok) throw new Error('Invalid token');
                 const data = await response.json();
+                console.log('User data received:', data);
+
                 if (data.role !== 'admin') {
                     window.showAlert?.('권한 부족', '관리자 권한이 필요합니다.', 'warning');
                     window.location.href = '/my/room';

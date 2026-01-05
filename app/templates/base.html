@@ -213,7 +213,37 @@
                     </div>
                 </div>
             </div>
-            <div class="border-t border-gray-800 mt-8 pt-8 text-gray-400 text-sm">
+            <!-- 법적 고지 및 사업자 정보 -->
+            <div class="border-t border-gray-800 mt-10 pt-8">
+                <!-- 법적 링크 (강조) -->
+                <div class="flex flex-wrap justify-center gap-3 mb-8">
+                    <button @click="openPolicyModal('terms')"
+                        class="text-gray-300 hover:text-white transition-all font-medium underline-offset-4 hover:underline">이용약관</button>
+                    <span class="text-gray-700">|</span>
+                    <button @click="openPolicyModal('privacy')"
+                        class="text-white hover:text-primary transition-all font-bold underline-offset-4 hover:underline">개인정보처리방침</button>
+                    <span class="text-gray-700">|</span>
+                    <button @click="openPolicyModal('refund')"
+                        class="text-gray-300 hover:text-white transition-all font-medium underline-offset-4 hover:underline">환불정책</button>
+                </div>
+
+                <!-- 사업자 정보 (간결하게 정리) -->
+                <div class="text-center text-gray-400 text-xs leading-relaxed space-y-1.5 max-w-5xl mx-auto">
+                    <p class="flex flex-wrap justify-center items-center gap-x-3 gap-y-1">
+                        <span>상호명: (주)이룸스튜디오</span>
+                        <span class="text-gray-700">|</span>
+                        <span>대표자: 홍길동</span>
+                        <span class="text-gray-700">|</span>
+                        <span>사업자등록번호: 123-45-67890</span>
+                    </p>
+                    <p class="flex flex-wrap justify-center items-center gap-x-3 gap-y-1">
+                        <span>통신판매업 신고번호: 제2024-서울강남-12345호</span>
+                        <span class="text-gray-700 hidden sm:inline">|</span>
+                        <span>대표전화: 1544-0000</span>
+                    </p>
+                    <p class="mt-2">주소: 서울특별시 강남구 테헤란로 123, 4층 (역삼동, 이룸빌딩)</p>
+                    <p class="mt-4 text-gray-500">© 2024 Eroom Studio. All rights reserved.</p>
+                </div>
             </div>
 
             <!-- Custom Alert Modal -->
@@ -259,6 +289,47 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Policy Modal (약관 모달) -->
+            <div x-show="policyModal.show"
+                class="fixed inset-0 z-[200] flex items-center justify-center p-4 overflow-hidden" x-cloak
+                x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+
+                <div class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm" @click="closePolicyModal()"></div>
+
+                <div class="relative w-full max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl transform transition-all max-h-[85vh] flex flex-col"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 scale-95 translate-y-4">
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h2 class="text-2xl font-bold text-gray-900" x-text="policyModal.title"></h2>
+                        <button @click="closePolicyModal()" class="text-gray-400 hover:text-gray-600 transition-all">
+                            <i class="ri-close-line text-3xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Content (Scrollable) -->
+                    <div class="overflow-y-auto p-6 text-gray-700 leading-relaxed"
+                        style="max-height: calc(85vh - 140px);">
+                        <div x-html="policyModal.content"></div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-6 border-t border-gray-200">
+                        <button @click="closePolicyModal()"
+                            class="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            </div>
     </footer>
 
     <script>
@@ -276,6 +347,13 @@
                     message: '',
                     type: 'success', // success, error, warning
                     onConfirm: null
+                },
+
+                // Policy Modal State
+                policyModal: {
+                    show: false,
+                    title: '',
+                    content: ''
                 },
 
                 init() {
@@ -310,6 +388,165 @@
                 closeAlert() {
                     if (this.alert.onConfirm) this.alert.onConfirm();
                     this.alert.show = false;
+                },
+
+                // Policy Modal Functions
+                openPolicyModal(type) {
+                    const policies = {
+                        terms: {
+                            title: '이용약관',
+                            content: `
+                                <h3 class="text-xl font-bold mb-4">제1조 (목적)</h3>
+                                <p class="mb-4">본 약관은 (주)이룸스튜디오(이하 "회사")가 제공하는 음악 연습실 대여 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+                                
+                                <h3 class="text-xl font-bold mb-4 mt-6">제2조 (정의)</h3>
+                                <p class="mb-2">본 약관에서 사용하는 용어의 정의는 다음과 같습니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li>"서비스"란 회사가 제공하는 음악 연습실 대여 및 관련 부가 서비스를 말합니다.</li>
+                                    <li>"회원"이란 본 약관에 동의하고 회사와 이용 계약을 체결한 자를 말합니다.</li>
+                                    <li>"아이디(ID)"란 회원의 식별과 서비스 이용을 위하여 회원이 설정하고 회사가 승인한 문자 또는 숫자의 조합을 말합니다.</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">제3조 (약관의 게시 및 개정)</h3>
+                                <p class="mb-4">회사는 본 약관의 내용을 회원이 쉽게 알 수 있도록 서비스 초기 화면 또는 연결화면에 게시합니다.</p>
+                                <p class="mb-4">회사는 필요한 경우 관련 법령을 위배하지 않는 범위에서 본 약관을 개정할 수 있으며, 개정된 약관은 시행일자 7일 전부터 공지합니다.</p>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">제4조 (서비스의 제공 및 변경)</h3>
+                                <p class="mb-4">회사는 다음과 같은 서비스를 제공합니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li>음악 연습실 예약 및 이용</li>
+                                    <li>악기 및 장비 대여</li>
+                                    <li>회원 관리 서비스</li>
+                                    <li>기타 회사가 추가 개발하거나 제휴 계약 등을 통해 회원에게 제공하는 일체의 서비스</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">제5조 (회원가입)</h3>
+                                <p class="mb-4">이용자는 회사가 정한 가입 양식에 따라 회원정보를 기입한 후 본 약관에 동의한다는 의사표시를 함으로써 회원가입을 신청합니다.</p>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">제6조 (이용 시간)</h3>
+                                <p class="mb-4">서비스 이용은 회사의 업무상 또는 기술상 특별한 지장이 없는 한 연중무휴, 1일 24시간 운영을 원칙으로 합니다. 단, 정기점검 등의 필요로 회사가 정한 날이나 시간은 예외로 합니다.</p>
+
+                                <p class="mt-6 text-sm text-gray-500">본 약관은 2024년 1월 1일부터 시행됩니다.</p>
+                            `
+                        },
+                        privacy: {
+                            title: '개인정보처리방침',
+                            content: `
+                                <h3 class="text-xl font-bold mb-4">1. 개인정보의 처리 목적</h3>
+                                <p class="mb-4">(주)이룸스튜디오(이하 "회사")는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.</p>
+                                <ul class="list-disc list-inside mb-4 space-y-2">
+                                    <li><strong>서비스 제공:</strong> 음악 연습실 예약, 결제, 고객 상담 등</li>
+                                    <li><strong>회원 관리:</strong> 회원제 서비스 이용에 따른 본인확인, 개인식별, 불량회원의 부정 이용 방지</li>
+                                    <li><strong>마케팅 및 광고:</strong> 신규 서비스 개발 및 맞춤 서비스 제공, 이벤트 정보 제공 (단, 별도 동의를 받은 경우)</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">2. 수집하는 개인정보 항목</h3>
+                                <p class="mb-2">회사는 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-2">
+                                    <li><strong>필수 항목:</strong> 이름, 휴대전화번호, 이메일 주소, 카카오톡 계정 정보</li>
+                                    <li><strong>선택 항목:</strong> 생년월일, 프로필 사진</li>
+                                    <li><strong>자동 수집 항목:</strong> IP주소, 쿠키, 서비스 이용 기록, 접속 로그</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">3. 개인정보의 보유 및 이용기간</h3>
+                                <p class="mb-4">회사는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에 동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li><strong>회원 정보:</strong> 회원 탈퇴 시까지 (단, 관계 법령 위반에 따른 수사·조사 등이 진행 중인 경우에는 해당 수사·조사 종료 시까지)</li>
+                                    <li><strong>계약 또는 청약철회 등에 관한 기록:</strong> 5년 (전자상거래법)</li>
+                                    <li><strong>대금결제 및 재화 등의 공급에 관한 기록:</strong> 5년 (전자상거래법)</li>
+                                    <li><strong>소비자 불만 또는 분쟁처리 기록:</strong> 3년 (전자상거래법)</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">4. 개인정보의 제3자 제공</h3>
+                                <p class="mb-4">회사는 원칙적으로 이용자의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위 내에서만 처리하며, 이용자의 사전 동의 없이는 본래의 범위를 초과하여 처리하거나 제3자에게 제공하지 않습니다.</p>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">5. 정보주체의 권리·의무 및 행사방법</h3>
+                                <p class="mb-4">정보주체는 회사에 대해 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li>개인정보 열람 요구</li>
+                                    <li>오류 등이 있을 경우 정정 요구</li>
+                                    <li>삭제 요구</li>
+                                    <li>처리정지 요구</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">6. 개인정보 보호책임자</h3>
+                                <p class="mb-2">회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제를 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다:</p>
+                                <ul class="list-none mb-4 space-y-1 ml-4">
+                                    <li>성명: 홍길동</li>
+                                    <li>직책: 개인정보 보호책임자</li>
+                                    <li>연락처: 1544-0000, contact@eroom.kr</li>
+                                </ul>
+
+                                <p class="mt-6 text-sm text-gray-500">본 개인정보처리방침은 2024년 1월 1일부터 적용됩니다.</p>
+                            `
+                        },
+                        refund: {
+                            title: '환불정책',
+                            content: `
+                                <h3 class="text-xl font-bold mb-4">1. 환불 원칙</h3>
+                                <p class="mb-4">(주)이룸스튜디오는 고객의 권리를 보호하고 공정한 거래 질서를 유지하기 위해 다음과 같은 환불정책을 운영합니다.</p>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">2. 예약 취소 및 환불 기준</h3>
+                                <ul class="list-disc list-inside mb-4 space-y-2">
+                                    <li><strong>이용 7일 전 취소:</strong> 결제 금액의 100% 환불</li>
+                                    <li><strong>이용 3~6일 전 취소:</strong> 결제 금액의 50% 환불</li>
+                                    <li><strong>이용 2일 전 ~ 당일 취소:</strong> 환불 불가 (단, 천재지변 등 불가피한 사유는 예외)</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">3. 환불 신청 방법</h3>
+                                <p class="mb-4">환불을 원하시는 경우 다음의 방법으로 신청하실 수 있습니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li>웹사이트 마이페이지에서 직접 취소</li>
+                                    <li>고객센터 전화: 1544-0000</li>
+                                    <li>이메일: contact@eroom.kr</li>
+                                    <li>카카오톡 채널: @이룸스튜디오</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">4. 환불 처리 기간</h3>
+                                <p class="mb-4">환불 신청이 접수된 후 영업일 기준 3~5일 이내에 처리됩니다. 다만, 결제 수단에 따라 환불 완료까지 추가 시일이 소요될 수 있습니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li><strong>신용카드:</strong> 카드사 정책에 따라 3~7일 소요</li>
+                                    <li><strong>계좌 이체:</strong> 신청일로부터 3~5일 이내</li>
+                                    <li><strong>간편결제:</strong> 각 결제사 정책에 따름</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">5. 환불 불가 사유</h3>
+                                <p class="mb-4">다음의 경우에는 환불이 제한될 수 있습니다:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li>고객의 귀책사유로 서비스를 이용하지 못한 경우</li>
+                                    <li>예약된 연습실을 이미 사용한 경우</li>
+                                    <li>환불 기준일을 경과한 경우</li>
+                                    <li>명백한 환불 남용이 확인된 경우</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">6. 회원권 환불</h3>
+                                <p class="mb-4">정기 이용권(월간/연간 회원권)의 경우:</p>
+                                <ul class="list-disc list-inside mb-4 space-y-1">
+                                    <li>구매 후 7일 이내 미사용 시 전액 환불</li>
+                                    <li>일부 사용 후 취소 시 사용 횟수만큼 정가 차감 후 환불</li>
+                                    <li>50% 이상 사용한 경우 환불 불가</li>
+                                </ul>
+
+                                <h3 class="text-xl font-bold mb-4 mt-6">7. 문의</h3>
+                                <p class="mb-4">환불 관련 문의사항은 고객센터(1544-0000) 또는 contact@eroom.kr로 연락주시기 바랍니다.</p>
+
+                                <p class="mt-6 text-sm text-gray-500">본 환불정책은 2024년 1월 1일부터 적용됩니다.</p>
+                            `
+                        }
+                    };
+
+                    const policy = policies[type];
+                    if (policy) {
+                        this.policyModal = {
+                            show: true,
+                            title: policy.title,
+                            content: policy.content
+                        };
+                    }
+                },
+
+                closePolicyModal() {
+                    this.policyModal.show = false;
                 }
             }
         }

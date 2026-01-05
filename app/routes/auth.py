@@ -14,15 +14,35 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]
+            auth_header = request.headers['Authorization']
+            print(f"[TOKEN CHECK] Authorization header: {auth_header[:50]}...")
+            token = auth_header.split(" ")[1] if " " in auth_header else None
         
         if not token:
+            print("[TOKEN CHECK] Token is missing!")
             return jsonify({'message': 'Token is missing!'}), 401
         
         try:
+            print(f"[TOKEN CHECK] Decoding token: {token[:30]}...")
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = User.query.get(data['sub'])
-        except:
+            print(f"[TOKEN CHECK] Token decoded successfully. User ID: {data.get('sub')}")
+            
+            # sub는 문자열이므로 정수로 변환
+            user_id = int(data['sub'])
+            current_user = User.query.get(user_id)
+            
+            if not current_user:
+                print(f"[TOKEN CHECK] User not found for ID: {user_id}")
+                return jsonify({'message': 'User not found!'}), 401
+            print(f"[TOKEN CHECK] User found: {current_user.email} (Role: {current_user.role})")
+        except jwt.ExpiredSignatureError:
+            print("[TOKEN CHECK] Token has expired!")
+            return jsonify({'message': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError as e:
+            print(f"[TOKEN CHECK] Invalid token: {str(e)}")
+            return jsonify({'message': 'Token is invalid!'}), 401
+        except Exception as e:
+            print(f"[TOKEN CHECK] Unexpected error: {str(e)}")
             return jsonify({'message': 'Token is invalid!'}), 401
         
         return f(current_user, *args, **kwargs)
@@ -41,7 +61,10 @@ def admin_required(f):
         
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = User.query.get(data['sub'])
+            
+            # sub는 문자열이므로 정수로 변환
+            user_id = int(data['sub'])
+            current_user = User.query.get(user_id)
             
             if not current_user or current_user.role != 'admin':
                 return jsonify({'message': 'Admin access required!'}), 403
@@ -176,6 +199,10 @@ def email_login():
     
     # Generate token
     access_token = AuthService.generate_token(user.id)
+    
+    # Debug logging
+    print(f"[EMAIL LOGIN] User {user.email} (ID: {user.id}, Role: {user.role}) logged in")
+    print(f"[EMAIL LOGIN] Token generated: {access_token[:30]}...")
     
     return jsonify({
         'access_token': access_token,
