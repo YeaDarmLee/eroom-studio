@@ -5,6 +5,8 @@ from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchServic
 from app.models.contract import Contract
 from app.models.request import Request
 from app.routes.auth import admin_required
+from datetime import datetime
+import json
 import os
 from werkzeug.utils import secure_filename
 
@@ -16,32 +18,78 @@ def dashboard(current_user):
     """Admin dashboard page"""
     return render_template('admin/dashboard.html')
 
+@admin_bp.route('/api/stats', methods=['GET'])
+@admin_required
+def get_stats(current_user):
+    """Get dashboard stats"""
+    total_users = User.query.count()
+    active_contracts = Contract.query.filter_by(status='active').count()
+    pending_requests = Request.query.filter_by(status='submitted').count()
+    
+    # Calculate monthly revenue from active contracts
+    active_contracts_list = Contract.query.filter_by(status='active').all()
+    monthly_revenue = sum(c.room.price for c in active_contracts_list if c.room and c.room.price)
+    
+    # Room status for pie chart
+    occupied_rooms = Room.query.filter_by(status='occupied').count()
+    available_rooms = Room.query.filter_by(status='available').count()
+    
+    return jsonify({
+        'stats': {
+            'totalUsers': total_users,
+            'activeContracts': active_contracts,
+            'pendingRequests': pending_requests,
+            'monthlyRevenue': monthly_revenue
+        },
+        'roomStatus': [
+            {'value': occupied_rooms, 'name': '사용 중'},
+            {'value': available_rooms, 'name': '빈 방'}
+        ]
+    })
+
 @admin_bp.route('/api/contracts', methods=['GET'])
 @admin_required
 def get_contracts(current_user):
-    """Get all contracts"""
+    """Get all contracts with details"""
     contracts = Contract.query.all()
     return jsonify([{
         'id': c.id,
-        'user_name': c.user.name if c.user else 'Unknown',
-        'room_name': c.room.name if c.room else 'Unknown',
+        'user_name': c.user.name if c.user else '알 수 없음',
+        'user_email': c.user.email if c.user else '',
+        'room_name': c.room.name if c.room else '알 수 없음',
+        'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+        'deposit': c.room.deposit if c.room else 0,
+        'price': c.room.price if c.room else 0,
         'start_date': c.start_date.strftime('%Y-%m-%d'),
         'end_date': c.end_date.strftime('%Y-%m-%d'),
-        'status': c.status
+        'status': c.status,
+        'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
     } for c in contracts])
 
 @admin_bp.route('/api/requests', methods=['GET'])
 @admin_required
 def get_requests(current_user):
-    """Get all requests"""
-    requests = Request.query.all()
-    return jsonify([{
-        'id': r.id,
-        'user_name': r.user.name,
-        'type': r.type,
-        'status': r.status,
-        'created_at': r.created_at.strftime('%Y-%m-%d')
-    } for r in requests])
+    """Get all requests and inquiries"""
+    requests = Request.query.order_by(Request.created_at.desc()).all()
+    results = []
+    for r in requests:
+        details_data = {}
+        if r.details:
+            try:
+                details_data = json.loads(r.details)
+            except:
+                details_data = {'raw': r.details}
+        
+        results.append({
+            'id': r.id,
+            'user_name': r.user.name if r.user else '알 수 없음',
+            'type': r.type,
+            'status': r.status,
+            'details': details_data,
+            'created_at': r.created_at.strftime('%Y-%m-%d %H:%M'),
+            'room_name': r.contract.room.name if r.contract and r.contract.room else (details_data.get('room_name') or 'N/A')
+        })
+    return jsonify(results)
 
 @admin_bp.route('/api/contracts/<int:id>/status', methods=['PUT'])
 @admin_required
@@ -59,12 +107,26 @@ def update_contract_status(current_user, id):
 @admin_bp.route('/api/requests/<int:id>/status', methods=['PUT'])
 @admin_required
 def update_request_status(current_user, id):
-    """Update request status"""
+    """Update request status and optionally add admin response"""
     req = Request.query.get_or_404(id)
     data = request.get_json()
     
     if 'status' in data:
         req.status = data['status']
+        
+        # Add response if provided
+        if 'admin_response' in data:
+            details_dict = {}
+            if req.details:
+                try:
+                    details_dict = json.loads(req.details)
+                except:
+                    details_dict = {'raw': req.details}
+            
+            details_dict['admin_response'] = data['admin_response']
+            details_dict['responded_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+            req.details = json.dumps(details_dict)
+            
         db.session.commit()
         return jsonify({'message': 'Request status updated'})
     return jsonify({'error': 'Status is required'}), 400
@@ -82,7 +144,8 @@ def get_branches(current_user):
         'description': b.description,
         'image_url': b.image_url,
         'images': [{'id': img.id, 'url': img.image_url} for img in b.images],
-        'room_count': b.rooms.count()
+        'room_count': b.rooms.count(),
+        'occupied_count': b.rooms.filter_by(status='occupied').count()
     } for b in branches])
 
 @admin_bp.route('/api/branches', methods=['POST'])
@@ -164,6 +227,8 @@ def get_branch(current_user, id):
             'id': r.id,
             'name': r.name,
             'price': r.price,
+            'deposit': r.deposit,
+            'area': r.area,
             'status': r.status,
             'floor': r.floor,
             'images': [{'id': img.id, 'url': img.image_url} for img in r.images]
@@ -172,8 +237,62 @@ def get_branch(current_user, id):
         'floor_plans': floor_plans,
         'floors': [f.floor for f in branch.floors],
         'image_url': branch.image_url,
-        'images': [{'id': img.id, 'url': img.image_url} for img in branch.images]
+        'images': [{'id': img.id, 'url': img.image_url} for img in branch.images],
+        'common_services': [{
+            'id': s.id,
+            'name': s.name,
+            'description': s.description,
+            'icon': s.icon,
+            'service_type': s.service_type
+        } for s in branch.services.filter_by(service_type='common').all()],
+        'specialized_services': [{
+            'id': s.id,
+            'name': s.name,
+            'description': s.description,
+            'icon': s.icon,
+            'service_type': s.service_type
+        } for s in branch.services.filter_by(service_type='specialized').all()]
     })
+
+@admin_bp.route('/api/branches/<int:branch_id>/services', methods=['POST'])
+@admin_required
+def create_branch_service(current_user, branch_id):
+    """Create branch service"""
+    data = request.get_json()
+    service = BranchService(
+        branch_id=branch_id,
+        service_type=data.get('service_type', 'common'),
+        name=data['name'],
+        description=data.get('description'),
+        icon=data.get('icon')
+    )
+    db.session.add(service)
+    db.session.commit()
+    return jsonify({'message': 'Service created', 'id': service.id}), 201
+
+@admin_bp.route('/api/branches/<int:branch_id>/services/<int:service_id>', methods=['PUT', 'DELETE'])
+@admin_required
+def manage_branch_service(current_user, branch_id, service_id):
+    """Update or delete branch service"""
+    service = BranchService.query.filter_by(id=service_id, branch_id=branch_id).first_or_404()
+    
+    if request.method == 'DELETE':
+        db.session.delete(service)
+        db.session.commit()
+        return jsonify({'message': 'Service deleted'})
+    
+    data = request.get_json()
+    if 'name' in data:
+        service.name = data['name']
+    if 'description' in data:
+        service.description = data['description']
+    if 'icon' in data:
+        service.icon = data['icon']
+    if 'service_type' in data:
+        service.service_type = data['service_type']
+        
+    db.session.commit()
+    return jsonify({'message': 'Service updated'})
 
 @admin_bp.route('/api/branches/<int:id>', methods=['PUT'])
 @admin_required
@@ -280,6 +399,8 @@ def create_room(current_user):
         branch_id=data['branch_id'],
         name=data['name'],
         price=data['price'],
+        deposit=data.get('deposit'),
+        area=data.get('area'),
         description=data.get('description'),
         floor=data.get('floor', '1F'),
         # Default coordinates
@@ -305,6 +426,10 @@ def update_room(current_user, id):
         room.name = data['name']
     if 'price' in data:
         room.price = data['price']
+    if 'deposit' in data:
+        room.deposit = data['deposit']
+    if 'area' in data:
+        room.area = data['area']
     if 'description' in data:
         room.description = data['description']
     

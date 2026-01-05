@@ -16,7 +16,7 @@
             <!-- Login Method Buttons -->
             <div class="space-y-3">
                 <!-- Kakao Mock Login -->
-                <button @click="mockKakaoLogin()"
+                <button @click="kakaoLogin()"
                     class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-black bg-[#FEE500] hover:bg-[#FEE500]/90 transition-all duration-300 hover:shadow-md">
                     <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                         <path
@@ -85,78 +85,123 @@
                     </div>
                 </form>
             </div>
+
+            <!-- Signup Link -->
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">
+                            계정이 없으신가요?
+                        </span>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <a href="/register" class="font-medium text-primary hover:text-primary/80">
+                        회원가입하기
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    function loginPage() {
-        return {
-            showEmailForm: false,
-            email: '',
-            password: '',
-            errorMessage: '',
-            loading: false,
+    <script>
+        // Check for token from Kakao callback
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            if (token) {
+                localStorage.setItem('token', token);
+                window.location.href = '/my/room';
+            }
+        });
 
-            // Kakao Mock Login
-            mockKakaoLogin() {
-                fetch('/api/auth/mock-login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        localStorage.setItem('token', data.access_token);
-                        window.location.href = '/my/room';
-                    })
-                    .catch(error => {
-                        console.error('Login error:', error);
-                        alert('로그인 실패');
-                    });
-            },
+        function loginPage() {
+            return {
+                showEmailForm: false,
+                email: '',
+                password: '',
+                errorMessage: '',
+                loading: false,
 
-            // Email Login - Auto-detect admin/user
-            handleEmailLogin() {
-                this.errorMessage = '';
-                this.loading = true;
+                // Kakao Real Login
+                kakaoLogin() {
+                    fetch('/api/auth/kakao/login')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.url) {
+                                window.location.href = data.url;
+                            } else {
+                                window.showAlert?.('오류', '카카오 로그인 설정 오류가 발생했습니다.', 'error');
+                            }
+                        })
+                        .catch(e => {
+                            console.error(e);
+                            window.showAlert?.('오류', '카카오 로그인 시작 중 오류가 발생했습니다.', 'error');
+                        });
+                },
 
-                fetch('/api/auth/email-login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email: this.email,
-                        password: this.password
-                    })
-                })
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.json().then(err => Promise.reject(err));
+                // Kakao Mock Login
+                mockKakaoLogin() {
+                    fetch('/api/auth/mock-login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
                         }
-                        return response.json();
                     })
-                    .then(data => {
-                        localStorage.setItem('token', data.access_token);
-
-                        // Auto-redirect based on user role
-                        if (data.user.role === 'admin') {
-                            window.location.href = '/admin';
-                        } else {
+                        .then(response => response.json())
+                        .then(data => {
+                            localStorage.setItem('token', data.access_token);
                             window.location.href = '/my/room';
-                        }
+                        })
+                        .catch(error => {
+                            console.error('Login error:', error);
+                            window.showAlert?.('오류', '로그인에 실패했습니다.', 'error');
+                        });
+                },
+
+                // Email Login - Auto-detect admin/user
+                handleEmailLogin() {
+                    this.errorMessage = '';
+                    this.loading = true;
+
+                    fetch('/api/auth/email-login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: this.email,
+                            password: this.password
+                        })
                     })
-                    .catch(error => {
-                        console.error('Email login error:', error);
-                        this.errorMessage = error.message || '이메일 또는 비밀번호가 올바르지 않습니다.';
-                    })
-                    .finally(() => {
-                        this.loading = false;
-                    });
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(err => Promise.reject(err));
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            localStorage.setItem('token', data.access_token);
+
+                            // Auto-redirect based on user role
+                            if (data.user.role === 'admin') {
+                                window.location.href = '/admin';
+                            } else {
+                                window.location.href = '/my/room';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Email login error:', error);
+                            this.errorMessage = error.message || '이메일 또는 비밀번호가 올바르지 않습니다.';
+                        })
+                        .finally(() => {
+                            this.loading = false;
+                        });
+                }
             }
         }
-    }
-</script>
-{% endblock %}
+    </script>
+    {% endblock %}

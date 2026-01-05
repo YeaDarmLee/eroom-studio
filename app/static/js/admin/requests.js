@@ -2,8 +2,14 @@
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('requestsTab', () => ({
-        requests: [],
+        allData: [],
         loading: false,
+
+        // Modal state
+        responseModalOpen: false,
+        selectedRequest: null,
+        adminResponseText: '',
+        submittingResponse: false,
 
         init() {
             this.loadRequests();
@@ -17,12 +23,62 @@ document.addEventListener('alpine:init', () => {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (response.ok) {
-                    this.requests = await response.json();
+                    this.allData = await response.json();
                 }
             } catch (error) {
                 console.error('Error loading requests:', error);
             } finally {
                 this.loading = false;
+            }
+        },
+
+        get requests() {
+            return this.allData.filter(r => r.type !== 'inquiry');
+        },
+
+        get inquiries() {
+            return this.allData.filter(r => r.type === 'inquiry');
+        },
+
+        openResponseModal(req) {
+            this.selectedRequest = req;
+            this.adminResponseText = req.details.admin_response || '';
+            this.responseModalOpen = true;
+        },
+
+        async submitResponse() {
+            if (!this.selectedRequest || !this.adminResponseText.trim()) {
+                window.showAlert?.('입력 필요', '답변 내용을 입력해주세요.', 'warning');
+                return;
+            }
+
+            this.submittingResponse = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/requests/${this.selectedRequest.id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        status: 'done',
+                        admin_response: this.adminResponseText
+                    })
+                });
+
+                if (response.ok) {
+                    this.responseModalOpen = false;
+                    await this.loadRequests();
+                    window.showAlert?.('성공', '답변이 등록되었습니다.', 'success');
+                } else {
+                    window.showAlert?.('등록 실패', '답변 등록에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error submitting response:', error);
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.submittingResponse = false;
             }
         },
 
@@ -41,11 +97,11 @@ document.addEventListener('alpine:init', () => {
                 if (response.ok) {
                     await this.loadRequests();
                 } else {
-                    alert('상태 변경 실패');
+                    window.showAlert?.('상태 변경 실패', '상태 변경에 실패했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('Error updating status:', error);
-                alert('오류가 발생했습니다.');
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             }
         },
 
@@ -54,6 +110,7 @@ document.addEventListener('alpine:init', () => {
                 'repair': '수리 요청',
                 'supplies': '비품 요청',
                 'complaint': '민원 접수',
+                'inquiry': '예약 문의',
                 'other': '기타'
             };
             return labels[type] || type;
@@ -66,6 +123,15 @@ document.addEventListener('alpine:init', () => {
                 'done': 'bg-green-100 text-green-800'
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
+        },
+
+        getStatusLabel(status) {
+            const labels = {
+                'submitted': '대기 중',
+                'processing': '처리 중',
+                'done': '완료'
+            };
+            return labels[status] || status;
         }
     }));
 });

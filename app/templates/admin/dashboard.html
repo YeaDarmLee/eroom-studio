@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>연습실 관리 시스템 - 관리자 대시보드</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo/eroom_logo.svg') }}">
 
     <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
@@ -14,10 +15,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 
     <!-- Custom JS Components -->
     <script src="{{ url_for('static', filename='js/admin/app.js') }}"></script>
@@ -31,7 +30,7 @@
             theme: {
                 extend: {
                     colors: { primary: '#3b82f6', secondary: '#8b5cf6' },
-                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                    fontFamily: { sans: ['Pretendard', 'sans-serif'] }
                 }
             }
         }
@@ -53,30 +52,26 @@
     <div class="flex h-screen overflow-hidden">
 
         <!-- Sidebar -->
-        <aside class="hidden lg:flex lg:flex-shrink-0 transition-all duration-300"
-            :class="sidebarOpen ? 'w-64' : 'w-20'">
+        <aside class="hidden lg:flex lg:flex-shrink-0 transition-all duration-300 relative"
+            :class="sidebarOpen ? 'w-64' : 'w-24'">
+
+            <!-- Sidebar Toggle Button (Floating Pin) -->
+            <button @click="sidebarOpen = !sidebarOpen"
+                class="absolute -right-3.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md hover:text-primary transition-all z-50 group">
+                <i :class="sidebarOpen ? 'ri-arrow-left-s-line' : 'ri-arrow-right-s-line'"
+                    class="text-gray-400 group-hover:text-primary transition-colors text-lg"></i>
+            </button>
+
             <div
-                class="flex flex-col w-full h-full bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 shadow-lg">
+                class="flex flex-col w-full h-full bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 shadow-lg overflow-hidden">
                 <!-- Logo Section -->
-                <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 bg-white">
-                    <div class="flex items-center overflow-hidden">
-                        <div
-                            class="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
-                            <i class="ri-music-2-line text-lg"></i>
-                        </div>
-                        <h1 class="ml-3 text-xl font-bold text-gray-900 whitespace-nowrap transition-all duration-300"
-                            style="font-family: 'Pacifico', cursive;" x-show="sidebarOpen"
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 -translate-x-2"
-                            x-transition:enter-end="opacity-100 translate-x-0"
-                            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
-                            x-transition:leave-end="opacity-0">Eroom</h1>
-                    </div>
-                    <button @click="sidebarOpen = !sidebarOpen"
-                        class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                        x-show="sidebarOpen">
-                        <i class="ri-menu-fold-line text-lg"></i>
-                    </button>
+                <div
+                    class="flex items-center justify-center h-24 border-b border-gray-200 bg-white px-4 transition-all duration-300 overflow-hidden shrink-0">
+                    <a href="/" class="flex items-center justify-center">
+                        <img :src="sidebarOpen ? '{{ url_for('static', filename='logo/eroom_studio_x.jpg') }}' : '{{ url_for('static', filename='logo/eroom_logo.jpg') }}'"
+                            alt="Eroom Studio" class="transition-all duration-300"
+                            :class="sidebarOpen ? 'h-16 w-auto' : 'h-12 w-12 object-contain scale-120'">
+                    </a>
                 </div>
 
                 <!-- Navigation -->
@@ -84,7 +79,8 @@
                     <template x-for="item in [
                         { id: 'dashboard', icon: 'ri-dashboard-line', label: '대시보드', color: 'blue' },
                         { id: 'contracts', icon: 'ri-file-list-line', label: '계약 관리', color: 'green' },
-                        { id: 'requests', icon: 'ri-question-answer-line', label: '요청 관리', color: 'yellow' },
+                        { id: 'requests', icon: 'ri-tools-line', label: '요청 관리', color: 'yellow' },
+                        { id: 'inquiries', icon: 'ri-chat-1-line', label: '문의 관리', color: 'pink' },
                         { id: 'branches', icon: 'ri-building-2-line', label: '지점 관리', color: 'purple' }
                     ]">
                         <a href="#" @click.prevent="activeTab = item.id" :class="{
@@ -115,14 +111,7 @@
                     </template>
                 </nav>
 
-                <!-- Expand Button (when collapsed) -->
-                <div x-show="!sidebarOpen" class="px-3 pb-4">
-                    <button @click="sidebarOpen = true"
-                        class="w-full p-3 rounded-xl bg-white hover:bg-primary hover:text-white text-gray-600 transition-all duration-200 shadow-sm hover:shadow-md group"
-                        title="사이드바 펼치기">
-                        <i class="ri-menu-unfold-line text-xl"></i>
-                    </button>
-                </div>
+
 
                 <!-- User Section -->
                 <div class="p-4 border-t border-gray-200 bg-white">
@@ -171,10 +160,15 @@
                             class="text-gray-500 hover:text-gray-700 focus:outline-none lg:hidden">
                             <i class="ri-menu-line text-2xl"></i>
                         </button>
+                        <a href="/" class="lg:hidden">
+                            <img src="{{ url_for('static', filename='logo/eroom_studio_x.jpg') }}" alt="Eroom Studio"
+                                class="h-12 w-auto">
+                        </a>
                         <h2 class="text-2xl font-bold text-gray-900 capitalize" x-text="{
                                 'dashboard': '대시보드',
                                 'contracts': '계약 관리',
                                 'requests': '요청 관리',
+                                'inquiries': '문의 관리',
                                 'branches': '지점 관리'
                             }[activeTab]">
                         </h2>
@@ -277,41 +271,40 @@
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <template x-for="contract in filteredContracts" :key="contract.id">
-                                        <tr class="hover:bg-gray-50 transition-colors">
+                                        <tr @click="openDetailModal(contract)"
+                                            class="hover:bg-gray-50 transition-colors cursor-pointer group">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                                                 x-text="'#' + contract.id"></td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
                                                     <div
-                                                        class="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold mr-3">
+                                                        class="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold mr-3 group-hover:scale-110 transition-transform">
                                                         <span x-text="contract.user_name.charAt(0)"></span>
                                                     </div>
                                                     <div class="text-sm font-medium text-gray-900"
                                                         x-text="contract.user_name"></div>
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                                                x-text="contract.room_name"></td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-900 font-bold"
+                                                    x-text="contract.room_name"></div>
+                                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest"
+                                                    x-text="contract.branch_name"></div>
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 <span x-text="contract.start_date"></span> ~ <span
                                                     x-text="contract.end_date"></span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span
-                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                                    class="px-2.5 py-1 inline-flex text-xs font-bold rounded-lg border shadow-sm"
                                                     :class="getStatusBadgeClass(contract.status)"
                                                     x-text="getStatusLabel(contract.status)">
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <template x-if="contract.status === 'requested'">
-                                                    <button @click="updateStatus(contract.id, 'active')"
-                                                        class="text-green-600 hover:text-green-900 mr-3">승인</button>
-                                                </template>
-                                                <template x-if="contract.status === 'active'">
-                                                    <button @click="updateStatus(contract.id, 'terminated')"
-                                                        class="text-red-600 hover:text-red-900">종료</button>
-                                                </template>
+                                                <i
+                                                    class="ri-arrow-right-s-line text-gray-300 group-hover:text-primary transition-colors text-xl"></i>
                                             </td>
                                         </tr>
                                     </template>
@@ -326,28 +319,164 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Contract Detail Modal -->
+                    <div x-show="detailModalOpen" class="fixed inset-0 z-50 overflow-y-auto"
+                        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                        <div
+                            class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                            <div class="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm"
+                                @click="detailModalOpen = false"></div>
+                            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                            <div class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-3xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+
+                                <!-- Modal Header -->
+                                <div
+                                    class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <h3 class="text-xl font-black text-gray-900">계약 상세 정보</h3>
+                                            <span
+                                                class="px-3 py-1 rounded-lg text-[10px] font-black border uppercase tracking-wider"
+                                                :class="getStatusBadgeClass(selectedContract?.status)"
+                                                x-text="getStatusLabel(selectedContract?.status)"></span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1"
+                                            x-text="'Contract ID: #' + selectedContract?.id"></p>
+                                    </div>
+                                    <button @click="detailModalOpen = false"
+                                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                                        <i class="ri-close-line text-2xl"></i>
+                                    </button>
+                                </div>
+
+                                <div class="px-8 py-8 space-y-8">
+                                    <!-- User & Room Section -->
+                                    <div class="grid grid-cols-2 gap-8">
+                                        <div class="space-y-4">
+                                            <h4
+                                                class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
+                                                <i class="ri-user-line mr-2"></i> 신청자 정보
+                                            </h4>
+                                            <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                                <p class="text-lg font-bold text-gray-900"
+                                                    x-text="selectedContract?.user_name"></p>
+                                                <p class="text-sm text-gray-500 mt-1"
+                                                    x-text="selectedContract?.user_email"></p>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <h4
+                                                class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
+                                                <i class="ri-door-open-line mr-2"></i> 신청 방 정보
+                                            </h4>
+                                            <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                                <p class="text-lg font-bold text-gray-900"
+                                                    x-text="selectedContract?.room_name"></p>
+                                                <p class="text-sm text-gray-500 mt-1"
+                                                    x-text="selectedContract?.branch_name"></p>
+                                                <p class="text-xs font-bold text-primary mt-2">
+                                                    보증금 <span x-text="formatPrice(selectedContract?.deposit)"></span> /
+                                                    월세 <span x-text="formatPrice(selectedContract?.price)"></span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Date Range Section -->
+                                    <div class="space-y-4">
+                                        <h4
+                                            class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
+                                            <i class="ri-calendar-event-line mr-2"></i> 계약 기간
+                                        </h4>
+                                        <div
+                                            class="flex items-center justify-center gap-12 bg-primary/5 rounded-3xl p-8 border border-primary/10">
+                                            <div class="text-center">
+                                                <p
+                                                    class="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">
+                                                    시작일</p>
+                                                <p class="text-2xl font-black text-primary"
+                                                    x-text="selectedContract?.start_date"></p>
+                                            </div>
+                                            <div class="h-px bg-primary/20 flex-1 relative">
+                                                <div
+                                                    class="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full border border-primary/10 text-[10px] font-black text-primary uppercase">
+                                                    Term</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <p
+                                                    class="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">
+                                                    종료일</p>
+                                                <p class="text-2xl font-black text-primary"
+                                                    x-text="selectedContract?.end_date"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Footer -->
+                                <div class="px-8 py-6 bg-gray-50/50 flex justify-end items-center gap-3 rounded-b-3xl">
+                                    <button @click="detailModalOpen = false"
+                                        class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">닫기</button>
+
+                                    <template x-if="selectedContract?.status === 'requested'">
+                                        <button @click="updateStatus(selectedContract.id, 'active')"
+                                            :disabled="submittingUpdate"
+                                            class="px-10 py-3 bg-secondary text-white text-sm font-black rounded-xl shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center">
+                                            <template x-if="!submittingUpdate">
+                                                <span>계약 최종 승인</span>
+                                            </template>
+                                            <i x-show="submittingUpdate"
+                                                class="ri-loader-4-line animate-spin text-lg"></i>
+                                        </button>
+                                    </template>
+
+                                    <template x-if="selectedContract?.status === 'active'">
+                                        <button @click="updateStatus(selectedContract.id, 'terminated')"
+                                            :disabled="submittingUpdate"
+                                            class="px-10 py-3 bg-red-500 text-white text-sm font-black rounded-xl shadow-xl shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center">
+                                            <template x-if="!submittingUpdate">
+                                                <span>계약 강제 종료</span>
+                                            </template>
+                                            <i x-show="submittingUpdate"
+                                                class="ri-loader-4-line animate-spin text-lg"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Requests Tab -->
+                <!-- Requests Tab (Services/Repairs for active tenants) -->
                 <div x-show="activeTab === 'requests'" x-data="requestsTab" class="space-y-6">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <h3 class="text-lg font-medium text-gray-900">요청 목록</h3>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900">요청 관리</h3>
+                                <p class="text-sm text-gray-500 mt-1">입주민들의 수리 및 비품 요청 내역입니다.</p>
+                            </div>
                             <button @click="loadRequests()" class="text-gray-400 hover:text-primary transition-colors">
                                 <i class="ri-refresh-line text-xl" :class="{'animate-spin': loading}"></i>
                             </button>
                         </div>
                         <ul class="divide-y divide-gray-200">
                             <template x-for="req in requests" :key="req.id">
-                                <li class="px-6 py-4 hover:bg-gray-50 transition-colors">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-xl"
+                                <li class="px-6 py-6 hover:bg-gray-50/50 transition-colors">
+                                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                        <div class="flex items-start flex-1 min-w-0">
+                                            <div class="flex-shrink-0 h-12 w-12 rounded-xl flex items-center justify-center text-2xl shadow-sm"
                                                 :class="{
-                                                    'bg-red-100 text-red-600': req.type === 'repair',
-                                                    'bg-blue-100 text-blue-600': req.type === 'supplies',
-                                                    'bg-yellow-100 text-yellow-600': req.type === 'complaint',
-                                                    'bg-gray-100 text-gray-600': req.type === 'other'
+                                                    'bg-red-50 text-red-600': req.type === 'repair',
+                                                    'bg-blue-50 text-blue-600': req.type === 'supplies',
+                                                    'bg-yellow-50 text-yellow-600': req.type === 'complaint',
+                                                    'bg-gray-50 text-gray-600': req.type === 'other'
                                                 }">
                                                 <i :class="{
                                                     'ri-tools-line': req.type === 'repair',
@@ -356,32 +485,39 @@
                                                     'ri-question-line': req.type === 'other'
                                                 }"></i>
                                             </div>
-                                            <div class="ml-4">
-                                                <div class="flex items-center">
-                                                    <h4 class="text-sm font-bold text-gray-900 mr-2"
+                                            <div class="ml-4 flex-1 min-w-0">
+                                                <div class="flex items-center flex-wrap gap-2">
+                                                    <h4 class="text-base font-bold text-gray-900"
                                                         x-text="getTypeLabel(req.type)"></h4>
                                                     <span
-                                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                                        :class="getStatusBadgeClass(req.status)" x-text="req.status">
+                                                        class="px-2.5 py-0.5 inline-flex text-xs font-bold rounded-full border"
+                                                        :class="getStatusBadgeClass(req.status)"
+                                                        x-text="getStatusLabel(req.status)">
                                                     </span>
+                                                    <span
+                                                        class="text-xs text-primary font-bold bg-primary/5 px-2 py-0.5 rounded"
+                                                        x-text="req.room_name"></span>
                                                 </div>
-                                                <p class="text-sm text-gray-500 mt-1">
-                                                    <span x-text="req.user_name"></span> • <span
+                                                <div class="mt-2 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 italic"
+                                                    x-text="req.details.message || req.details.raw || '내용 없음'"></div>
+                                                <p class="text-xs text-gray-500 mt-2">
+                                                    <span class="font-medium text-gray-700"
+                                                        x-text="req.user_name"></span> • <span
                                                         x-text="req.created_at"></span>
                                                 </p>
                                             </div>
                                         </div>
-                                        <div class="flex items-center space-x-2">
+                                        <div class="flex items-center space-x-2 shrink-0">
                                             <template x-if="req.status === 'submitted'">
                                                 <button @click="updateStatus(req.id, 'processing')"
-                                                    class="px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
-                                                    접수
+                                                    class="px-4 py-2 border border-transparent text-sm font-bold rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-all">
+                                                    접수하기
                                                 </button>
                                             </template>
                                             <template x-if="req.status === 'processing'">
                                                 <button @click="updateStatus(req.id, 'done')"
-                                                    class="px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none">
-                                                    완료
+                                                    class="px-4 py-2 border border-transparent text-sm font-bold rounded-xl shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none transition-all">
+                                                    완료 처리
                                                 </button>
                                             </template>
                                         </div>
@@ -389,11 +525,154 @@
                                 </li>
                             </template>
                             <template x-if="requests.length === 0">
-                                <li class="px-6 py-12 text-center text-gray-500">
-                                    요청 내역이 없습니다.
+                                <li class="px-6 py-16 text-center text-gray-500">
+                                    <i class="ri-inbox-line text-4xl block mb-2 opacity-20"></i>
+                                    현재 처리할 요청 내역이 없습니다.
                                 </li>
                             </template>
                         </ul>
+                    </div>
+                </div>
+
+                <!-- Inquiries Tab (General Inquiries from room details) -->
+                <div x-show="activeTab === 'inquiries'" x-data="requestsTab" class="space-y-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900">문의 관리</h3>
+                                <p class="text-sm text-gray-500 mt-1">방 상세 페이지를 통한 예약 및 서비스 문의 내역입니다.</p>
+                            </div>
+                            <button @click="loadRequests()" class="text-gray-400 hover:text-primary transition-colors">
+                                <i class="ri-refresh-line text-xl" :class="{'animate-spin': loading}"></i>
+                            </button>
+                        </div>
+                        <ul class="divide-y divide-gray-200">
+                            <template x-for="inq in inquiries" :key="inq.id">
+                                <li class="px-6 py-6 hover:bg-gray-50/50 transition-colors">
+                                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                        <div class="flex items-start flex-1 min-w-0">
+                                            <div
+                                                class="flex-shrink-0 h-12 w-12 rounded-xl flex items-center justify-center text-2xl shadow-sm bg-pink-50 text-pink-600">
+                                                <i class="ri-chat-1-line"></i>
+                                            </div>
+                                            <div class="ml-4 flex-1 min-w-0">
+                                                <div class="flex items-center flex-wrap gap-2">
+                                                    <h4 class="text-base font-bold text-gray-900">예약 및 일반 문의</h4>
+                                                    <span
+                                                        class="px-2.5 py-0.5 inline-flex text-xs font-bold rounded-full border"
+                                                        :class="getStatusBadgeClass(inq.status)"
+                                                        x-text="getStatusLabel(inq.status)">
+                                                    </span>
+                                                    <span
+                                                        class="text-xs text-secondary font-bold bg-secondary/5 px-2 py-0.5 rounded"
+                                                        x-text="(inq.details.branch_name || '') + ' ' + (inq.details.room_name || '')"></span>
+                                                </div>
+                                                <div class="mt-2 flex flex-col gap-2">
+                                                    <div class="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 italic"
+                                                        x-text="inq.details.message || '내용 없음'"></div>
+
+                                                    <!-- Admin Response Preview -->
+                                                    <template x-if="inq.details.admin_response">
+                                                        <div class="ml-4 pl-4 border-l-2 border-primary/20">
+                                                            <div
+                                                                class="text-[10px] font-black text-primary uppercase tracking-widest mb-1">
+                                                                나의 답변</div>
+                                                            <div class="text-sm text-gray-600 bg-primary/5 p-3 rounded-lg border border-primary/10"
+                                                                x-text="inq.details.admin_response"></div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-2">
+                                                    <span class="font-medium text-gray-700"
+                                                        x-text="inq.user_name"></span> • <span
+                                                        x-text="inq.created_at"></span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center space-x-2 shrink-0">
+                                            <template x-if="inq.status !== 'done'">
+                                                <button @click="openResponseModal(inq)"
+                                                    class="px-4 py-2 border border-transparent text-sm font-bold rounded-xl shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none transition-all">
+                                                    답변 접수
+                                                </button>
+                                            </template>
+                                            <template x-if="inq.status === 'done'">
+                                                <div
+                                                    class="flex flex-col items-center px-4 py-2 bg-green-50 rounded-xl border border-green-100">
+                                                    <i class="ri-checkbox-circle-fill text-green-500 text-xl"></i>
+                                                    <span class="text-[10px] font-black text-green-600 mt-0.5">답변
+                                                        완료</span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </li>
+                            </template>
+                            <template x-if="inquiries.length === 0">
+                                <li class="px-6 py-16 text-center text-gray-500">
+                                    <i class="ri-chat-3-line text-4xl block mb-2 opacity-20"></i>
+                                    현재 문의 내역이 없습니다.
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <!-- Response Modal -->
+                    <div x-show="responseModalOpen" class="fixed inset-0 z-50 overflow-y-auto"
+                        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                        <div
+                            class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                            <div class="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm"
+                                @click="responseModalOpen = false"></div>
+                            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                            <div class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-3xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+
+                                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 class="text-xl font-bold text-gray-900">문의 답변 등록</h3>
+                                    <button @click="responseModalOpen = false"
+                                        class="text-gray-400 hover:text-gray-600">
+                                        <i class="ri-close-line text-2xl"></i>
+                                    </button>
+                                </div>
+
+                                <div class="px-6 py-6 space-y-4">
+                                    <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                        <p
+                                            class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center">
+                                            <i class="ri-user-voice-line mr-1 text-xs"></i> 사용자 문의 내용
+                                        </p>
+                                        <div class="text-sm text-gray-700 italic leading-relaxed"
+                                            x-text="selectedRequest?.details?.message || '내용 없음'"></div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">답변 내용</label>
+                                        <textarea x-model="adminResponseText"
+                                            class="w-full px-4 py-4 rounded-2xl border border-gray-200 focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all resize-none h-48 text-sm"
+                                            placeholder="답변 내용을 입력하세요..."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="px-6 py-5 bg-gray-50/50 flex justify-end space-x-3 rounded-b-3xl">
+                                    <button @click="responseModalOpen = false"
+                                        class="px-5 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">닫기</button>
+                                    <button @click="submitResponse()" :disabled="submittingResponse"
+                                        class="px-8 py-2.5 bg-primary text-white text-sm font-black rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center">
+                                        <template x-if="!submittingResponse">
+                                            <span>답변 완료하기</span>
+                                        </template>
+                                        <i x-show="submittingResponse"
+                                            class="ri-loader-4-line animate-spin text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -419,7 +698,7 @@
                                 class="group bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative overflow-hidden">
                                 <div
                                     class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
-                                    <button @click="openEditModal(branch)"
+                                    <button @click.stop="openEditModal(branch)"
                                         class="p-2 text-gray-400 hover:text-primary bg-white rounded-full shadow-sm hover:shadow"><i
                                             class="ri-edit-line"></i></button>
                                     <button @click="confirmDelete(branch)"
@@ -448,16 +727,18 @@
                                             x-text="(branch.room_count || 0) + '개'"></span>
                                     </div>
                                     <div class="w-full bg-gray-100 rounded-full h-2">
-                                        <div class="bg-primary h-2 rounded-full" style="width: 70%"></div>
+                                        <div class="bg-primary h-2 rounded-full transition-all duration-500"
+                                            :style="`width: ${branch.room_count ? (branch.occupied_count / branch.room_count * 100) : 0}%`">
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-3">
-                                    <button @click="loadBranchRooms(branch)"
+                                    <button @click.stop="loadBranchRooms(branch)"
                                         class="py-2.5 px-4 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-primary hover:text-white transition-all duration-200 flex items-center justify-center">
                                         <i class="ri-layout-grid-line mr-2"></i>방 관리
                                     </button>
-                                    <button @click="loadBranchServices(branch)"
+                                    <button @click.stop="loadBranchServices(branch)"
                                         class="py-2.5 px-4 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-secondary hover:text-white transition-all duration-200 flex items-center justify-center">
                                         <i class="ri-service-line mr-2"></i>서비스
                                     </button>
@@ -485,25 +766,32 @@
                                                 class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                                         </div>
                                         <div>
-                                                                                        <label class="block text-sm font-medium text-gray-700">대표 이미지 (썸네일)</label>
+                                            <label class="block text-sm font-medium text-gray-700">대표 이미지
+                                                (썸네일)</label>
                                             <div class="mt-1 mb-6">
-                                                <div class="flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                                <div
+                                                    class="flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                                                     <div class="space-y-1 text-center">
                                                         <template x-if="!imagePreview && !formData.image_url">
                                                             <div class="flex flex-col items-center">
                                                                 <i class="ri-image-line text-3xl text-gray-400"></i>
                                                                 <div class="flex text-sm text-gray-600 mt-2">
-                                                                    <label class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none">
+                                                                    <label
+                                                                        class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none">
                                                                         <span>이미지 선택</span>
-                                                                        <input type="file" class="sr-only" @change="handleImageUpload($event)" accept="image/*">
+                                                                        <input type="file" class="sr-only"
+                                                                            @change="handleImageUpload($event)"
+                                                                            accept="image/*">
                                                                     </label>
                                                                 </div>
                                                             </div>
                                                         </template>
                                                         <template x-if="imagePreview || formData.image_url">
                                                             <div class="relative group">
-                                                                <img :src="imagePreview || formData.image_url" class="mx-auto h-32 object-cover rounded-md">
-                                                                <button type="button" @click="removeImage()" class="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 transform translate-x-1/2 -translate-y-1/2 shadow-sm hover:bg-red-600">
+                                                                <img :src="imagePreview || formData.image_url"
+                                                                    class="mx-auto h-32 object-cover rounded-md">
+                                                                <button type="button" @click="removeImage()"
+                                                                    class="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 transform translate-x-1/2 -translate-y-1/2 shadow-sm hover:bg-red-600">
                                                                     <i class="ri-close-line"></i>
                                                                 </button>
                                                             </div>
@@ -511,7 +799,8 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <label class="block text-sm font-medium text-gray-700">배너 이미지 (슬라이드)</label>
+                                            <label class="block text-sm font-medium text-gray-700">배너 이미지
+                                                (슬라이드)</label>
                                             <div class="mt-1">
                                                 <!-- Drag & Drop Zone -->
                                                 <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl transition-all duration-200 mb-4"
@@ -538,12 +827,15 @@
                                                 <!-- New Images Preview -->
                                                 <template x-if="branchImages.length > 0">
                                                     <div class="mb-4">
-                                                        <h4 class="text-sm font-medium text-gray-700 mb-2">새로 추가할 배너</h4>
+                                                        <h4 class="text-sm font-medium text-gray-700 mb-2">새로 추가할 배너
+                                                        </h4>
                                                         <div class="grid grid-cols-4 gap-4">
                                                             <template x-for="(img, index) in branchImages" :key="index">
                                                                 <div class="relative group aspect-square">
-                                                                    <img :src="img.preview" class="w-full h-full object-cover rounded-lg">
-                                                                    <button type="button" @click="removeBranchImage(index)"
+                                                                    <img :src="img.preview"
+                                                                        class="w-full h-full object-cover rounded-lg">
+                                                                    <button type="button"
+                                                                        @click="removeBranchImage(index)"
                                                                         class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                         <i class="ri-close-line"></i>
                                                                     </button>
@@ -556,12 +848,15 @@
                                                 <!-- Existing Images -->
                                                 <template x-if="existingBranchImages.length > 0">
                                                     <div>
-                                                        <h4 class="text-sm font-medium text-gray-700 mb-2">등록된 배너</h4>
+                                                        <h4 class="text-sm font-medium text-gray-700 mb-2">등록된 배너
+                                                        </h4>
                                                         <div class="grid grid-cols-4 gap-4">
                                                             <template x-for="img in existingBranchImages" :key="img.id">
                                                                 <div class="relative group aspect-square">
-                                                                    <img :src="img.url" class="w-full h-full object-cover rounded-lg">
-                                                                    <button type="button" @click="deleteExistingBranchImage(img.id, currentBranch.id)"
+                                                                    <img :src="img.url"
+                                                                        class="w-full h-full object-cover rounded-lg">
+                                                                    <button type="button"
+                                                                        @click="deleteExistingBranchImage(img.id, currentBranch.id)"
                                                                         class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                         <i class="ri-delete-bin-line"></i>
                                                                     </button>
@@ -571,520 +866,604 @@
                                                     </div>
                                                 </template>
                                             </div>
-                                        <!-- Floor Management Section (Only in Edit Mode) -->
-                                        <template x-if="editMode">
-                                            <div class="mb-6">
-                                                <label class="block text-gray-700 text-sm font-bold mb-2">층 관리</label>
-                                                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                                    <div class="flex gap-2 mb-4">
-                                                        <input type="text" x-model="newFloorInput"
-                                                            @keyup.enter="addFloor"
-                                                            class="flex-1 shadow-sm appearance-none border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                                            placeholder="층 이름 입력 (예: 2F)">
-                                                        <button @click="addFloor" type="button"
-                                                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center">
-                                                            <i class="ri-add-line mr-1"></i> 추가
-                                                        </button>
-                                                    </div>
+                                            <!-- Floor Management Section (Only in Edit Mode) -->
+                                            <template x-if="editMode">
+                                                <div class="mb-6">
+                                                    <label class="block text-gray-700 text-sm font-bold mb-2">층
+                                                        관리</label>
+                                                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                                        <div class="flex gap-2 mb-4">
+                                                            <input type="text" x-model="newFloorInput"
+                                                                @keyup.enter="addFloor"
+                                                                class="flex-1 shadow-sm appearance-none border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                                placeholder="층 이름 입력 (예: 2F)">
+                                                            <button @click="addFloor" type="button"
+                                                                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center">
+                                                                <i class="ri-add-line mr-1"></i> 추가
+                                                            </button>
+                                                        </div>
 
-                                                    <div class="flex flex-wrap gap-2">
-                                                        <template x-for="floor in (currentBranch?.floors || [])"
-                                                            :key="floor">
-                                                            <div
-                                                                class="group flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1.5 shadow-sm hover:shadow-md transition-all duration-200">
-                                                                <span x-text="floor"
-                                                                    class="font-medium text-gray-700 mr-2"></span>
-                                                                <button @click="removeFloor(floor)"
-                                                                    class="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors">
-                                                                    <i class="ri-close-line text-lg"></i>
-                                                                </button>
+                                                        <div class="flex flex-wrap gap-2">
+                                                            <template x-for="floor in (currentBranch?.floors || [])"
+                                                                :key="floor">
+                                                                <div
+                                                                    class="group flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1.5 shadow-sm hover:shadow-md transition-all duration-200">
+                                                                    <span x-text="floor"
+                                                                        class="font-medium text-gray-700 mr-2"></span>
+                                                                    <button @click="removeFloor(floor)"
+                                                                        class="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors">
+                                                                        <i class="ri-close-line text-lg"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </template>
+                                                            <div x-show="(currentBranch?.floors || []).length === 0"
+                                                                class="text-sm text-gray-400 py-2 w-full text-center italic">
+                                                                등록된 층이 없습니다.
                                                             </div>
-                                                        </template>
-                                                        <div x-show="(currentBranch?.floors || []).length === 0"
-                                                            class="text-sm text-gray-400 py-2 w-full text-center italic">
-                                                            등록된 층이 없습니다.
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </template>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">주소</label>
+                                                <input type="text" x-model="formData.address"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                                             </div>
-                                        </template>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">주소</label>
-                                            <input type="text" x-model="formData.address"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">편의시설</label>
-                                            <textarea x-model="formData.facilities" rows="3"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">설명</label>
-                                            <textarea x-model="formData.description" rows="3"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">편의시설</label>
+                                                <textarea x-model="formData.facilities" rows="3"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">설명</label>
+                                                <textarea x-model="formData.description" rows="3"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button type="button" @click="saveBranch()"
-                                        class="w-full px-4 py-2 text-base font-medium text-white bg-primary border border-transparent rounded-lg shadow-sm hover:bg-primary/90 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">저장</button>
-                                    <button type="button" @click="showModal = false"
-                                        class="w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">취소</button>
+                                    <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
+                                        <button type="button" @click="saveBranch()"
+                                            class="w-full px-4 py-2 text-base font-medium text-white bg-primary border border-transparent rounded-lg shadow-sm hover:bg-primary/90 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">저장</button>
+                                        <button type="button" @click="showModal = false"
+                                            class="w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">취소</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Room Management Modal (Full Screen) -->
-                    <div x-show="showRoomModal" class="fixed inset-0 z-50 overflow-hidden" x-cloak>
-                        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"
-                            @click="closeRoomModal()"></div>
-                        <div class="fixed inset-0 z-10 overflow-y-auto">
-                            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-                                <div
-                                    class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-7xl h-[90vh] flex flex-col">
-                                    <!-- Header -->
+                        <!-- Room Management Modal (Full Screen) -->
+                        <div x-show="showRoomModal" class="fixed inset-0 z-50 overflow-hidden" x-cloak>
+                            <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"
+                                @click="closeRoomModal()"></div>
+                            <div class="fixed inset-0 z-10 overflow-y-auto">
+                                <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
                                     <div
-                                        class="bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                        <div>
-                                            <h3 class="text-xl font-bold text-gray-900"
-                                                x-text="currentBranch?.name + ' - 방 관리'"></h3>
-                                            <p class="text-sm text-gray-500">층별 도면 및 방 배치를 관리합니다.</p>
-                                        </div>
-                                        <div class="flex items-center space-x-4">
-                                            <div class="flex bg-gray-100 p-1 rounded-lg">
-                                                <button @click="switchToList()"
-                                                    :class="{'bg-white shadow text-gray-900': viewMode === 'list', 'text-gray-500 hover:text-gray-700': viewMode !== 'list'}"
-                                                    class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"><i
-                                                        class="ri-list-check mr-1"></i>목록</button>
-                                                <button @click="switchToFloorPlan()"
-                                                    :class="{'bg-white shadow text-gray-900': viewMode === 'floorplan', 'text-gray-500 hover:text-gray-700': viewMode !== 'floorplan'}"
-                                                    class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"><i
-                                                        class="ri-layout-2-line mr-1"></i>도면</button>
+                                        class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-7xl h-[90vh] flex flex-col">
+                                        <!-- Header -->
+                                        <div
+                                            class="flex items-center justify-between border-b border-gray-100 px-8 py-5 bg-white shrink-0">
+                                            <div class="flex items-center">
+                                                <div
+                                                    class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl mr-4">
+                                                    <i class="ri-layout-grid-line"></i>
+                                                </div>
+                                                <div>
+                                                    <h2 class="text-2xl font-bold text-gray-900"
+                                                        x-text="currentBranch?.name + ' - 방 관리'"></h2>
+                                                    <p class="text-sm text-gray-500 mt-0.5">연습실의 배치와 정보를 관리합니다.</p>
+                                                </div>
+                                                <!-- Loading Spinner -->
+                                                <div x-show="loadingData" class="ml-4 flex items-center text-primary">
+                                                    <i class="ri-loader-4-line animate-spin text-2xl mr-2"></i>
+                                                    <span class="text-sm font-medium">데이터 로딩 중...</span>
+                                                </div>
                                             </div>
-                                            <button @click="closeRoomModal()"
+                                            <div class="flex items-center space-x-4">
+                                                <div class="flex bg-gray-100 p-1 rounded-xl">
+                                                    <button @click="switchToList()"
+                                                        :class="{'bg-white shadow-sm text-primary': viewMode === 'list', 'text-gray-500 hover:text-gray-700': viewMode !== 'list'}"
+                                                        class="px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center">
+                                                        <i class="ri-list-check mr-1.5"></i>목록
+                                                    </button>
+                                                    <button @click="switchToFloorPlan()"
+                                                        :class="{'bg-white shadow-sm text-primary': viewMode === 'floorplan', 'text-gray-500 hover:text-gray-700': viewMode !== 'floorplan'}"
+                                                        class="px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center">
+                                                        <i class="ri-layout-2-line mr-1.5"></i>도면
+                                                    </button>
+                                                </div>
+                                                <button @click="closeRoomModal()"
+                                                    class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                                                    <i class="ri-close-line text-2xl"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Content Area -->
+                                        <div class="flex-1 overflow-hidden flex flex-col bg-gray-50"
+                                            x-show="!loadingData">
+                                            <!-- Floor Tabs -->
+                                            <div
+                                                class="bg-white px-6 py-3 border-b border-gray-200 flex items-center space-x-4 shadow-sm z-10">
+                                                <span class="text-sm font-medium text-gray-700">층 선택:</span>
+                                                <div class="flex space-x-2">
+                                                    <template x-for="floor in (currentBranch?.floors || ['1F'])"
+                                                        :key="floor">
+                                                        <button @click="selectFloor(floor)"
+                                                            :class="{'bg-primary text-white shadow-md shadow-primary/30': selectedFloor === floor, 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50': selectedFloor !== floor}"
+                                                            class="py-2 px-4 text-sm font-medium rounded-lg transition-all"
+                                                            x-text="floor">
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                                <div class="flex-1"></div>
+                                                <button @click="openCreateRoomModal()"
+                                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none">
+                                                    <i class="ri-add-line mr-1"></i>방 추가
+                                                </button>
+                                            </div>
+
+                                            <!-- List View -->
+                                            <div x-show="viewMode === 'list'" class="flex-1 overflow-y-auto p-6">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    <template
+                                                        x-for="room in branchRooms.filter(r => r.floor === selectedFloor)"
+                                                        :key="room.id">
+                                                        <div
+                                                            class="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
+                                                            <div class="flex justify-between items-start">
+                                                                <div class="flex items-center">
+                                                                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold mr-3"
+                                                                        x-text="room.name.substring(0, 2)"></div>
+                                                                    <div>
+                                                                        <h4 class="font-bold text-gray-900"
+                                                                            x-text="room.name"></h4>
+                                                                        <p class="text-xs text-gray-500"
+                                                                            x-text="room.description || '설명 없음'">
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="flex space-x-1">
+                                                                    <button @click="openEditRoomModal(room)"
+                                                                        class="p-1.5 text-gray-400 hover:text-primary rounded-md hover:bg-gray-50"><i
+                                                                            class="ri-edit-line"></i></button>
+                                                                    <button @click="confirmDeleteRoom(room)"
+                                                                        class="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-50"><i
+                                                                            class="ri-delete-bin-line"></i></button>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                                                                <div class="flex flex-col">
+                                                                    <div class="flex items-baseline gap-1">
+                                                                        <span class="text-sm font-bold text-primary"
+                                                                            x-text="'₩' + (room.price || 0).toLocaleString()"></span>
+                                                                        <span
+                                                                            class="text-[10px] text-gray-500">/월</span>
+                                                                    </div>
+                                                                    <div class="flex items-center gap-2">
+                                                                        <span class="text-[10px] text-gray-400"
+                                                                            x-show="room.deposit"
+                                                                            x-text="'보증금: ₩' + (room.deposit || 0).toLocaleString()"></span>
+                                                                        <span class="text-[10px] text-gray-400"
+                                                                            x-show="room.area"
+                                                                            x-text="room.area + '㎡'"></span>
+                                                                    </div>
+                                                                </div>
+                                                                <span
+                                                                    class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600"
+                                                                    x-text="room.status || 'available'"></span>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                                <!-- Empty State for List View -->
+                                                <template
+                                                    x-if="branchRooms.filter(r => r.floor === selectedFloor).length === 0">
+                                                    <div class="text-center py-12">
+                                                        <div
+                                                            class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                            <i class="ri-inbox-line text-3xl text-gray-400"></i>
+                                                        </div>
+                                                        <p class="text-lg font-medium text-gray-900">이 층에 등록된 방이
+                                                            없습니다
+                                                        </p>
+                                                        <p class="text-sm text-gray-500 mt-1">상단의 "방 추가" 버튼을 클릭하여 방을
+                                                            등록하세요.</p>
+                                                    </div>
+                                                </template>
+                                            </div>
+
+                                            <!-- Floor Plan View -->
+                                            <div x-show="viewMode === 'floorplan'"
+                                                class="flex-1 overflow-hidden flex flex-col relative">
+                                                <div
+                                                    class="bg-white border-b border-gray-200 px-6 py-2 flex justify-between items-center z-10">
+                                                    <div class="flex items-center space-x-4">
+                                                        <label
+                                                            class="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
+                                                            <i class="ri-upload-2-line mr-2"></i>도면 업로드
+                                                            <input type="file" class="hidden" accept="image/*"
+                                                                @change="uploadFloorPlan($event)">
+                                                        </label>
+                                                        <span class="text-xs text-gray-500" x-show="uploadingFloor">업로드
+                                                            중...</span>
+                                                    </div>
+                                                    <button @click="saveRoomPositions()"
+                                                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none transition-colors">
+                                                        <i class="ri-save-line mr-1"></i>위치 저장
+                                                    </button>
+                                                </div>
+
+                                                <div class="flex-1 overflow-auto bg-gray-100 relative p-8 flex items-center justify-center"
+                                                    @mousemove="onDrag($event); onResize($event)"
+                                                    @mouseup="endDrag($event); endResize()">
+                                                    <template x-if="floorPlans[selectedFloor]">
+                                                        <div
+                                                            class="relative w-full max-w-4xl aspect-[4/3] bg-white shadow-2xl select-none ring-1 ring-black/5 overflow-hidden">
+                                                            <div class="absolute inset-0">
+                                                                <img :src="floorPlans[selectedFloor]"
+                                                                    class="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                                                                    alt="Floor Plan">
+                                                                <template
+                                                                    x-for="room in roomsByFloor[selectedFloor] || []"
+                                                                    :key="room.id">
+                                                                    <div class="absolute border-2 flex items-center justify-center cursor-grab group transition-all hover:z-10 rounded-sm backdrop-blur-[2px]"
+                                                                        :class="{
+                                                                            'border-primary z-20 ring-2 ring-primary/50 shadow-lg': draggedRoom?.id === room.id, 
+                                                                            'border-green-500 bg-green-500/10': draggedRoom?.id !== room.id && room.status === 'available',
+                                                                            'border-gray-400 bg-gray-400/10': draggedRoom?.id !== room.id && room.status === 'occupied',
+                                                                            'border-primary/50 bg-primary/10': draggedRoom?.id !== room.id && !room.status
+                                                                        }"
+                                                                        :style="`left: ${room.position_x}%; top: ${room.position_y}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
+                                                                        @mousedown="startDrag(room, $event)">
+                                                                        <div
+                                                                            class="flex flex-col items-center pointer-events-none select-none">
+                                                                            <span
+                                                                                class="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm"
+                                                                                :class="{
+                                                                                    'bg-white text-primary': !room.status || room.status === 'available',
+                                                                                    'bg-gray-100 text-gray-500': room.status === 'occupied'
+                                                                                }" x-text="room.name"></span>
+                                                                            <span class="text-[8px] opacity-80 mt-0.5"
+                                                                                x-show="room.price"
+                                                                                :class="room.status === 'occupied' ? 'text-gray-400' : 'text-primary/70'"
+                                                                                x-text="'₩' + (room.price / 10000) + '만'"></span>
+                                                                        </div>
+                                                                        <div class="absolute bottom-0 right-0 w-4 h-4 bg-primary cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity resize-handle rounded-tl-sm"
+                                                                            @mousedown.stop="startResize(room, 'se', $event)">
+                                                                        </div>
+                                                                    </div>
+                                                                </template>
+                                                                <!-- Empty State: Floor plan exists but no rooms -->
+                                                                <template
+                                                                    x-if="(!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0)">
+                                                                    <div
+                                                                        class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                        <div
+                                                                            class="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg text-center">
+                                                                            <i
+                                                                                class="ri-inbox-line text-4xl text-gray-400 mb-2"></i>
+                                                                            <p
+                                                                                class="text-lg font-medium text-gray-900">
+                                                                                이
+                                                                                층에 등록된 방이 없습니다</p>
+                                                                            <p class="text-sm text-gray-500 mt-1">방을
+                                                                                추가하고 도면
+                                                                                위에 배치하세요.</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+                                                    </template>
+                                                    <template x-if="!floorPlans[selectedFloor]">
+                                                        <div class="text-center text-gray-500">
+                                                            <div
+                                                                class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                                <i class="ri-image-line text-4xl text-gray-400"></i>
+                                                            </div>
+                                                            <p class="text-lg font-medium text-gray-900">도면이 없습니다
+                                                            </p>
+                                                            <p class="text-sm mt-1">도면 이미지를 업로드하여 방 배치를 시작하세요.</p>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Room Form Modal -->
+                        <div x-show="showRoomFormModal" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
+                            <div
+                                class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+                                    @click="showRoomFormModal = false"></div>
+                                <div
+                                    class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-2xl shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                                    <div class="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
+                                        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4"
+                                            x-text="roomEditMode ? '방 수정' : '방 추가'"></h3>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">방
+                                                    이름/번호</label>
+                                                <input type="text" x-model="roomFormData.name"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                            </div>
+                                            <div class="mb-4">
+                                                <label class="block text-gray-700 text-sm font-bold mb-2">층</label>
+                                                <select x-model="roomFormData.floor"
+                                                    class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                                    <template x-for="floor in (currentBranch?.floors || ['1F'])"
+                                                        :key="floor">
+                                                        <option :value="floor" x-text="floor"></option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700">가격
+                                                        (월)</label>
+                                                    <input type="number" x-model="roomFormData.price"
+                                                        class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700">보증금</label>
+                                                    <input type="number" x-model="roomFormData.deposit"
+                                                        class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">면적
+                                                    (㎡)</label>
+                                                <input type="number" step="0.1" x-model="roomFormData.area"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">설명</label>
+                                                <textarea x-model="roomFormData.description" rows="3"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">방
+                                                    이미지</label>
+
+                                                <!-- Drag and Drop Zone -->
+                                                <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl transition-all duration-200 mb-3"
+                                                    :class="isDraggingRoomImage ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50'"
+                                                    @dragover.prevent="isDraggingRoomImage = true"
+                                                    @dragleave.prevent="isDraggingRoomImage = false"
+                                                    @drop.prevent="handleRoomImageDrop($event)">
+                                                    <div class="space-y-1 text-center">
+                                                        <i class="ri-image-add-line text-3xl text-gray-400"></i>
+                                                        <div class="flex text-sm text-gray-600">
+                                                            <label
+                                                                class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80">
+                                                                <span>이미지 업로드</span>
+                                                                <input type="file" class="sr-only" multiple
+                                                                    @change="handleRoomImageUpload($event)"
+                                                                    accept="image/*">
+                                                            </label>
+                                                            <p class="pl-1">또는 여기로 드래그</p>
+                                                        </div>
+                                                        <p class="text-xs text-gray-500">PNG, JPG (최대 5MB, 여러 장 가능)
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Existing Images -->
+                                                <template x-if="existingRoomImages.length > 0">
+                                                    <div class="mb-3">
+                                                        <p class="text-xs font-medium text-gray-700 mb-2">기존 이미지</p>
+                                                        <div class="grid grid-cols-3 gap-2">
+                                                            <template x-for="img in existingRoomImages" :key="img.id">
+                                                                <div class="relative group">
+                                                                    <img :src="img.url"
+                                                                        class="w-full h-20 object-cover rounded-lg">
+                                                                    <button type="button"
+                                                                        @click="deleteExistingRoomImage(img.id, currentRoom.id)"
+                                                                        class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <i class="ri-close-line text-xs"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <!-- New Images Preview -->
+                                                <template x-if="roomImages.length > 0">
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-700 mb-2">새 이미지</p>
+                                                        <div class="grid grid-cols-3 gap-2">
+                                                            <template x-for="(img, index) in roomImages" :key="index">
+                                                                <div class="relative group">
+                                                                    <img :src="img.preview"
+                                                                        class="w-full h-20 object-cover rounded-lg">
+                                                                    <button type="button"
+                                                                        @click="removeRoomImage(index)"
+                                                                        class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <i class="ri-close-line text-xs"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
+                                        <button type="button" @click="saveRoom()"
+                                            class="w-full px-4 py-2 text-base font-medium text-white bg-primary border border-transparent rounded-lg shadow-sm hover:bg-primary/90 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">저장</button>
+                                        <button type="button" @click="showRoomFormModal = false"
+                                            class="w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">취소</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Services Modal -->
+                        <div x-show="showServicesModal" class="fixed inset-0 z-50 overflow-hidden" x-cloak>
+                            <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"
+                                @click="closeServicesModal()"></div>
+                            <div class="fixed inset-0 z-10 overflow-y-auto">
+                                <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                                    <div
+                                        class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-4xl max-h-[90vh] flex flex-col">
+                                        <div
+                                            class="bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                            <h3 class="text-xl font-bold text-gray-900"
+                                                x-text="currentBranch?.name + ' - 서비스 관리'"></h3>
+                                            <button @click="closeServicesModal()"
                                                 class="text-gray-400 hover:text-gray-500"><i
                                                     class="ri-close-line text-2xl"></i></button>
                                         </div>
-                                    </div>
-
-                                    <!-- Body -->
-                                    <div class="flex-1 overflow-hidden flex flex-col bg-gray-50">
-                                        <!-- Floor Tabs -->
-                                        <div
-                                            class="bg-white px-6 py-3 border-b border-gray-200 flex items-center space-x-4 shadow-sm z-10">
-                                            <span class="text-sm font-medium text-gray-700">층 선택:</span>
-                                            <div class="flex space-x-2">
-                                                <template x-for="floor in (currentBranch?.floors || ['1F'])"
-                                                    :key="floor">
-                                                    <button @click="selectFloor(floor)"
-                                                        :class="{'bg-primary text-white shadow-md shadow-primary/30': selectedFloor === floor, 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50': selectedFloor !== floor}"
-                                                        class="py-2 px-4 text-sm font-medium rounded-lg transition-all"
-                                                        x-text="floor">
+                                        <div class="flex-1 overflow-y-auto p-6 bg-gray-50" x-show="!loadingData">
+                                            <!-- Common Services -->
+                                            <div class="mb-8">
+                                                <div class="flex justify-between items-center mb-4">
+                                                    <h4 class="text-lg font-bold text-gray-900">공용 서비스</h4>
+                                                    <button @click="openServiceForm('common')"
+                                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none">
+                                                        <i class="ri-add-line mr-1"></i>추가
                                                     </button>
-                                                </template>
-                                            </div>
-                                            <div class="flex-1"></div>
-                                            <button @click="openCreateRoomModal()"
-                                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none">
-                                                <i class="ri-add-line mr-1"></i>방 추가
-                                            </button>
-                                        </div>
-
-                                        <!-- List View -->
-                                        <div x-show="viewMode === 'list'" class="flex-1 overflow-y-auto p-6">
-                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                <template
-                                                    x-for="room in branchRooms.filter(r => r.floor === selectedFloor)"
-                                                    :key="room.id">
-                                                    <div
-                                                        class="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
-                                                        <div class="flex justify-between items-start">
-                                                            <div class="flex items-center">
-                                                                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 font-bold mr-3"
-                                                                    x-text="room.name.substring(0, 2)"></div>
-                                                                <div>
-                                                                    <h4 class="font-bold text-gray-900"
-                                                                        x-text="room.name"></h4>
-                                                                    <p class="text-xs text-gray-500"
-                                                                        x-text="room.description || '설명 없음'"></p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex space-x-1">
-                                                                <button @click="openEditRoomModal(room)"
-                                                                    class="p-1.5 text-gray-400 hover:text-primary rounded-md hover:bg-gray-50"><i
-                                                                        class="ri-edit-line"></i></button>
-                                                                <button @click="confirmDeleteRoom(room)"
-                                                                    class="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-50"><i
-                                                                        class="ri-delete-bin-line"></i></button>
-                                                            </div>
-                                                        </div>
-                                                        <div
-                                                            class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-                                                            <span class="text-sm font-bold text-primary"
-                                                                x-text="'₩' + (room.price || 0).toLocaleString()"></span>
-                                                            <span
-                                                                class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600"
-                                                                x-text="room.status || 'available'"></span>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                            <!-- Empty State for List View -->
-                                            <template x-if="branchRooms.filter(r => r.floor === selectedFloor).length === 0">
-                                                <div class="text-center py-12">
-                                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                        <i class="ri-inbox-line text-3xl text-gray-400"></i>
-                                                    </div>
-                                                    <p class="text-lg font-medium text-gray-900">이 층에 등록된 방이 없습니다</p>
-                                                    <p class="text-sm text-gray-500 mt-1">상단의 "방 추가" 버튼을 클릭하여 방을 등록하세요.</p>
                                                 </div>
-                                            </template>
-                                        </div>
-
-                                        <!-- Floor Plan View -->
-                                        <div x-show="viewMode === 'floorplan'"
-                                            class="flex-1 overflow-hidden flex flex-col relative">
-                                            <div
-                                                class="bg-white border-b border-gray-200 px-6 py-2 flex justify-between items-center z-10">
-                                                <div class="flex items-center space-x-4">
-                                                    <label
-                                                        class="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
-                                                        <i class="ri-upload-2-line mr-2"></i>도면 업로드
-                                                        <input type="file" class="hidden" accept="image/*"
-                                                            @change="uploadFloorPlan($event)">
-                                                    </label>
-                                                    <span class="text-xs text-gray-500" x-show="uploadingFloor">업로드
-                                                        중...</span>
-                                                </div>
-                                                <button @click="saveRoomPositions()"
-                                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none transition-colors">
-                                                    <i class="ri-save-line mr-1"></i>위치 저장
-                                                </button>
-                                            </div>
-
-                                            <div class="flex-1 overflow-auto bg-gray-100 relative p-8 flex items-center justify-center"
-                                                @mousemove="onDrag($event); onResize($event)"
-                                                @mouseup="endDrag($event); endResize()">
-                                                <template x-if="floorPlans[selectedFloor]">
-                                                    <div class="relative bg-white shadow-2xl select-none ring-1 ring-black/5"
-                                                        style="width: 800px; height: 600px;">
-                                                        <img :src="floorPlans[selectedFloor]"
-                                                            class="absolute inset-0 w-full h-full object-contain pointer-events-none"
-                                                            alt="Floor Plan">
-                                                        <template x-for="room in roomsByFloor[selectedFloor] || []"
-                                                            :key="room.id">
-                                                            <div class="absolute border-2 bg-primary/20 flex items-center justify-center cursor-grab group transition-colors hover:bg-primary/30 hover:z-10 rounded-sm backdrop-blur-sm"
-                                                                :class="{'border-primary z-20 ring-2 ring-primary/50': draggedRoom?.id === room.id, 'border-primary/50': draggedRoom?.id !== room.id}"
-                                                                :style="`left: ${room.position_x}%; top: ${room.position_y}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
-                                                                @mousedown="startDrag(room, $event)">
-                                                                <span
-                                                                    class="text-xs font-bold text-primary bg-white/90 px-1.5 py-0.5 rounded shadow-sm pointer-events-none select-none"
-                                                                    x-text="room.name"></span>
-                                                                <div class="absolute bottom-0 right-0 w-4 h-4 bg-primary cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity resize-handle rounded-tl-sm"
-                                                                    @mousedown.stop="startResize(room, 'se', $event)">
-                                                                </div>
-                                                            </div>
-                                                        </template>
-                                                        <!-- Empty State: Floor plan exists but no rooms -->
-                                                        <template x-if="(!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0)">
-                                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                                <div class="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg text-center">
-                                                                    <i class="ri-inbox-line text-4xl text-gray-400 mb-2"></i>
-                                                                    <p class="text-lg font-medium text-gray-900">이 층에 등록된 방이 없습니다</p>
-                                                                    <p class="text-sm text-gray-500 mt-1">방을 추가하고 도면 위에 배치하세요.</p>
-                                                                </div>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </template>
-                                                <template x-if="!floorPlans[selectedFloor]">
-                                                    <div class="text-center text-gray-500">
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    <template x-for="service in commonServices" :key="service.id">
                                                         <div
-                                                            class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                            <i class="ri-image-line text-4xl text-gray-400"></i>
+                                                            class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
+                                                            <div class="flex items-start justify-between">
+                                                                <div class="flex items-center">
+                                                                    <div
+                                                                        class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-primary text-xl mr-3">
+                                                                        <i :class="service.icon || 'ri-star-line'"></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h5 class="text-sm font-bold text-gray-900"
+                                                                            x-text="service.name"></h5>
+                                                                        <p class="text-xs text-gray-500"
+                                                                            x-text="service.description"></p>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="flex space-x-1">
+                                                                    <button @click="editService(service)"
+                                                                        class="text-gray-400 hover:text-primary p-1"><i
+                                                                            class="ri-edit-line"></i></button>
+                                                                    <button @click="deleteService(service)"
+                                                                        class="text-gray-400 hover:text-red-500 p-1"><i
+                                                                            class="ri-delete-bin-line"></i></button>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <p class="text-lg font-medium text-gray-900">도면이 없습니다</p>
-                                                        <p class="text-sm mt-1">도면 이미지를 업로드하여 방 배치를 시작하세요.</p>
-                                                    </div>
-                                                </template>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <!-- Specialized Services -->
+                                            <div>
+                                                <div class="flex justify-between items-center mb-4">
+                                                    <h4 class="text-lg font-bold text-gray-900">특화 서비스</h4>
+                                                    <button @click="openServiceForm('specialized')"
+                                                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-secondary hover:bg-secondary/90 focus:outline-none">
+                                                        <i class="ri-add-line mr-1"></i>추가
+                                                    </button>
+                                                </div>
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    <template x-for="service in specializedServices" :key="service.id">
+                                                        <div
+                                                            class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
+                                                            <div class="flex items-start justify-between">
+                                                                <div class="flex items-center">
+                                                                    <div
+                                                                        class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-secondary text-xl mr-3">
+                                                                        <i
+                                                                            :class="service.icon || 'ri-vip-crown-line'"></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h5 class="text-sm font-bold text-gray-900"
+                                                                            x-text="service.name"></h5>
+                                                                        <p class="text-xs text-gray-500"
+                                                                            x-text="service.description"></p>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="flex space-x-1">
+                                                                    <button @click="editService(service)"
+                                                                        class="text-gray-400 hover:text-primary p-1"><i
+                                                                            class="ri-edit-line"></i></button>
+                                                                    <button @click="deleteService(service)"
+                                                                        class="text-gray-400 hover:text-red-500 p-1"><i
+                                                                            class="ri-delete-bin-line"></i></button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Room Form Modal -->
-                    <div x-show="showRoomFormModal" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
-                        <div
-                            class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
-                                @click="showRoomFormModal = false"></div>
+                        <!-- Service Form Modal -->
+                        <div x-show="showServiceFormModal" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
                             <div
-                                class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-2xl shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                <div class="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
-                                    <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4"
-                                        x-text="roomEditMode ? '방 수정' : '방 추가'"></h3>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">방 이름/번호</label>
-                                            <input type="text" x-model="roomFormData.name"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                        </div>
-                                        <div class="mb-4">
-                                            <label class="block text-gray-700 text-sm font-bold mb-2">층</label>
-                                            <select x-model="roomFormData.floor"
-                                                class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                                <template x-for="floor in (currentBranch?.floors || ['1F'])"
-                                                    :key="floor">
-                                                    <option :value="floor" x-text="floor"></option>
-                                                </template>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">가격 (월)</label>
-                                            <input type="number" x-model="roomFormData.price"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">설명</label>
-                                            <textarea x-model="roomFormData.description" rows="3"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">방 이미지</label>
-                                            
-                                            <!-- Drag and Drop Zone -->
-                                            <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl transition-all duration-200 mb-3"
-                                                :class="isDraggingRoomImage ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50'"
-                                                @dragover.prevent="isDraggingRoomImage = true"
-                                                @dragleave.prevent="isDraggingRoomImage = false"
-                                                @drop.prevent="handleRoomImageDrop($event)">
-                                                <div class="space-y-1 text-center">
-                                                    <i class="ri-image-add-line text-3xl text-gray-400"></i>
-                                                    <div class="flex text-sm text-gray-600">
-                                                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80">
-                                                            <span>이미지 업로드</span>
-                                                            <input type="file" class="sr-only" multiple
-                                                                @change="handleRoomImageUpload($event)"
-                                                                accept="image/*">
-                                                        </label>
-                                                        <p class="pl-1">또는 여기로 드래그</p>
-                                                    </div>
-                                                    <p class="text-xs text-gray-500">PNG, JPG (최대 5MB, 여러 장 가능)</p>
-                                                </div>
-                                            </div>
-
-                                            <!-- Existing Images -->
-                                            <template x-if="existingRoomImages.length > 0">
-                                                <div class="mb-3">
-                                                    <p class="text-xs font-medium text-gray-700 mb-2">기존 이미지</p>
-                                                    <div class="grid grid-cols-3 gap-2">
-                                                        <template x-for="img in existingRoomImages" :key="img.id">
-                                                            <div class="relative group">
-                                                                <img :src="img.url" class="w-full h-20 object-cover rounded-lg">
-                                                                <button type="button" 
-                                                                    @click="deleteExistingRoomImage(img.id, currentRoom.id)"
-                                                                    class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <i class="ri-close-line text-xs"></i>
-                                                                </button>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </template>
-
-                                            <!-- New Images Preview -->
-                                            <template x-if="roomImages.length > 0">
-                                                <div>
-                                                    <p class="text-xs font-medium text-gray-700 mb-2">새 이미지</p>
-                                                    <div class="grid grid-cols-3 gap-2">
-                                                        <template x-for="(img, index) in roomImages" :key="index">
-                                                            <div class="relative group">
-                                                                <img :src="img.preview" class="w-full h-20 object-cover rounded-lg">
-                                                                <button type="button" 
-                                                                    @click="removeRoomImage(index)"
-                                                                    class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <i class="ri-close-line text-xs"></i>
-                                                                </button>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button type="button" @click="saveRoom()"
-                                        class="w-full px-4 py-2 text-base font-medium text-white bg-primary border border-transparent rounded-lg shadow-sm hover:bg-primary/90 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">저장</button>
-                                    <button type="button" @click="showRoomFormModal = false"
-                                        class="w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">취소</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Services Modal -->
-                    <div x-show="showServicesModal" class="fixed inset-0 z-50 overflow-hidden" x-cloak>
-                        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"
-                            @click="closeServicesModal()"></div>
-                        <div class="fixed inset-0 z-10 overflow-y-auto">
-                            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                                class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+                                    @click="showServiceFormModal = false"></div>
                                 <div
-                                    class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-4xl max-h-[90vh] flex flex-col">
-                                    <div
-                                        class="bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                        <h3 class="text-xl font-bold text-gray-900"
-                                            x-text="currentBranch?.name + ' - 서비스 관리'"></h3>
-                                        <button @click="closeServicesModal()"
-                                            class="text-gray-400 hover:text-gray-500"><i
-                                                class="ri-close-line text-2xl"></i></button>
+                                    class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-2xl shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                                    <div class="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
+                                        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4"
+                                            x-text="serviceEditMode ? '서비스 수정' : '서비스 추가'"></h3>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">서비스명</label>
+                                                <input type="text" x-model="serviceFormData.name"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">아이콘
+                                                    (Remixicon)</label>
+                                                <div class="flex mt-1 rounded-md shadow-sm">
+                                                    <input type="text" x-model="serviceFormData.icon"
+                                                        class="flex-1 block w-full px-3 py-2 border border-gray-300 rounded-none rounded-l-lg focus:ring-primary focus:border-primary sm:text-sm"
+                                                        placeholder="ri-wifi-line">
+                                                    <span
+                                                        class="inline-flex items-center px-3 text-gray-500 border border-l-0 border-gray-300 bg-gray-50 rounded-r-lg sm:text-sm">
+                                                        <i :class="serviceFormData.icon || 'ri-question-line'"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">설명</label>
+                                                <textarea x-model="serviceFormData.description" rows="3"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">유형</label>
+                                                <select x-model="serviceFormData.service_type"
+                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                                    <option value="common">공용 서비스</option>
+                                                    <option value="specialized">특화 서비스</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="flex-1 overflow-y-auto p-6 bg-gray-50">
-                                        <!-- Common Services -->
-                                        <div class="mb-8">
-                                            <div class="flex justify-between items-center mb-4">
-                                                <h4 class="text-lg font-bold text-gray-900">공용 서비스</h4>
-                                                <button @click="openServiceForm('common')"
-                                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none">
-                                                    <i class="ri-add-line mr-1"></i>추가
-                                                </button>
-                                            </div>
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                <template x-for="service in commonServices" :key="service.id">
-                                                    <div
-                                                        class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
-                                                        <div class="flex items-start justify-between">
-                                                            <div class="flex items-center">
-                                                                <div
-                                                                    class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-primary text-xl mr-3">
-                                                                    <i :class="service.icon || 'ri-star-line'"></i>
-                                                                </div>
-                                                                <div>
-                                                                    <h5 class="text-sm font-bold text-gray-900"
-                                                                        x-text="service.name"></h5>
-                                                                    <p class="text-xs text-gray-500"
-                                                                        x-text="service.description"></p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex space-x-1">
-                                                                <button @click="editService(service)"
-                                                                    class="text-gray-400 hover:text-primary p-1"><i
-                                                                        class="ri-edit-line"></i></button>
-                                                                <button @click="deleteService(service)"
-                                                                    class="text-gray-400 hover:text-red-500 p-1"><i
-                                                                        class="ri-delete-bin-line"></i></button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
-                                        <!-- Specialized Services -->
-                                        <div>
-                                            <div class="flex justify-between items-center mb-4">
-                                                <h4 class="text-lg font-bold text-gray-900">특화 서비스</h4>
-                                                <button @click="openServiceForm('specialized')"
-                                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-secondary hover:bg-secondary/90 focus:outline-none">
-                                                    <i class="ri-add-line mr-1"></i>추가
-                                                </button>
-                                            </div>
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                <template x-for="service in specializedServices" :key="service.id">
-                                                    <div
-                                                        class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
-                                                        <div class="flex items-start justify-between">
-                                                            <div class="flex items-center">
-                                                                <div
-                                                                    class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-secondary text-xl mr-3">
-                                                                    <i :class="service.icon || 'ri-vip-crown-line'"></i>
-                                                                </div>
-                                                                <div>
-                                                                    <h5 class="text-sm font-bold text-gray-900"
-                                                                        x-text="service.name"></h5>
-                                                                    <p class="text-xs text-gray-500"
-                                                                        x-text="service.description"></p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex space-x-1">
-                                                                <button @click="editService(service)"
-                                                                    class="text-gray-400 hover:text-primary p-1"><i
-                                                                        class="ri-edit-line"></i></button>
-                                                                <button @click="deleteService(service)"
-                                                                    class="text-gray-400 hover:text-red-500 p-1"><i
-                                                                        class="ri-delete-bin-line"></i></button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
+                                    <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
+                                        <button type="button" @click="saveService()"
+                                            class="w-full px-4 py-2 text-base font-medium text-white bg-primary border border-transparent rounded-lg shadow-sm hover:bg-primary/90 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">저장</button>
+                                        <button type="button" @click="showServiceFormModal = false"
+                                            class="w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">취소</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Service Form Modal -->
-                    <div x-show="showServiceFormModal" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
-                        <div
-                            class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
-                                @click="showServiceFormModal = false"></div>
-                            <div
-                                class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-2xl shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                <div class="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
-                                    <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4"
-                                        x-text="serviceEditMode ? '서비스 수정' : '서비스 추가'"></h3>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">서비스명</label>
-                                            <input type="text" x-model="serviceFormData.name"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">아이콘
-                                                (Remixicon)</label>
-                                            <div class="flex mt-1 rounded-md shadow-sm">
-                                                <input type="text" x-model="serviceFormData.icon"
-                                                    class="flex-1 block w-full px-3 py-2 border border-gray-300 rounded-none rounded-l-lg focus:ring-primary focus:border-primary sm:text-sm"
-                                                    placeholder="ri-wifi-line">
-                                                <span
-                                                    class="inline-flex items-center px-3 text-gray-500 border border-l-0 border-gray-300 bg-gray-50 rounded-r-lg sm:text-sm">
-                                                    <i :class="serviceFormData.icon || 'ri-question-line'"></i>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">설명</label>
-                                            <textarea x-model="serviceFormData.description" rows="3"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"></textarea>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700">유형</label>
-                                            <select x-model="serviceFormData.service_type"
-                                                class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                                <option value="common">공용 서비스</option>
-                                                <option value="specialized">특화 서비스</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button type="button" @click="saveService()"
-                                        class="w-full px-4 py-2 text-base font-medium text-white bg-primary border border-transparent rounded-lg shadow-sm hover:bg-primary/90 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">저장</button>
-                                    <button type="button" @click="showServiceFormModal = false"
-                                        class="w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">취소</button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
-
                 </div>
-            </div>
         </main>
     </div>
 </body>

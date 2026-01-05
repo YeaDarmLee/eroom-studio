@@ -38,7 +38,7 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) throw new Error('Invalid token');
                 const data = await response.json();
                 if (data.role !== 'admin') {
-                    alert('관리자 권한이 필요합니다.');
+                    window.showAlert?.('권한 부족', '관리자 권한이 필요합니다.', 'warning');
                     window.location.href = '/my/room';
                 }
                 this.user.name = data.name || '관리자';

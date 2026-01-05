@@ -23,6 +23,7 @@ document.addEventListener('alpine:init', () => {
         branchImages: [], // Array of {file: File, preview: string}
         existingBranchImages: [], // Array of {id: number, url: string}
         isDraggingBranchImage: false,
+        loadingData: false, // Global loading state for async actions
 
         // Room Management
         showRoomModal: false,
@@ -34,6 +35,8 @@ document.addEventListener('alpine:init', () => {
         roomFormData: {
             name: '',
             price: '',
+            deposit: '',
+            area: '',
             description: '',
             floor: '1F'
         },
@@ -158,13 +161,14 @@ document.addEventListener('alpine:init', () => {
                     this.branchImages = []
                     this.existingBranchImages = []
                     await this.loadBranches()
+                    window.showAlert?.('성공', '지점 정보가 저장되었습니다.', 'success');
                 } else {
                     const data = await response.json()
-                    alert(data.error || '지점 저장에 실패했습니다.')
+                    window.showAlert?.('저장 실패', data.error || '지점 저장에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error saving branch:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -188,13 +192,13 @@ document.addEventListener('alpine:init', () => {
 
             // Validate file size (5MB)
             if (file.size > 5 * 1024 * 1024) {
-                alert('파일 크기는 5MB를 초과할 수 없습니다.')
+                window.showAlert?.('파일 크기 초과', '파일 크기는 5MB를 초과할 수 없습니다.', 'warning')
                 return
             }
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
-                alert('이미지 파일만 업로드 가능합니다.')
+                window.showAlert?.('형식 오류', '이미지 파일만 업로드 가능합니다.', 'warning')
                 return
             }
 
@@ -203,6 +207,7 @@ document.addEventListener('alpine:init', () => {
             // Create preview
             const reader = new FileReader()
             reader.onload = (e) => {
+                this.imagePreview = e.target.result
             },
                 reader.readAsDataURL(file)
         },
@@ -224,11 +229,11 @@ document.addEventListener('alpine:init', () => {
         processBranchImageFiles(files) {
             files.forEach(file => {
                 if (!file.type.startsWith('image/')) {
-                    alert('이미지 파일만 업로드 가능합니다.')
+                    window.showAlert?.('형식 오류', '이미지 파일만 업로드 가능합니다.', 'warning')
                     return
                 }
                 if (file.size > 5 * 1024 * 1024) {
-                    alert('파일 크기는 5MB를 초과할 수 없습니다.')
+                    window.showAlert?.('파일 크기 초과', '파일 크기는 5MB를 초과할 수 없습니다.', 'warning')
                     return
                 }
 
@@ -259,12 +264,13 @@ document.addEventListener('alpine:init', () => {
 
                 if (response.ok) {
                     this.existingBranchImages = this.existingBranchImages.filter(img => img.id !== imageId)
+                    window.showAlert?.('성공', '이미지가 삭제되었습니다.', 'success');
                 } else {
-                    alert('이미지 삭제에 실패했습니다.')
+                    window.showAlert?.('삭제 실패', '이미지 삭제에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error deleting image:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -308,11 +314,11 @@ document.addEventListener('alpine:init', () => {
         processRoomImageFiles(files) {
             files.forEach(file => {
                 if (!file.type.startsWith('image/')) {
-                    alert('이미지 파일만 업로드 가능합니다.')
+                    window.showAlert?.('형식 오류', '이미지 파일만 업로드 가능합니다.', 'warning')
                     return
                 }
                 if (file.size > 5 * 1024 * 1024) {
-                    alert('파일 크기는 5MB를 초과할 수 없습니다.')
+                    window.showAlert?.('파일 크기 초과', '파일 크기는 5MB를 초과할 수 없습니다.', 'warning')
                     return
                 }
 
@@ -343,12 +349,13 @@ document.addEventListener('alpine:init', () => {
 
                 if (response.ok) {
                     this.existingRoomImages = this.existingRoomImages.filter(img => img.id !== imageId)
+                    window.showAlert?.('성공', '이미지가 삭제되었습니다.', 'success');
                 } else {
-                    alert('이미지 삭제에 실패했습니다.')
+                    window.showAlert?.('삭제 실패', '이미지 삭제에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error deleting image:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -397,13 +404,14 @@ document.addEventListener('alpine:init', () => {
                 if (response.ok) {
                     this.showDeleteConfirm = false
                     await this.loadBranches()
+                    window.showAlert?.('성공', '지점이 삭제되었습니다.', 'success');
                 } else {
                     const data = await response.json()
-                    alert(data.error || '지점 삭제에 실패했습니다.')
+                    window.showAlert?.('삭제 실패', data.error || '지점 삭제에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error deleting branch:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -433,14 +441,14 @@ document.addEventListener('alpine:init', () => {
                         this.formData = { ...updatedBranch }
                     }
                     this.newFloorInput = '' // Clear input
-                    // alert('층이 추가되었습니다.') // Optional: remove alert for smoother UX
+                    window.showAlert?.('성공', '층이 추가되었습니다.', 'success');
                 } else {
                     const data = await response.json()
-                    alert(data.error || '층 추가에 실패했습니다.')
+                    window.showAlert?.('추가 실패', data.error || '층 추가에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error adding floor:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -461,37 +469,45 @@ document.addEventListener('alpine:init', () => {
                         this.currentBranch = updatedBranch
                         this.formData = { ...updatedBranch }
                     }
-                    alert('층이 삭제되었습니다.')
+                    window.showAlert?.('성공', '층이 삭제되었습니다.', 'success');
                 } else {
                     const data = await response.json()
-                    alert(data.error || '층 삭제에 실패했습니다.')
+                    window.showAlert?.('삭제 실패', data.error || '층 삭제에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error deleting floor:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
         // ==================== Room Management Methods ====================
 
         async loadBranchRooms(branch) {
-            const token = localStorage.getItem('token')
-            this.currentBranch = branch
+            // OPEN IMMEDIATELY
+            this.showModal = false;
+            this.showServicesModal = false;
+            this.showRoomModal = true;
+            this.loadingData = true;
+            this.currentBranch = branch;
+            this.branchRooms = [];
+
+            const token = localStorage.getItem('token');
             try {
                 const response = await fetch(`/admin/api/branches/${branch.id}`, {
                     headers: { Authorization: 'Bearer ' + token }
-                })
+                });
                 if (response.ok) {
-                    const data = await response.json()
-                    this.branchRooms = data.rooms || []
-                    this.roomsByFloor = data.rooms_by_floor || {}
-                    this.floorPlans = data.floor_plans || {}
-                    this.currentBranch.floors = data.floors || [] // Ensure floors are up to date
-                    this.selectedFloor = this.currentBranch.floors.length > 0 ? this.currentBranch.floors[0] : '1F'
-                    this.showRoomModal = true
+                    const data = await response.json();
+                    this.branchRooms = data.rooms || [];
+                    this.roomsByFloor = data.rooms_by_floor || {};
+                    this.floorPlans = data.floor_plans || {};
+                    this.currentBranch = { ...branch, floors: data.floors || [] };
+                    this.selectedFloor = (data.floors && data.floors.length > 0) ? data.floors[0] : '1F';
                 }
             } catch (error) {
-                console.error('Error loading rooms:', error)
+                console.error('Error loading rooms:', error);
+            } finally {
+                this.loadingData = false;
             }
         },
 
@@ -508,6 +524,8 @@ document.addEventListener('alpine:init', () => {
             this.roomFormData = {
                 name: '',
                 price: '',
+                deposit: '',
+                area: '',
                 description: '',
                 floor: this.selectedFloor || '1F'
             }
@@ -561,13 +579,14 @@ document.addEventListener('alpine:init', () => {
                     this.roomImages = []
                     this.existingRoomImages = []
                     await this.loadBranchRooms(this.currentBranch)
+                    window.showAlert?.('성공', '방 정보가 저장되었습니다.', 'success');
                 } else {
                     const data = await response.json()
-                    alert(data.error || '방 저장에 실패했습니다.')
+                    window.showAlert?.('저장 실패', data.error || '방 저장에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error saving room:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -582,13 +601,14 @@ document.addEventListener('alpine:init', () => {
                 if (response.ok) {
                     this.showRoomDeleteConfirm = false
                     await this.loadBranchRooms(this.currentBranch)
+                    window.showAlert?.('성공', '방이 삭제되었습니다.', 'success');
                 } else {
                     const data = await response.json()
-                    alert(data.error || '방 삭제에 실패했습니다.')
+                    window.showAlert?.('삭제 실패', data.error || '방 삭제에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error deleting room:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
@@ -629,13 +649,13 @@ document.addEventListener('alpine:init', () => {
                 if (response.ok) {
                     const data = await response.json()
                     this.floorPlans[this.selectedFloor] = data.image_url
-                    alert('도면이 업로드되었습니다.')
+                    window.showAlert?.('성공', '도면이 업로드되었습니다.', 'success');
                 } else {
-                    alert('도면 업로드에 실패했습니다.')
+                    window.showAlert?.('업로드 실패', '도면 업로드에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error uploading floor plan:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             } finally {
                 this.uploadingFloor = null
                 event.target.value = ''
@@ -646,21 +666,53 @@ document.addEventListener('alpine:init', () => {
             if (event.target.classList.contains('resize-handle')) return
             this.isDragging = true
             this.draggedRoom = room
+
+            // Get the container (floor plan div) to calculate relative offsets
+            const container = event.currentTarget.parentElement.getBoundingClientRect()
             const rect = event.currentTarget.getBoundingClientRect()
-            this.dragStartX = event.clientX - rect.left
-            this.dragStartY = event.clientY - rect.top
+
+            // Calculate where inside the room the user clicked (in pixels)
+            const offsetX = event.clientX - rect.left
+            const offsetY = event.clientY - rect.top
+
+            // Convert room's current % position to absolute pixels in the container
+            const currentRoomX = (room.position_x / 100) * container.width
+            const currentRoomY = (room.position_y / 100) * container.height
+
+            // dragStartX/Y should be the difference between cursor and room's top-left
+            this.dragStartX = offsetX
+            this.dragStartY = offsetY
+
             event.currentTarget.style.cursor = 'grabbing'
         },
 
         onDrag(event) {
             if (!this.isDragging || !this.draggedRoom) return
+            // The event listener is on the container (800x600 div)
             const container = event.currentTarget.getBoundingClientRect()
-            const x = event.clientX - container.left - this.dragStartX
-            const y = event.clientY - container.top - this.dragStartY
-            const xPercent = (x / container.width) * 100
-            const yPercent = (y / container.height) * 100
-            this.draggedRoom.position_x = Math.max(0, Math.min(95, xPercent))
-            this.draggedRoom.position_y = Math.max(0, Math.min(95, yPercent))
+
+            // Current cursor position relative to container
+            const cursorX = event.clientX - container.left
+            const cursorY = event.clientY - container.top
+
+            // Desired room top-left in pixels
+            const newX = cursorX - this.dragStartX
+            const newY = cursorY - this.dragStartY
+
+            // Convert to percentage
+            let xPercent = (newX / container.width) * 100
+            let yPercent = (newY / container.height) * 100
+
+            // Boundary checks (0 to 100 - room size)
+            const roomWidth = this.draggedRoom.width || 10
+            const roomHeight = this.draggedRoom.height || 10
+
+            xPercent = Math.max(0, Math.min(100 - roomWidth, xPercent))
+            yPercent = Math.max(0, Math.min(100 - roomHeight, yPercent))
+
+            // Update state
+            this.draggedRoom.position_x = parseFloat(xPercent.toFixed(2))
+            this.draggedRoom.position_y = parseFloat(yPercent.toFixed(2))
         },
 
         endDrag(event) {
@@ -728,34 +780,43 @@ document.addEventListener('alpine:init', () => {
                 )
 
                 if (response.ok) {
-                    alert('방 위치가 저장되었습니다.')
+                    window.showAlert?.('성공', '방 위치가 저장되었습니다.', 'success');
                 } else {
-                    alert('저장에 실패했습니다.')
+                    window.showAlert?.('저장 실패', '저장에 실패했습니다.', 'error')
                 }
             } catch (error) {
                 console.error('Error saving positions:', error)
-                alert('오류가 발생했습니다.')
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error')
             }
         },
 
         // ==================== Services Management Methods ====================
 
         async loadBranchServices(branch) {
-            const token = localStorage.getItem('token')
-            this.currentBranch = branch
+            // OPEN IMMEDIATELY
+            this.showModal = false;
+            this.showRoomModal = false;
+            this.showServicesModal = true;
+            this.loadingData = true;
+            this.currentBranch = branch;
+            this.commonServices = [];
+            this.specializedServices = [];
 
+            const token = localStorage.getItem('token');
             try {
                 const response = await fetch(`/admin/api/branches/${branch.id}`, {
                     headers: { Authorization: 'Bearer ' + token }
-                })
+                });
                 if (response.ok) {
-                    const data = await response.json()
-                    this.commonServices = data.common_services || []
-                    this.specializedServices = data.specialized_services || []
-                    this.showServicesModal = true
+                    const data = await response.json();
+                    this.commonServices = data.common_services || [];
+                    this.specializedServices = data.specialized_services || [];
+                    this.currentBranch = { ...branch, floors: data.floors || [] };
                 }
             } catch (error) {
-                console.error('Error loading services:', error)
+                console.error('Error loading services:', error);
+            } finally {
+                this.loadingData = false;
             }
         },
 

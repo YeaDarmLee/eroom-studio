@@ -1,38 +1,61 @@
-// app/static/js/admin/dashboard.js
-
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardTab', () => ({
         stats: {
-            totalUsers: 120,
-            activeContracts: 45,
-            pendingRequests: 3,
-            monthlyRevenue: 12500000
+            totalUsers: 0,
+            activeContracts: 0,
+            pendingRequests: 0,
+            monthlyRevenue: 0
         },
+        roomStatusData: [],
         charts: {},
+        loading: false,
 
         init() {
-            this.$nextTick(() => {
-                this.initCharts();
-            });
+            this.loadStats();
 
             // Re-render charts when tab becomes active
-            this.$watch('$parent.activeTab', (value) => {
-                if (value === 'dashboard') {
-                    this.$nextTick(() => {
-                        this.resizeCharts();
-                    });
-                }
-            });
+            if (this.$parent) {
+                this.$watch('$parent.activeTab', (value) => {
+                    if (value === 'dashboard') {
+                        this.$nextTick(() => {
+                            this.resizeCharts();
+                        });
+                    }
+                });
+            }
 
             window.addEventListener('resize', () => {
                 this.resizeCharts();
             });
         },
 
+        async loadStats() {
+            this.loading = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch('/admin/api/stats', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.stats = data.stats;
+                    this.roomStatusData = data.roomStatus;
+                    this.$nextTick(() => {
+                        this.initCharts();
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
         initCharts() {
-            // Revenue Chart
+            // Revenue Chart (Example with empty/zero data if no history yet)
             const revenueEl = document.getElementById('revenueChart');
             if (revenueEl) {
+                if (this.charts.revenue) this.charts.revenue.dispose();
                 this.charts.revenue = echarts.init(revenueEl);
                 const revenueOption = {
                     animation: true,
@@ -40,7 +63,7 @@ document.addEventListener('alpine:init', () => {
                     tooltip: { trigger: 'axis' },
                     xAxis: {
                         type: 'category',
-                        data: ['7월', '8월', '9월', '10월', '11월', '12월', '1월'],
+                        data: ['현재'],
                         axisLine: { show: false },
                         axisTick: { show: false }
                     },
@@ -51,10 +74,10 @@ document.addEventListener('alpine:init', () => {
                         splitLine: { lineStyle: { color: '#f3f4f6' } }
                     },
                     series: [{
-                        data: [38.5, 41.2, 39.8, 43.1, 44.6, 42.3, 45.2],
+                        data: [this.stats.monthlyRevenue / 1000000], // Display in millions
                         type: 'line',
                         smooth: true,
-                        symbol: 'none',
+                        symbol: 'circle',
                         lineStyle: { color: '#3b82f6', width: 3 },
                         areaStyle: {
                             color: {
@@ -74,7 +97,14 @@ document.addEventListener('alpine:init', () => {
             // Room Status Chart
             const roomStatusEl = document.getElementById('roomStatusChart');
             if (roomStatusEl) {
+                if (this.charts.roomStatus) this.charts.roomStatus.dispose();
                 this.charts.roomStatus = echarts.init(roomStatusEl);
+
+                const data = this.roomStatusData.length > 0 ? this.roomStatusData : [
+                    { value: 0, name: '사용 중', itemStyle: { color: '#3b82f6' } },
+                    { value: 0, name: '빈 방', itemStyle: { color: '#8b5cf6' } }
+                ];
+
                 const roomStatusOption = {
                     animation: true,
                     tooltip: { trigger: 'item' },
@@ -82,12 +112,12 @@ document.addEventListener('alpine:init', () => {
                         type: 'pie',
                         radius: ['40%', '70%'],
                         center: ['50%', '50%'],
-                        data: [
-                            { value: 89, name: '사용 중', itemStyle: { color: '#3b82f6' } },
-                            { value: 35, name: '빈 방', itemStyle: { color: '#8b5cf6' } }
-                        ],
+                        data: data.map(d => ({
+                            ...d,
+                            itemStyle: { color: d.name === '사용 중' ? '#3b82f6' : '#8b5cf6' }
+                        })),
                         itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
-                        label: { show: false }
+                        label: { show: true, formatter: '{b}: {c}' }
                     }]
                 };
                 this.charts.roomStatus.setOption(roomStatusOption);

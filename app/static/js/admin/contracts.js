@@ -6,6 +6,11 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         filterStatus: 'all',
 
+        // Detailed Modal state
+        detailModalOpen: false,
+        selectedContract: null,
+        submittingUpdate: false,
+
         init() {
             this.loadContracts();
         },
@@ -32,8 +37,14 @@ document.addEventListener('alpine:init', () => {
             return this.contracts.filter(c => c.status === this.filterStatus);
         },
 
+        openDetailModal(contract) {
+            this.selectedContract = contract;
+            this.detailModalOpen = true;
+        },
+
         async updateStatus(id, newStatus) {
-            if (!confirm('상태를 변경하시겠습니까?')) return;
+            // If called from modal, we use submittingUpdate for loading state
+            if (this.detailModalOpen) this.submittingUpdate = true;
 
             const token = localStorage.getItem('token');
             try {
@@ -48,22 +59,31 @@ document.addEventListener('alpine:init', () => {
 
                 if (response.ok) {
                     await this.loadContracts();
-                    alert('상태가 변경되었습니다.');
+                    if (this.detailModalOpen) {
+                        this.detailModalOpen = false;
+                        window.showAlert?.('success', '계약 상태가 성공적으로 업데이트되었습니다.');
+                    }
                 } else {
-                    alert('상태 변경 실패');
+                    window.showAlert?.('업데이트 실패', '계약 상태 변경에 실패했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('Error updating status:', error);
-                alert('오류가 발생했습니다.');
+                window.showAlert?.('오류', '오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+            } finally {
+                this.submittingUpdate = false;
             }
+        },
+
+        formatPrice(price) {
+            return new Intl.NumberFormat('ko-KR').format(price) + '원';
         },
 
         getStatusBadgeClass(status) {
             const classes = {
-                'active': 'bg-green-100 text-green-800',
-                'requested': 'bg-yellow-100 text-yellow-800',
-                'terminated': 'bg-gray-100 text-gray-800',
-                'cancelled': 'bg-red-100 text-red-800'
+                'active': 'bg-green-100 text-green-800 border-green-200',
+                'requested': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                'terminated': 'bg-gray-100 text-gray-800 border-gray-200',
+                'cancelled': 'bg-red-100 text-red-800 border-red-200'
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
         },

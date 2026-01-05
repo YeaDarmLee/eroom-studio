@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, redirect
 from app.services.auth_service import AuthService
 from functools import wraps
 import jwt
+import os
 from flask import current_app
 from app.models.user import User
 from app.extensions import db
@@ -212,3 +213,89 @@ def update_onboarding(current_user):
         return jsonify({'message': 'Onboarding updated'})
     
     return jsonify({'message': 'Invalid type'}), 400
+@auth_bp.route('/kakao/login', methods=['GET'])
+def kakao_login():
+    """Redirect to Kakao Login Page"""
+    client_id = os.environ.get('KAKAO_CLIENT_ID')
+    redirect_uri = os.environ.get('KAKAO_REDIRECT_URI', 'http://localhost:5000/api/auth/kakao/callback')
+    
+    if not client_id:
+        return jsonify({'message': 'Kakao Client ID not configured'}), 500
+        
+    kakao_auth_url = f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code"
+    return jsonify({'url': kakao_auth_url})
+
+@auth_bp.route('/kakao/callback', methods=['GET'])
+def kakao_callback():
+    """Handle Kakao OAuth Callback"""
+    code = request.args.get('code')
+    
+    if not code:
+        return jsonify({'message': 'Authorization code is missing'}), 400
+        
+    client_id = os.environ.get('KAKAO_CLIENT_ID')
+    redirect_uri = os.environ.get('KAKAO_REDIRECT_URI', 'http://localhost:5000/api/auth/kakao/callback')
+    
+    if not client_id:
+        return jsonify({'message': 'Kakao Client ID not configured'}), 500
+    
+    # 1. Get Access Token
+    token_url = "https://kauth.kakao.com/oauth/token"
+    token_data = {
+        'grant_type': 'authorization_code',
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'code': code
+    }
+    
+    try:
+        import requests
+        token_response = requests.post(token_url, data=token_data)
+        token_json = token_response.json()
+        
+        if 'access_token' not in token_json:
+            return jsonify({'message': 'Failed to get access token from Kakao', 'error': token_json}), 400
+            
+        access_token = token_json['access_token']
+        
+        # 2. Get User Info
+        user_url = "https://kapi.kakao.com/v2/user/me"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        user_response = requests.get(user_url, headers=headers)
+        user_info = user_response.json()
+        
+        kakao_id = str(user_info.get('id'))
+        properties = user_info.get('properties', {})
+        kakao_account = user_info.get('kakao_account', {})
+        
+        nickname = properties.get('nickname', f'User_{kakao_id}')
+        email = kakao_account.get('email', f'{kakao_id}@kakao.placeholder')
+        
+        # 3. Create or Get User
+        user = User.query.filter_by(kakao_id=kakao_id).first()
+        
+        if not user:
+            # Check if email exists (conflict resolution or merge?)
+            # For now, if email exists but no kakao_id, we just link it if we trust the email?
+            # Or just create a new user unique to Kakao
+             user = User(
+                kakao_id=kakao_id,
+                name=nickname,
+                email=email,
+                role='user',
+                onboarding_status='new_user_done' # Assumption
+            )
+             db.session.add(user)
+             db.session.commit()
+        
+        # 4. Generate App Token
+        app_token = AuthService.generate_token(user.id)
+        
+        # Redirect to frontend with token
+        # Since this is a redirect callback, we can't return JSON to the browser directly if we want to set local storage.
+        # Common pattern: Redirect to a frontend page with the token in URL fragment or query param
+        frontend_redirect_url = f"/login?token={app_token}"
+        return redirect(frontend_redirect_url)
+        
+    except Exception as e:
+        return jsonify({'message': 'Kakao Login Failed', 'error': str(e)}), 500

@@ -26,10 +26,13 @@ def room_detail(room_id):
 def login():
     return render_template('user/login.html')
 
+@main_bp.route('/register')
+def register():
+    return render_template('user/register.html')
+
 @main_bp.route('/my/room')
 def dashboard():
-    return render_template('user/dashboard.html', current_user={'name': 'Guest'}, contract=None, requests=[]) 
-
+    return render_template('user/dashboard.html')
 @main_bp.route('/onboarding')
 def onboarding():
     return render_template('user/onboarding.html')

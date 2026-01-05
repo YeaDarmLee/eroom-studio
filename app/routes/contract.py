@@ -3,7 +3,7 @@ from app.models.contract import Contract
 from app.models.branch import Room
 from app.extensions import db
 from app.routes.auth import token_required
-from datetime import datetime
+import datetime
 
 contract_bp = Blueprint('contract', __name__, url_prefix='/api/contracts')
 
@@ -18,7 +18,7 @@ def create_contract(current_user):
     room = Room.query.get_or_404(room_id)
     
     try:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
     except ValueError:
         return jsonify({'message': 'Invalid date format'}), 400
         
@@ -62,8 +62,12 @@ def get_my_contracts(current_user):
     for c in contracts:
         result.append({
             'id': c.id,
-            'room_name': c.room.name,
-            'branch_name': c.room.branch.name,
+            'room': {
+                'name': c.room.name,
+                'branch_name': c.room.branch.name,
+                'price': c.room.price,
+                'deposit': c.room.deposit
+            },
             'start_date': c.start_date.isoformat(),
             'end_date': c.end_date.isoformat(),
             'status': c.status
