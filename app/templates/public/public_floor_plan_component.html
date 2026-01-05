@@ -18,11 +18,15 @@
     .public-floor-plan-wrapper {
         position: relative;
         width: 100%;
+        max-width: 860px;
+        /* Limit max width to fit better on screen */
+        margin: 0 auto;
+        /* Center the floor plan */
         aspect-ratio: 4 / 3;
         overflow: hidden;
         border-radius: 0.75rem;
         background-color: #f8fafc;
-        box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     .public-floor-plan-container.no-image {
@@ -232,7 +236,7 @@
         window.location.href = `/rooms/${roomId}`;
     }
 }">
-    <h2 class="text-2xl font-bold mb-6">연습실 배치도</h2>
+    <h2 class="text-2xl font-bold mb-4">연습실 배치도</h2>
 
     <!-- Check if any rooms with positions exist -->
     <template x-if="Object.keys(roomsByFloor).length === 0">
@@ -248,7 +252,7 @@
         <div class="space-y-6">
             <!-- Status Information (Moved to Top) -->
             <div
-                class="bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center justify-between gap-4">
+                class="bg-white rounded-xl border border-gray-100 p-3 flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-6">
                     <div class="flex items-center gap-2">
                         <div class="w-4 h-4 rounded bg-[#27AE60]"></div>
@@ -260,8 +264,8 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-6 text-sm">
-                    <div class="bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-6">
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-4">
                         <div class="flex items-center gap-2">
                             <span class="text-gray-500 font-medium"><span x-text="selectedFloor"></span> 정보:</span>
                         </div>
@@ -284,9 +288,9 @@
                 </div>
             </div>
 
-            <div class="relative bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+            <div class="relative bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
                 <!-- Floor Tabs -->
-                <div class="flex flex-wrap gap-2 mb-6">
+                <div class="flex flex-wrap gap-2 mb-4">
                     <template x-for="(rooms, floor) in roomsByFloor" :key="floor">
                         <button @click="selectFloor(floor)" :class="selectedFloor === floor ? 'active' : ''"
                             class="public-floor-tab" x-text="floor">

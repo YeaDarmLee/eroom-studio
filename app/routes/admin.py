@@ -143,14 +143,31 @@ def get_requests(current_user):
 @admin_bp.route('/api/contracts/<int:id>/status', methods=['PUT'])
 @admin_required
 def update_contract_status(current_user, id):
-    """Update contract status"""
+    """Update contract status and sync room status"""
     contract = Contract.query.get_or_404(id)
     data = request.get_json()
     
     if 'status' in data:
-        contract.status = data['status']
+        new_status = data['status']
+        contract.status = new_status
+        
+        # Sync room status with contract status
+        if contract.room:
+            if new_status == 'active':
+                contract.room.status = 'occupied'
+            elif new_status in ['terminated', 'cancelled']:
+                # Set back to available when contract ends or is cancelled
+                contract.room.status = 'available'
+            elif new_status == 'approved':
+                # Optional: mark as reserved when approved but not yet active
+                contract.room.status = 'reserved'
+            elif new_status == 'requested' and contract.room.status == 'available':
+                # Optional: mark as reserved when requested? 
+                # Keeping it available for now unless we want to lock it immediately
+                pass
+                
         db.session.commit()
-        return jsonify({'message': 'Contract status updated'})
+        return jsonify({'message': 'Contract status and room status updated'})
     return jsonify({'error': 'Status is required'}), 400
 
 @admin_bp.route('/api/requests/<int:id>/status', methods=['PUT'])
