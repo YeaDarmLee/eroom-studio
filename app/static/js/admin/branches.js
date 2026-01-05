@@ -24,6 +24,11 @@ function registerBranchesPage() {
                 address: '',
                 facilities: '',
                 description: '',
+                operating_hours: '',
+                contact: '',
+                traffic_info: '',
+                parking_info: '',
+                map_info: '',
                 image_url: ''
             },
             newFloorInput: '', // For inline floor addition
@@ -58,12 +63,15 @@ function registerBranchesPage() {
             floorPlans: {},
             roomsByFloor: {},
             viewMode: 'list',
+            showFloorSettings: false,
             isDragging: false,
-            draggedRoom: null,
+            isResizing: false,
+            draggedRoomId: null,
             dragStartX: 0,
             dragStartY: 0,
-            isResizing: false,
             resizeHandle: null,
+            draggedRoom: null,
+            animationFrame: null,
             uploadingFloor: null,
 
             // Services Management
@@ -106,6 +114,11 @@ function registerBranchesPage() {
                     address: '',
                     facilities: '',
                     description: '',
+                    operating_hours: '',
+                    contact: '',
+                    traffic_info: '',
+                    parking_info: '',
+                    map_info: '',
                     image_url: ''
                 }
                 this.imageFile = null
@@ -139,6 +152,11 @@ function registerBranchesPage() {
                     formData.append('address', this.formData.address || '')
                     formData.append('facilities', this.formData.facilities || '')
                     formData.append('description', this.formData.description || '')
+                    formData.append('operating_hours', this.formData.operating_hours || '')
+                    formData.append('contact', this.formData.contact || '')
+                    formData.append('traffic_info', this.formData.traffic_info || '')
+                    formData.append('parking_info', this.formData.parking_info || '')
+                    formData.append('map_info', this.formData.map_info || '')
 
                     if (this.imageFile) {
                         formData.append('image', this.imageFile)
@@ -524,6 +542,7 @@ function registerBranchesPage() {
                 this.showModal = false;
                 this.showServicesModal = false;
                 this.showRoomModal = true;
+
                 this.loadingData = true;
                 this.currentBranch = branch;
                 this.branchRooms = [];
@@ -550,6 +569,7 @@ function registerBranchesPage() {
 
             closeRoomModal() {
                 this.showRoomModal = false
+                this.showFloorSettings = false
                 this.branchRooms = []
                 this.currentBranch = null
                 this.viewMode = 'list'
@@ -703,60 +723,60 @@ function registerBranchesPage() {
                 if (event.target.classList.contains('resize-handle')) return
                 this.isDragging = true
                 this.draggedRoom = room
+                this.draggedRoomId = room.id
 
-                // Get the container (floor plan div) to calculate relative offsets
                 const container = event.currentTarget.parentElement.getBoundingClientRect()
                 const rect = event.currentTarget.getBoundingClientRect()
 
-                // Calculate where inside the room the user clicked (in pixels)
-                const offsetX = event.clientX - rect.left
-                const offsetY = event.clientY - rect.top
-
-                // Convert room's current % position to absolute pixels in the container
-                const currentRoomX = (room.position_x / 100) * container.width
-                const currentRoomY = (room.position_y / 100) * container.height
-
-                // dragStartX/Y should be the difference between cursor and room's top-left
-                this.dragStartX = offsetX
-                this.dragStartY = offsetY
+                this.dragStartX = event.clientX - rect.left
+                this.dragStartY = event.clientY - rect.top
 
                 event.currentTarget.style.cursor = 'grabbing'
             },
 
             onDrag(event) {
                 if (!this.isDragging || !this.draggedRoom) return
-                // The event listener is on the container (800x600 div)
-                const container = event.currentTarget.getBoundingClientRect()
 
-                // Current cursor position relative to container
-                const cursorX = event.clientX - container.left
-                const cursorY = event.clientY - container.top
+                // Capture necessary event data before rAF (event object becomes invalid)
+                const clientX = event.clientX
+                const clientY = event.clientY
+                const containerRect = event.currentTarget.getBoundingClientRect()
 
-                // Desired room top-left in pixels
-                const newX = cursorX - this.dragStartX
-                const newY = cursorY - this.dragStartY
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame)
+                }
 
-                // Convert to percentage
-                let xPercent = (newX / container.width) * 100
-                let yPercent = (newY / container.height) * 100
+                this.animationFrame = requestAnimationFrame(() => {
+                    const cursorX = clientX - containerRect.left
+                    const cursorY = clientY - containerRect.top
 
-                // Boundary checks (0 to 100 - room size)
-                const roomWidth = this.draggedRoom.width || 10
-                const roomHeight = this.draggedRoom.height || 10
+                    const newX = cursorX - this.dragStartX
+                    const newY = cursorY - this.dragStartY
 
-                xPercent = Math.max(0, Math.min(100 - roomWidth, xPercent))
-                yPercent = Math.max(0, Math.min(100 - roomHeight, yPercent))
+                    let xPercent = (newX / containerRect.width) * 100
+                    let yPercent = (newY / containerRect.height) * 100
 
-                // Update state
-                this.draggedRoom.position_x = parseFloat(xPercent.toFixed(2))
-                this.draggedRoom.position_y = parseFloat(yPercent.toFixed(2))
+                    const roomWidth = this.draggedRoom.width || 10
+                    const roomHeight = this.draggedRoom.height || 10
+
+                    xPercent = Math.max(0, Math.min(100 - roomWidth, xPercent))
+                    yPercent = Math.max(0, Math.min(100 - roomHeight, yPercent))
+
+                    this.draggedRoom.position_x = parseFloat(xPercent.toFixed(2))
+                    this.draggedRoom.position_y = parseFloat(yPercent.toFixed(2))
+                })
             },
 
             endDrag(event) {
                 if (this.isDragging) {
                     this.isDragging = false
+                    this.draggedRoomId = null
                     if (event.currentTarget) event.currentTarget.style.cursor = 'grab'
                     this.draggedRoom = null
+                    if (this.animationFrame) {
+                        cancelAnimationFrame(this.animationFrame)
+                        this.animationFrame = null
+                    }
                 }
             },
 
@@ -771,19 +791,29 @@ function registerBranchesPage() {
 
             onResize(event) {
                 if (!this.isResizing || !this.draggedRoom) return
-                const container = event.currentTarget.getBoundingClientRect()
-                const deltaX = event.clientX - this.dragStartX
-                const deltaY = event.clientY - this.dragStartY
-                const deltaXPercent = (deltaX / container.width) * 100
-                const deltaYPercent = (deltaY / container.height) * 100
 
-                if (this.resizeHandle === 'se') {
-                    this.draggedRoom.width = Math.max(5, (this.draggedRoom.width || 10) + deltaXPercent)
-                    this.draggedRoom.height = Math.max(5, (this.draggedRoom.height || 10) + deltaYPercent)
+                const clientX = event.clientX
+                const clientY = event.clientY
+                const containerRect = event.currentTarget.getBoundingClientRect()
+
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame)
                 }
 
-                this.dragStartX = event.clientX
-                this.dragStartY = event.clientY
+                this.animationFrame = requestAnimationFrame(() => {
+                    const deltaX = clientX - this.dragStartX
+                    const deltaY = clientY - this.dragStartY
+                    const deltaXPercent = (deltaX / containerRect.width) * 100
+                    const deltaYPercent = (deltaY / containerRect.height) * 100
+
+                    if (this.resizeHandle === 'se') {
+                        this.draggedRoom.width = Math.max(5, (this.draggedRoom.width || 10) + deltaXPercent)
+                        this.draggedRoom.height = Math.max(5, (this.draggedRoom.height || 10) + deltaYPercent)
+                    }
+
+                    this.dragStartX = clientX
+                    this.dragStartY = clientY
+                })
             },
 
             endResize() {

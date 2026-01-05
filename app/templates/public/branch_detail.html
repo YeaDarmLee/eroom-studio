@@ -154,7 +154,8 @@
     <!-- Branch Info -->
     <div class="mb-12">
         <h1 class="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4">{{ branch.name }}</h1>
-        <p class="text-gray-600 mb-6">{{ branch.address }}</p>
+        <p class="text-gray-600 mb-8">{{ branch.address }}</p>
+
         <div class="grid grid-cols-2 gap-6">
             <div class="flex items-center">
                 <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full mr-3">
@@ -162,7 +163,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-500">운영시간</p>
-                    <p class="font-medium">24시간</p>
+                    <p class="font-medium">{{ branch.operating_hours or '24시간' }}</p>
                 </div>
             </div>
             <div class="flex items-center">
@@ -171,10 +172,11 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-500">연락처</p>
-                    <p class="font-medium">032-123-4567</p>
+                    <p class="font-medium">{{ branch.contact or '032-123-4567' }}</p>
                 </div>
             </div>
         </div>
+
         <button
             class="!rounded-button px-6 py-3 mt-6 text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors flex items-center">
             <i class="ri-customer-service-line mr-2"></i>
@@ -326,59 +328,54 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
         <div>
             <h2 class="text-2xl font-bold mb-6">교통 안내</h2>
-            <div class="h-[320px] rounded-lg overflow-hidden mb-6"
-                style="background-image: url('https://public.readdy.ai/gen_page/map_placeholder_1280x720.png'); background-size: cover; background-position: center;">
+            <div
+                class="h-[320px] rounded-lg overflow-hidden mb-6 border border-gray-100 shadow-inner bg-gray-50 flex items-center justify-center relative">
+                {% if branch.map_info %}
+                <div class="absolute inset-0 w-full h-full [&>iframe]:w-full [&>iframe]:h-full border-none">
+                    {{ branch.map_info|safe }}
+                </div>
+                {% else %}
+                <div class="text-center">
+                    <i class="ri-map-pin-line text-4xl text-gray-200 mb-2 block"></i>
+                    <p class="text-sm text-gray-400">등록된 지도가 없습니다</p>
+                </div>
+                {% endif %}
             </div>
-            <div class="space-y-4">
+            <div class="p-6 bg-white rounded-lg border border-gray-100">
                 <div class="flex items-start">
                     <div class="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3 flex-shrink-0">
                         <i class="ri-train-line text-blue-600"></i>
                     </div>
                     <div>
-                        <p class="font-medium">지하철</p>
-                        <p class="text-gray-600">인천 1호선 구월역 3번 출구 도보 5분</p>
-                    </div>
-                </div>
-                <div class="flex items-start">
-                    <div
-                        class="w-10 h-10 flex items-center justify-center bg-green-100 rounded-full mr-3 flex-shrink-0">
-                        <i class="ri-bus-line text-green-600"></i>
-                    </div>
-                    <div>
-                        <p class="font-medium">버스</p>
-                        <p class="text-gray-600">시내버스: 103, 111-2, 519<br>광역버스: 1301, 3001</p>
+                        <p class="font-medium mb-1">찾아오시는 길</p>
+                        <p class="text-gray-600 leading-relaxed">{{ branch.traffic_info or '지하철, 버스 등 대중교통 이용이 편리합니다. 상세
+                            경로는 지점으로 문의 부탁드립니다.' }}</p>
                     </div>
                 </div>
             </div>
         </div>
         <div>
             <h2 class="text-2xl font-bold mb-6">주차 안내</h2>
-            <div class="p-6 bg-white rounded-lg border border-gray-100">
-                <div class="flex items-center mb-6">
-                    <div class="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-full mr-3">
+            <div class="p-6 bg-white rounded-lg border border-gray-100 min-h-[464px]">
+                <div class="flex items-start mb-6">
+                    <div
+                        class="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-full mr-3 flex-shrink-0">
                         <i class="ri-parking-line text-primary"></i>
                     </div>
                     <div class="flex-1">
-                        <h3 class="font-medium">건물 내 주차</h3>
-                        <p class="text-gray-600">월 정기권 별도 구매 필요</p>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-lg font-medium">₩100,000</div>
-                        <div class="text-sm text-gray-500">월 정기권</div>
+                        <h3 class="font-medium mb-1">건물 내 주차 및 인근 주차장</h3>
+                        <p class="text-gray-600 leading-relaxed">{{ branch.parking_info or '주차 가능 여부 및 요금은 지점 상황에 따라 다를
+                            수 있습니다. 방문 전 미리 문의해 주세요.' }}</p>
                     </div>
                 </div>
-                <div class="space-y-3 text-sm">
-                    <div class="flex items-center text-gray-600">
+                <div class="space-y-4 text-sm mt-8 pt-8 border-t border-gray-50">
+                    <div class="flex items-center text-gray-500">
                         <i class="ri-time-line mr-2"></i>
-                        <span>주차 가능 시간: 24시간</span>
+                        <span>이용 시간: {{ branch.operating_hours or '24시간' }}</span>
                     </div>
-                    <div class="flex items-center text-gray-600">
+                    <div class="flex items-center text-gray-500">
                         <i class="ri-information-line mr-2"></i>
-                        <span>방문자 주차: 시간당 ₩3,000</span>
-                    </div>
-                    <div class="flex items-center text-gray-600">
-                        <i class="ri-map-pin-line mr-2"></i>
-                        <span>인근 공영주차장: 도보 3분 거리</span>
+                        <span>문의처: {{ branch.contact or '032-123-4567' }}</span>
                     </div>
                 </div>
             </div>

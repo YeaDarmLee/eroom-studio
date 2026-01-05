@@ -192,6 +192,11 @@ def get_branches(current_user):
         'facilities': b.facilities,
         'description': b.description,
         'image_url': b.image_url,
+        'operating_hours': b.operating_hours,
+        'contact': b.contact,
+        'traffic_info': b.traffic_info,
+        'parking_info': b.parking_info,
+        'map_info': b.map_info,
         'images': [{'id': img.id, 'url': img.image_url} for img in b.images],
         'room_count': b.rooms.count(),
         'occupied_count': b.rooms.filter_by(status='occupied').count()
@@ -206,6 +211,11 @@ def create_branch(current_user):
     address = request.form.get('address')
     facilities = request.form.get('facilities')
     description = request.form.get('description')
+    operating_hours = request.form.get('operating_hours')
+    contact = request.form.get('contact')
+    traffic_info = request.form.get('traffic_info')
+    parking_info = request.form.get('parking_info')
+    map_info = request.form.get('map_info')
     
     if not name:
         return jsonify({'error': 'Name is required'}), 400
@@ -214,7 +224,12 @@ def create_branch(current_user):
         name=name,
         address=address,
         facilities=facilities,
-        description=description
+        description=description,
+        operating_hours=operating_hours,
+        contact=contact,
+        traffic_info=traffic_info,
+        parking_info=parking_info,
+        map_info=map_info
     )
     
     # Handle image upload
@@ -272,6 +287,11 @@ def get_branch(current_user, id):
         'address': branch.address,
         'facilities': branch.facilities,
         'description': branch.description,
+        'operating_hours': branch.operating_hours,
+        'contact': branch.contact,
+        'traffic_info': branch.traffic_info,
+        'parking_info': branch.parking_info,
+        'map_info': branch.map_info,
         'rooms': [{
             'id': r.id,
             'name': r.name,
@@ -359,6 +379,16 @@ def update_branch(current_user, id):
             branch.facilities = request.form['facilities']
         if 'description' in request.form:
             branch.description = request.form['description']
+        if 'operating_hours' in request.form:
+            branch.operating_hours = request.form['operating_hours']
+        if 'contact' in request.form:
+            branch.contact = request.form['contact']
+        if 'traffic_info' in request.form:
+            branch.traffic_info = request.form['traffic_info']
+        if 'parking_info' in request.form:
+            branch.parking_info = request.form['parking_info']
+        if 'map_info' in request.form:
+            branch.map_info = request.form['map_info']
         
         # Handle image upload
         if 'image' in request.files:

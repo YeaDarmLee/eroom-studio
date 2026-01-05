@@ -11,6 +11,10 @@ class Branch(db.Model):
     map_info = db.Column(db.Text) # JSON or specific format
     facilities = db.Column(db.Text) # JSON list of facilities
     image_url = db.Column(db.String(255)) # URL to uploaded image
+    operating_hours = db.Column(db.String(100)) # e.g. "24시간"
+    contact = db.Column(db.String(50)) # e.g. "032-123-4567"
+    traffic_info = db.Column(db.Text) # Traffic details
+    parking_info = db.Column(db.Text) # Parking details
     
     rooms = db.relationship('Room', backref='branch', lazy='dynamic')
     services = db.relationship('BranchService', backref='branch', lazy='dynamic', cascade='all, delete-orphan')
