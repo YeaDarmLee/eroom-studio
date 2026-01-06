@@ -8,6 +8,7 @@ from app.routes.auth import admin_required
 from datetime import datetime
 import json
 import os
+import uuid
 from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -214,9 +215,7 @@ def get_branches(current_user):
         'traffic_info': b.traffic_info,
         'parking_info': b.parking_info,
         'map_info': b.map_info,
-        'images': [{'id': img.id, 'url': img.image_url} for img in b.images],
-        'room_count': b.rooms.count(),
-        'occupied_count': b.rooms.filter_by(status='occupied').count()
+        'images': [{'id': img.id, 'url': img.image_url} for img in b.images]
     } for b in branches])
 
 @admin_bp.route('/api/branches', methods=['POST'])
@@ -253,14 +252,16 @@ def create_branch(current_user):
     if 'image' in request.files:
         file = request.files['image']
         if file and file.filename:
-            filename = secure_filename(f"branch_{name}_{file.filename}")
+            # Generate unique filename using UUID and timestamp
+            file_ext = os.path.splitext(file.filename)[1]
+            unique_filename = f"branch_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
             upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
             os.makedirs(upload_folder, exist_ok=True)
             
-            file_path = os.path.join(upload_folder, filename)
+            file_path = os.path.join(upload_folder, unique_filename)
             file.save(file_path)
             
-            branch.image_url = f"/static/uploads/branches/{filename}"
+            branch.image_url = f"/static/uploads/branches/{unique_filename}"
     
     db.session.add(branch)
     db.session.commit()
@@ -411,14 +412,16 @@ def update_branch(current_user, id):
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
-                filename = secure_filename(f"branch_{branch.name}_{file.filename}")
+                # Generate unique filename using UUID and timestamp
+                file_ext = os.path.splitext(file.filename)[1]
+                unique_filename = f"branch_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
                 upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
                 os.makedirs(upload_folder, exist_ok=True)
                 
-                file_path = os.path.join(upload_folder, filename)
+                file_path = os.path.join(upload_folder, unique_filename)
                 file.save(file_path)
                 
-                branch.image_url = f"/static/uploads/branches/{filename}"
+                branch.image_url = f"/static/uploads/branches/{unique_filename}"
     
     db.session.commit()
     return jsonify({'message': 'Branch updated'})

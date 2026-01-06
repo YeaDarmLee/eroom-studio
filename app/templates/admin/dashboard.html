@@ -868,53 +868,54 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <template x-for="branch in branches" :key="branch.id">
                                 <div
-                                    class="group bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative overflow-hidden">
+                                    class="group bg-white rounded-2xl border border-gray-200 hover:shadow-xl hover:border-primary/30 transition-all duration-300 relative overflow-hidden">
+
+                                    <!-- Action Buttons -->
                                     <div
-                                        class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                                        class="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                                         <button @click.stop="openEditModal(branch)"
-                                            class="p-2 text-gray-400 hover:text-primary bg-white rounded-full shadow-sm hover:shadow"><i
+                                            class="p-2 text-white bg-primary/80 hover:bg-primary rounded-full shadow-sm hover:shadow backdrop-blur-sm"><i
                                                 class="ri-edit-line"></i></button>
                                         <button @click="confirmDelete(branch)"
-                                            class="p-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm hover:shadow"><i
+                                            class="p-2 text-white bg-red-500/80 hover:bg-red-500 rounded-full shadow-sm hover:shadow backdrop-blur-sm"><i
                                                 class="ri-delete-bin-line"></i></button>
                                     </div>
 
-                                    <div class="flex items-start mb-4">
-                                        <div
-                                            class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl mr-4">
-                                            <i class="ri-building-line"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-lg font-bold text-gray-900" x-text="branch.name"></h4>
-                                            <p class="text-sm text-gray-500 flex items-center mt-1">
+                                    <!-- Thumbnail Image -->
+                                    <div
+                                        class="relative w-full h-48 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden">
+                                        <template x-if="branch.image_url">
+                                            <img :src="branch.image_url" :alt="branch.name"
+                                                class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
+                                        </template>
+                                        <template x-if="!branch.image_url">
+                                            <div
+                                                class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+                                                <i class="ri-building-line text-6xl text-primary/30"></i>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Content -->
+                                    <div class="p-6">
+                                        <div class="mb-4">
+                                            <h4 class="text-lg font-bold text-gray-900 mb-2" x-text="branch.name"></h4>
+                                            <p class="text-sm text-gray-500 flex items-center">
                                                 <i class="ri-map-pin-line mr-1 text-xs"></i>
-                                                <span x-text="branch.address || '주소 없음'"></span>
+                                                <span x-text="branch.address || '주소 없음'" class="truncate"></span>
                                             </p>
                                         </div>
-                                    </div>
 
-                                    <div class="space-y-3 mb-6">
-                                        <div class="flex items-center justify-between text-sm">
-                                            <span class="text-gray-500">총 방 개수</span>
-                                            <span class="font-bold text-gray-900"
-                                                x-text="(branch.room_count || 0) + '개'"></span>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <button @click.stop="loadBranchRooms(branch)"
+                                                class="py-2.5 px-4 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-primary hover:text-white transition-all duration-200 flex items-center justify-center">
+                                                <i class="ri-layout-grid-line mr-2"></i>방 관리
+                                            </button>
+                                            <button @click.stop="loadBranchServices(branch)"
+                                                class="py-2.5 px-4 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-secondary hover:text-white transition-all duration-200 flex items-center justify-center">
+                                                <i class="ri-service-line mr-2"></i>서비스
+                                            </button>
                                         </div>
-                                        <div class="w-full bg-gray-100 rounded-full h-2">
-                                            <div class="bg-primary h-2 rounded-full transition-all duration-500"
-                                                :style="`width: ${branch.room_count ? (branch.occupied_count / branch.room_count * 100) : 0}%`">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <button @click.stop="loadBranchRooms(branch)"
-                                            class="py-2.5 px-4 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-primary hover:text-white transition-all duration-200 flex items-center justify-center">
-                                            <i class="ri-layout-grid-line mr-2"></i>방 관리
-                                        </button>
-                                        <button @click.stop="loadBranchServices(branch)"
-                                            class="py-2.5 px-4 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-secondary hover:text-white transition-all duration-200 flex items-center justify-center">
-                                            <i class="ri-service-line mr-2"></i>서비스
-                                        </button>
                                     </div>
                                 </div>
                             </template>
