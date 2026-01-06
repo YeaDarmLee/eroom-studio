@@ -5,6 +5,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>이룸 스튜디오 - 프리미엄 음악 연습실</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description"
+        content="이룸 스튜디오는 최고급 음향 시설과 편안한 환경을 갖춘 프리미엄 음악 연습실입니다. 24시간 이용 가능하며, 합리적인 가격으로 음악인들의 꿈을 응원합니다.">
+    <meta name="keywords" content="음악 연습실, 밴드 연습실, 악기 연습실, 보컬 연습실, 개인 연습실, 스튜디오 대여, 이룸 스튜디오, 연습실 예약, 음악 스튜디오, 24시간 연습실">
+    <meta name="author" content="(주)이룸스튜디오">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <meta name="language" content="Korean">
+    <link rel="canonical" href="https://eroom-studio.com{{ request.path }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://eroom-studio.com{{ request.path }}">
+    <meta property="og:title" content="이룸 스튜디오 - 프리미엄 음악 연습실">
+    <meta property="og:description" content="최고급 음향 시설과 편안한 환경을 갖춘 프리미엄 음악 연습실. 24시간 이용 가능, 합리적인 가격으로 음악인들의 꿈을 응원합니다.">
+    <meta property="og:image" content="{{ url_for('static', filename='logo/eroom_studio_x.jpg', _external=True) }}">
+    <meta property="og:site_name" content="이룸 스튜디오">
+    <meta property="og:locale" content="ko_KR">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://eroom-studio.com{{ request.path }}">
+    <meta name="twitter:title" content="이룸 스튜디오 - 프리미엄 음악 연습실">
+    <meta name="twitter:description" content="최고급 음향 시설과 편안한 환경을 갖춘 프리미엄 음악 연습실. 24시간 이용 가능, 합리적인 가격으로 음악인들의 꿈을 응원합니다.">
+    <meta name="twitter:image" content="{{ url_for('static', filename='logo/eroom_studio_x.jpg', _external=True) }}">
+
+    <!-- Naver Verification (등록 후 추가 필요) -->
+    <meta name="naver-site-verification" content="774b41d316cfe10569e0470384ec6326e71ad136" />
+
+    <!-- Google Verification (등록 후 추가 필요) -->
+    <meta name="google-site-verification" content="fChz3ORA8fsrhwhUw9eXx2NM42Rch8OtR10eEfkjL4c" />
+
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo/eroom_logo.svg') }}">
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
@@ -179,7 +212,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
-                    <h3 class="text-xl font-bold mb-4">이룸</h3>
+                    <h3 class="text-xl font-bold mb-4">이룸 스튜디오</h3>
                     <p class="text-gray-400">프리미엄 음악 연습실</p>
                 </div>
                 <div>
@@ -193,7 +226,7 @@
                 <div>
                     <h4 class="font-semibold mb-4">연락처</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li>전화: 1544-0000</li>
+                        <li>전화: 010-9488-5093</li>
                         <li>이메일: contact@eroom.kr</li>
                         <li>카카오톡: @이룸스튜디오</li>
                     </ul>
@@ -201,7 +234,8 @@
                 <div>
                     <h4 class="font-semibold mb-4">소셜 미디어</h4>
                     <div class="flex space-x-4">
-                        <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
+                        <a href="https://www.instagram.com/eroom.studio/" target="_blank" rel="noopener noreferrer"
+                            class="text-gray-400 hover:text-white transition-all hover:scale-125">
                             <i class="ri-instagram-line text-xl"></i>
                         </a>
                         <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
