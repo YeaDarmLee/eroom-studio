@@ -5,6 +5,7 @@ from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchServic
 from app.models.contract import Contract
 from app.models.request import Request
 from app.routes.auth import admin_required
+from app.utils.db_utils import db_retry
 from datetime import datetime
 import json
 import os
@@ -21,6 +22,7 @@ def dashboard(current_user):
 
 @admin_bp.route('/api/stats', methods=['GET'])
 @admin_required
+@db_retry(max_retries=3, delay=1)
 def get_stats(current_user):
     """Get dashboard stats"""
     from datetime import datetime, timedelta
@@ -99,6 +101,7 @@ def get_stats(current_user):
 
 @admin_bp.route('/api/contracts', methods=['GET'])
 @admin_required
+@db_retry(max_retries=3, delay=1)
 def get_contracts(current_user):
     """Get all contracts with details"""
     contracts = Contract.query.all()
@@ -118,6 +121,7 @@ def get_contracts(current_user):
 
 @admin_bp.route('/api/requests', methods=['GET'])
 @admin_required
+@db_retry(max_retries=3, delay=1)
 def get_requests(current_user):
     """Get all requests and inquiries"""
     requests = Request.query.order_by(Request.created_at.desc()).all()
@@ -200,6 +204,7 @@ def update_request_status(current_user, id):
 
 @admin_bp.route('/api/branches', methods=['GET'])
 @admin_required
+@db_retry(max_retries=3, delay=1)
 def get_branches(current_user):
     """Get all branches"""
     branches = Branch.query.all()
@@ -269,6 +274,7 @@ def create_branch(current_user):
 
 @admin_bp.route('/api/branches/<int:id>', methods=['GET'])
 @admin_required
+@db_retry(max_retries=3, delay=1)
 def get_branch(current_user, id):
     """Get branch details with rooms"""
     branch = Branch.query.get_or_404(id)
@@ -316,6 +322,7 @@ def get_branch(current_user, id):
             'price': r.price,
             'deposit': r.deposit,
             'area': r.area,
+            'description': r.description,
             'status': r.status,
             'floor': r.floor,
             'images': [{'id': img.id, 'url': img.image_url} for img in r.images]

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, request as flask_request
 from app.models.branch import Branch, Room
 from app.routes.auth import admin_required
+from app.utils.db_utils import db_retry
 import jwt
 from flask import current_app
 from app.models.user import User
@@ -8,16 +9,19 @@ from app.models.user import User
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
+@db_retry(max_retries=3, delay=1)
 def index():
     branches = Branch.query.all()
     return render_template('public/index.html', branches=branches)
 
 @main_bp.route('/branches/<int:branch_id>')
+@db_retry(max_retries=3, delay=1)
 def branch_detail(branch_id):
     branch = Branch.query.get_or_404(branch_id)
     return render_template('public/branch_detail.html', branch=branch)
 
 @main_bp.route('/rooms/<int:room_id>')
+@db_retry(max_retries=3, delay=1)
 def room_detail(room_id):
     room = Room.query.get_or_404(room_id)
     return render_template('public/room_detail.html', room=room)

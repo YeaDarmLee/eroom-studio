@@ -1,9 +1,11 @@
 from flask import Blueprint, jsonify
 from app.models.branch import Branch, Room
+from app.utils.db_utils import db_retry
 
 public_bp = Blueprint('public', __name__, url_prefix='/api/public')
 
 @public_bp.route('/branches', methods=['GET'])
+@db_retry(max_retries=3, delay=1)
 def get_branches():
     branches = Branch.query.all()
     result = []
@@ -19,6 +21,7 @@ def get_branches():
     return jsonify(result)
 
 @public_bp.route('/branches/<int:branch_id>', methods=['GET'])
+@db_retry(max_retries=3, delay=1)
 def get_branch(branch_id):
     branch = Branch.query.get_or_404(branch_id)
     
@@ -79,6 +82,7 @@ def get_branch(branch_id):
     })
 
 @public_bp.route('/branches/<int:branch_id>/rooms', methods=['GET'])
+@db_retry(max_retries=3, delay=1)
 def get_branch_rooms(branch_id):
     branch = Branch.query.get_or_404(branch_id)
     rooms = branch.rooms.all()
@@ -95,6 +99,7 @@ def get_branch_rooms(branch_id):
     return jsonify(result)
 
 @public_bp.route('/rooms/<int:room_id>', methods=['GET'])
+@db_retry(max_retries=3, delay=1)
 def get_room(room_id):
     room = Room.query.get_or_404(room_id)
     return jsonify({

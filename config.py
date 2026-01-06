@@ -10,10 +10,17 @@ class Config:
     
     # MySQL 연결 끊김 문제 해결을 위한 설정
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,  # 연결 사용 전 ping으로 상태 확인
-        'pool_recycle': 3600,   # 1시간마다 연결 재생성 (MySQL wait_timeout보다 짧게)
-        'pool_size': 10,        # 연결 풀 크기
-        'max_overflow': 20,     # 풀 크기를 초과할 수 있는 최대 연결 수
+        'pool_pre_ping': True,          # 연결 사용 전 ping으로 상태 확인
+        'pool_recycle': 280,            # 280초(약 4.7분)마다 연결 재생성 (MySQL wait_timeout 문제 방지)
+        'pool_size': 10,                # 연결 풀 크기
+        'max_overflow': 20,             # 풀 크기를 초과할 수 있는 최대 연결 수
+        'pool_timeout': 30,             # 연결을 얻기 위한 대기 시간 (초)
+        'echo_pool': True,              # 연결 풀 이벤트 로깅 (디버깅용)
+        'connect_args': {
+            'connect_timeout': 10,      # MySQL 연결 타임아웃 (초)
+            'autocommit': False,        # 명시적 트랜잭션 관리
+            'charset': 'utf8mb4'        # UTF-8 문자셋
+        }
     }
 
 class DevelopmentConfig(Config):
