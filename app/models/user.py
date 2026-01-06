@@ -8,6 +8,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     kakao_id = db.Column(db.String(64), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
+    phone = db.Column(db.String(20), unique=True, nullable=True)  # 계약 매핑 키로 사용
     name = db.Column(db.String(64), nullable=True)
     role = db.Column(db.String(20), default='user')  # user, admin
     onboarding_status = db.Column(db.String(20), default='not_started')

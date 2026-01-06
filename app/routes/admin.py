@@ -6,6 +6,7 @@ from app.models.contract import Contract
 from app.models.request import Request
 from app.routes.auth import admin_required
 from app.utils.db_utils import db_retry
+from app.services.contract_mapping_service import ContractMappingService
 from datetime import datetime
 import json
 import os
@@ -103,21 +104,30 @@ def get_stats(current_user):
 @admin_required
 @db_retry(max_retries=3, delay=1)
 def get_contracts(current_user):
-    """Get all contracts with details"""
+    """Get all contracts with details (including unmapped contracts)"""
     contracts = Contract.query.all()
-    return jsonify([{
-        'id': c.id,
-        'user_name': c.user.name if c.user else '알 수 없음',
-        'user_email': c.user.email if c.user else '',
-        'room_name': c.room.name if c.room else '알 수 없음',
-        'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
-        'deposit': c.room.deposit if c.room else 0,
-        'price': c.room.price if c.room else 0,
-        'start_date': c.start_date.strftime('%Y-%m-%d'),
-        'end_date': c.end_date.strftime('%Y-%m-%d'),
-        'status': c.status,
-        'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
-    } for c in contracts])
+    result = []
+    
+    for c in contracts:
+        user_info = c.get_user_info()
+        contract_data = {
+            'id': c.id,
+            'user_name': user_info['name'] or '알 수 없음',
+            'user_email': user_info['email'] or '',
+            'user_phone': user_info['phone'] or '',
+            'is_mapped': user_info['is_mapped'],
+            'room_name': c.room.name if c.room else '알 수 없음',
+            'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+            'deposit': c.room.deposit if c.room else 0,
+            'price': c.room.price if c.room else 0,
+            'start_date': c.start_date.strftime('%Y-%m-%d'),
+            'end_date': c.end_date.strftime('%Y-%m-%d'),
+            'status': c.status,
+            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
+        }
+        result.append(contract_data)
+    
+    return jsonify(result)
 
 @admin_bp.route('/api/requests', methods=['GET'])
 @admin_required
@@ -716,3 +726,112 @@ def delete_room_image(current_user, room_id, image_id):
     db.session.delete(room_image)
     db.session.commit()
     return jsonify({'message': 'Image deleted'})
+
+# ============================================================
+# 미매핑 계약 관리 API
+# ============================================================
+
+@admin_bp.route('/api/contracts/unmapped', methods=['GET'])
+@admin_required
+@db_retry(max_retries=3, delay=1)
+def get_unmapped_contracts(current_user):
+    """모든 미매핑 계약 조회"""
+    unmapped = ContractMappingService.get_all_unmapped_contracts()
+    
+    return jsonify([{
+        'id': c.id,
+        'temp_user_name': c.temp_user_name,
+        'temp_user_phone': c.temp_user_phone,
+        'temp_user_email': c.temp_user_email,
+        'room_name': c.room.name if c.room else '알 수 없음',
+        'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+        'deposit': c.room.deposit if c.room else 0,
+        'price': c.room.price if c.room else 0,
+        'start_date': c.start_date.strftime('%Y-%m-%d'),
+        'end_date': c.end_date.strftime('%Y-%m-%d'),
+        'status': c.status,
+        'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
+    } for c in unmapped])
+
+@admin_bp.route('/api/contracts/unmapped', methods=['POST'])
+@admin_required
+def create_unmapped_contract(current_user):
+    """미매핑 계약 생성 (회원가입 전 계약 데이터 입력)"""
+    data = request.get_json()
+    
+    # 필수 필드 확인
+    required_fields = ['room_id', 'temp_user_phone', 'start_date', 'end_date']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'{field} is required'}), 400
+    
+    # 방 존재 확인
+    room = Room.query.get(data['room_id'])
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    # 계약 생성 (user_id는 None)
+    contract = Contract(
+        user_id=None,  # 미매핑 상태
+        room_id=data['room_id'],
+        temp_user_name=data.get('temp_user_name'),
+        temp_user_phone=data['temp_user_phone'],
+        temp_user_email=data.get('temp_user_email'),
+        start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
+        end_date=datetime.strptime(data['end_date'], '%Y-%m-%d').date(),
+        status=data.get('status', 'active'),  # 기본값: active
+        months=data.get('months'),
+        total_price=data.get('total_price')
+    )
+    
+    db.session.add(contract)
+    db.session.commit()
+    
+    return jsonify({
+        'message': '미매핑 계약이 생성되었습니다',
+        'id': contract.id,
+        'temp_user_phone': contract.temp_user_phone
+    }), 201
+
+@admin_bp.route('/api/contracts/<int:contract_id>/map/<int:user_id>', methods=['POST'])
+@admin_required
+def manual_map_contract(current_user, contract_id, user_id):
+    """관리자가 수동으로 계약을 사용자에게 매핑"""
+    success = ContractMappingService.manual_map_contract(contract_id, user_id)
+    
+    if success:
+        return jsonify({'message': '계약이 성공적으로 매핑되었습니다'})
+    else:
+        return jsonify({'error': '계약 또는 사용자를 찾을 수 없습니다'}), 404
+
+@admin_bp.route('/api/contracts/<int:contract_id>/search-user', methods=['GET'])
+@admin_required
+def search_user_for_contract(current_user, contract_id):
+    """계약에 매핑 가능한 사용자 검색"""
+    contract = Contract.query.get_or_404(contract_id)
+    
+    if not contract.is_unmapped:
+        return jsonify({'error': '이미 매핑된 계약입니다'}), 400
+    
+    # 전화번호나 이메일로 사용자 검색
+    matching_users = []
+    
+    if contract.temp_user_phone:
+        users = User.query.filter_by(phone=contract.temp_user_phone).all()
+        matching_users.extend(users)
+    
+    if contract.temp_user_email:
+        users = User.query.filter_by(email=contract.temp_user_email).all()
+        matching_users.extend(users)
+    
+    # 중복 제거
+    unique_users = {user.id: user for user in matching_users}.values()
+    
+    return jsonify([{
+        'id': u.id,
+        'name': u.name,
+        'email': u.email,
+        'phone': u.phone,
+        'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else ''
+    } for u in unique_users])
+

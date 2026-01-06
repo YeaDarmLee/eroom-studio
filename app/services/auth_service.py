@@ -3,6 +3,7 @@ import datetime
 from flask import current_app
 from app.models.user import User
 from app.extensions import db
+from app.services.contract_mapping_service import ContractMappingService
 
 class AuthService:
     @staticmethod
@@ -32,6 +33,12 @@ class AuthService:
             )
             db.session.add(user)
             db.session.commit()
+            
+            # 🔗 새 사용자 생성 시 미매핑 계약 자동 매핑 시도
+            mapped_count = ContractMappingService.map_contracts_to_user(user)
+            if mapped_count > 0:
+                print(f"🎉 {user.name}님에게 {mapped_count}개의 계약이 자동 매핑되었습니다!")
+        
         return user
 
     @staticmethod
