@@ -7,11 +7,7 @@
         inset: 0;
         width: 100%;
         height: 100%;
-        background-color: #f1f5f9;
-        background-image:
-            linear-gradient(rgba(0, 0, 0, .02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 0, 0, .02) 1px, transparent 1px);
-        background-size: 20px 20px;
+        background-color: #f9fafb;
         overflow: visible;
     }
 
@@ -299,7 +295,7 @@
                 </div>
 
                 <!-- Floor Plan Canvas -->
-                <div class="public-floor-plan-wrapper">
+                <div class="public-floor-plan-wrapper py-16">
                     <div class="public-floor-plan-container" :class="{ 'no-image': !floorPlans[selectedFloor] }">
                         <!-- Floor Plan Background Image -->
                         <img x-show="floorPlans[selectedFloor]" :src="floorPlans[selectedFloor]"
@@ -314,30 +310,25 @@
 
                         <!-- Room Boxes -->
                         <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
-                            <div class="public-room-box" :class="getRoomStatusClass(room.status)"
+                            <div class="public-room-box group" :class="getRoomStatusClass(room.status)"
                                 :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
                                 @click="room.status !== 'occupied' ? viewRoomDetail(room.id) : null">
 
-                                <!-- Hover Tooltip Removed or simplified as needed -->
-                                <div class="room-tooltip" x-ref="tooltip" @mouseenter.window="
-                                    const rect = $el.parentElement.getBoundingClientRect();
-                                    $el.style.left = rect.left + (rect.width / 2) + 'px';
-                                    $el.style.top = rect.top - 10 + 'px';
-                                    $el.style.transform = 'translate(-50%, -100%)';
-                                " @mouseleave.window="
-                                    $el.style.opacity = '0';
-                                ">
-                                    <div class="room-tooltip-title" x-text="room.name"></div>
-                                    <div class="room-tooltip-info">
-                                        <div>월 임대료: <span class="font-semibold"
-                                                x-text="'₩' + room.price.toLocaleString()"></span></div>
-                                        <div x-show="room.description">설명: <span x-text="room.description"></span></div>
-                                        <div>층: <span x-text="room.floor"></span></div>
-                                    </div>
-                                    <div class="room-tooltip-status" :class="room.status">
-                                        <span x-show="room.status === 'available'">✓ 계약 가능</span>
-                                        <span x-show="room.status === 'occupied'">✕ 계약 완료</span>
-                                        <span x-show="room.status === 'reserved'">⏳ 검토 중</span>
+                                <!-- Hover Tooltip (CSS 기반 - 간단한 방식) -->
+                                <div class="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap shadow-xl"
+                                    style="z-index: 9999;" :style="`
+                                        left: 50%;
+                                        ${(room.position_y || 0) < 50 ? 'top: 100%; margin-top: 10px;' : 'bottom: 100%; margin-bottom: 10px;'}
+                                        transform: translateX(-50%);
+                                    `">
+                                    <div class="font-bold" x-text="room.name"></div>
+                                    <div>월 임대료: <span class="font-semibold"
+                                            x-text="'₩' + room.price.toLocaleString()"></span></div>
+                                    <div x-show="room.description">설명: <span x-text="room.description"></span></div>
+                                    <div>층: <span x-text="room.floor"></span></div>
+                                    <div class="mt-1 pt-1 border-t border-white/20">
+                                        <span :class="room.status === 'available' ? 'text-green-300' : 'text-gray-300'"
+                                            x-text="room.status === 'available' ? '✓ 계약 가능' : (room.status === 'occupied' ? '✕ 계약 완료' : '⏳ 검토 중')"></span>
                                     </div>
                                 </div>
 

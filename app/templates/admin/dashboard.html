@@ -239,7 +239,7 @@
                                     </div>
                                 </div>
                                 <!-- Tooltip -->
-                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-pre-line z-50 shadow-xl min-w-max"
+                                <div class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-pre-line z-50 shadow-xl min-w-max"
                                     x-show="stat.tooltip" x-text="stat.tooltip">
                                 </div>
                             </div>
@@ -1543,7 +1543,7 @@
                                         </button>
                                     </div>
 
-                                    <div class="flex-1 overflow-auto bg-gray-100 relative p-8 flex items-center justify-center"
+                                    <div class="flex-1 overflow-auto bg-gray-100 relative py-16 flex items-center justify-center"
                                         @mousemove="onDrag($event); onResize($event)"
                                         @mouseup="endDrag($event); endResize()">
                                         <template x-if="floorPlans[selectedFloor]">
@@ -1575,6 +1575,28 @@
                                                                     x-show="room.price"
                                                                     :class="room.status === 'occupied' ? 'text-gray-400' : 'text-primary/70'"
                                                                     x-text="'₩' + (room.price / 10000) + '만'"></span>
+                                                            </div>
+                                                            <!-- 호버 툴팁 (CSS 기반 - 간단한 방식) -->
+                                                            <div class="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap shadow-xl"
+                                                                style="z-index: 9999;" :style="`
+                                                                    left: 50%;
+                                                                    ${(room.position_y || 0) < 50 ? 'top: 100%; margin-top: 10px;' : 'bottom: 100%; margin-bottom: 10px;'}
+                                                                    transform: translateX(-50%);
+                                                                `">
+                                                                <div class="font-bold" x-text="room.name"></div>
+                                                                <div x-show="room.price"
+                                                                    x-text="'월세: ₩' + (room.price || 0).toLocaleString()">
+                                                                </div>
+                                                                <div x-show="room.deposit"
+                                                                    x-text="'보증금: ₩' + (room.deposit || 0).toLocaleString()">
+                                                                </div>
+                                                                <div x-show="room.area"
+                                                                    x-text="'면적: ' + room.area + '㎡'"></div>
+                                                                <div class="mt-1 pt-1 border-t border-white/20">
+                                                                    <span
+                                                                        :class="room.status === 'available' ? 'text-green-300' : 'text-gray-300'"
+                                                                        x-text="room.status === 'available' ? '계약 가능' : (room.status === 'occupied' ? '계약중' : '상태 없음')"></span>
+                                                                </div>
                                                             </div>
                                                             <div class="absolute bottom-0 right-0 w-4 h-4 bg-primary cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity resize-handle rounded-tl-sm"
                                                                 @mousedown.stop="startResize(room, 'se', $event)">
