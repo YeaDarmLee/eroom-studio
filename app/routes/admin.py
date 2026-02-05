@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
-from app.models import db
+from app.extensions import db
 from app.models.user import User
 from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchService, BranchImage
 from app.models.contract import Contract
@@ -7,11 +7,15 @@ from app.models.request import Request
 from app.routes.auth import admin_required
 from app.utils.db_utils import db_retry
 from app.services.contract_mapping_service import ContractMappingService
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 import json
 import os
 import uuid
+import math
+from functools import wraps
 from werkzeug.utils import secure_filename
+from sqlalchemy.exc import IntegrityError
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -26,11 +30,10 @@ def dashboard(current_user):
 @db_retry(max_retries=3, delay=1)
 def get_stats(current_user):
     """Get dashboard stats"""
-    from datetime import datetime, timedelta
-    
     total_users = User.query.count()
     active_contracts = Contract.query.filter_by(status='active').count()
-    pending_requests = Request.query.filter_by(status='submitted').count()
+    pending_contracts = Contract.query.filter_by(status='requested').count()
+    pending_requests = Request.query.filter_by(status='submitted').count() + pending_contracts
     
     # Calculate total monthly revenue from active contracts
     active_contracts_list = Contract.query.filter_by(status='active').all()
@@ -60,11 +63,20 @@ def get_stats(current_user):
         branch_monthly_revenue = sum(c.room.price for c in branch_contracts if c.room and c.room.price)
         branch_deposit = sum(c.room.deposit or 0 for c in branch_contracts if c.room)
         
-        # Get room status for this branch (based on active contracts)
+        # Get room status for this branch (월계약 방만 공실 계산)
         branch_room_ids = [r.id for r in branch.rooms]
         total_rooms = len(branch_room_ids)
+        
+        # 월계약 방만 카운트 (시간제, 총무방 제외)
+        monthly_room_ids = [r.id for r in branch.rooms if r.room_type == 'monthly']
+        occupied_monthly_rooms = sum(1 for room_id in monthly_room_ids if room_id in occupied_room_ids)
         occupied_rooms = sum(1 for room_id in branch_room_ids if room_id in occupied_room_ids)
-        available_rooms = total_rooms - occupied_rooms
+        available_rooms = len(monthly_room_ids) - occupied_monthly_rooms
+        
+        # Calculate room type distribution for this branch
+        monthly_rooms = sum(1 for r in branch.rooms if r.room_type == 'monthly')
+        time_based_rooms = sum(1 for r in branch.rooms if r.room_type == 'time_based')
+        manager_rooms = sum(1 for r in branch.rooms if r.room_type == 'manager')
         
         # Calculate expiring contracts for this branch
         branch_expiring = sum(1 for c in branch_contracts if c.end_date and c.end_date <= one_month_from_now)
@@ -77,13 +89,27 @@ def get_stats(current_user):
             'total_rooms': total_rooms,
             'occupied_rooms': occupied_rooms,
             'available_rooms': available_rooms,
-            'expiring_contracts': branch_expiring
+            'expiring_contracts': branch_expiring,
+            'monthly_rooms': monthly_rooms,
+            'time_based_rooms': time_based_rooms,
+            'manager_rooms': manager_rooms,
+            'total_monthly_rooms': len(monthly_room_ids)
         })
     
-    # Overall room status (based on active contracts)
+    # Overall room status (월계약 방만 공실 계산)
     total_rooms = Room.query.count()
     occupied_rooms = len(occupied_room_ids)
-    available_rooms = total_rooms - occupied_rooms
+    
+    # 월계약 방만 카운트 (시간제, 총무방 제외)
+    all_monthly_rooms = Room.query.filter_by(room_type='monthly').all()
+    monthly_room_ids = set(r.id for r in all_monthly_rooms)
+    occupied_monthly_rooms = len(monthly_room_ids & occupied_room_ids)
+    available_rooms = len(monthly_room_ids) - occupied_monthly_rooms
+    
+    # Overall room type distribution
+    monthly_rooms = Room.query.filter_by(room_type='monthly').count()
+    time_based_rooms = Room.query.filter_by(room_type='time_based').count()
+    manager_rooms = Room.query.filter_by(room_type='manager').count()
     
     return jsonify({
         'stats': {
@@ -95,7 +121,11 @@ def get_stats(current_user):
             'totalDeposit': total_deposit,
             'totalRooms': total_rooms,
             'occupiedRooms': occupied_rooms,
-            'availableRooms': available_rooms
+            'availableRooms': available_rooms,
+            'monthlyRooms': monthly_rooms,
+            'timeBasedRooms': time_based_rooms,
+            'managerRooms': manager_rooms,
+            'totalMonthlyRooms': len(monthly_room_ids)
         },
         'branchData': branch_data
     })
@@ -114,20 +144,132 @@ def get_contracts(current_user):
             'id': c.id,
             'user_name': user_info['name'] or '알 수 없음',
             'user_email': user_info['email'] or '',
+            'user_id': user_info['id'],
             'user_phone': user_info['phone'] or '',
+            'user_email': user_info['email'] or '',
             'is_mapped': user_info['is_mapped'],
+            'room_id': c.room_id,
             'room_name': c.room.name if c.room else '알 수 없음',
+            'room_type': c.room.room_type if c.room else 'monthly',
+            'branch_id': c.room.branch_id if c.room else None,
             'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
-            'deposit': c.room.deposit if c.room else 0,
-            'price': c.room.price if c.room else 0,
+            'deposit': c.deposit if c.deposit is not None else (c.room.deposit if c.room else 0),
+            'price': c.price if c.price is not None else (c.room.price if c.room else 0),
             'start_date': c.start_date.strftime('%Y-%m-%d'),
             'end_date': c.end_date.strftime('%Y-%m-%d'),
+            'start_time': c.start_time,
+            'end_time': c.end_time,
             'status': c.status,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
         }
         result.append(contract_data)
     
     return jsonify(result)
+
+@admin_bp.route('/api/contracts', methods=['POST'])
+@admin_required
+def create_contract(current_user):
+    """수동 계약 생성"""
+    data = request.get_json()
+    
+    # Validation
+    if not data.get('room_id') or not data.get('start_date') or not data.get('end_date'):
+        return jsonify({'error': '방, 시작일, 종료일은 필수입니다.'}), 400
+        
+    room = Room.query.get(data['room_id'])
+    if not room:
+        return jsonify({'error': '방을 찾을 수 없습니다.'}), 404
+        
+    start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+    end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+    
+    # Calculate months roughly
+    delta = end_date - start_date
+    months = round(delta.days / 30)
+    if months < 1: months = 1
+    
+    contract = Contract(
+        user_id=data.get('user_id'), # Optional
+        room_id=room.id,
+        start_date=start_date,
+        end_date=end_date,
+        price=data.get('price', room.price),       # Use provided price or room default
+        deposit=data.get('deposit', room.deposit), # Use provided deposit or room default
+        months=months,
+        status='active', # Default to active for manual creation
+        created_at=datetime.now()
+    )
+    
+    # If user_id is NOT provided, we might want to store temp info if provided
+    if not data.get('user_id'):
+        contract.temp_user_name = data.get('user_name')
+        contract.temp_user_phone = data.get('user_phone')
+        
+    db.session.add(contract)
+    
+    # Update room status if contract is active
+    if contract.status == 'active':
+        room.status = 'occupied'
+        
+    db.session.commit()
+    
+    return jsonify({'message': 'Contract created', 'id': contract.id}), 201
+
+@admin_bp.route('/api/contracts/<int:id>', methods=['PUT'])
+@admin_required
+def update_contract(current_user, id):
+    """계약 정보 수정"""
+    contract = Contract.query.get_or_404(id)
+    data = request.get_json()
+    
+    if 'room_id' in data:
+        room = Room.query.get(data['room_id'])
+        if not room:
+            return jsonify({'error': '방을 찾을 수 없습니다.'}), 404
+        
+        # 만약 방이 바뀌는 경우, 이전 방과 새 방의 상태를 업데이트해야 할 수 있음
+        if contract.room_id != room.id:
+            # 이전 방은 비어있게 (단, 다른 활성 계약이 없는 경우만 - 복잡하므로 일단 로그만)
+            if contract.room:
+                contract.room.status = 'available'
+            contract.room_id = room.id
+            if contract.status == 'active':
+                room.status = 'occupied'
+    
+    if 'start_date' in data:
+        contract.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+    if 'end_date' in data:
+        contract.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+        
+    if 'price' in data:
+        contract.price = data['price']
+    if 'deposit' in data:
+        contract.deposit = data['deposit']
+    if 'start_time' in data:
+        contract.start_time = data['start_time']
+    if 'end_time' in data:
+        contract.end_time = data['end_time']
+        
+    if 'user_id' in data:
+        contract.user_id = data['user_id'] or None
+        
+    # 미매핑 정보 업데이트
+    if 'user_name' in data:
+        contract.temp_user_name = data['user_name']
+    if 'user_phone' in data:
+        contract.temp_user_phone = data['user_phone']
+    if 'user_email' in data:
+        contract.temp_user_email = data['user_email']
+
+    # Recalculate months if dates changed
+    if 'start_date' in data or 'end_date' in data:
+        delta = contract.end_date - contract.start_date
+        months = round(delta.days / 30)
+        if months < 1: months = 1
+        contract.months = months
+
+    db.session.commit()
+    return jsonify({'message': 'Contract updated'})
 
 @admin_bp.route('/api/requests', methods=['GET'])
 @admin_required
@@ -144,6 +286,12 @@ def get_requests(current_user):
             except:
                 details_data = {'raw': r.details}
         
+        branch_id = None
+        if r.contract and r.contract.room:
+            branch_id = r.contract.room.branch_id
+        elif details_data.get('branch_id'):
+            branch_id = details_data.get('branch_id')
+
         results.append({
             'id': r.id,
             'user_name': r.user.name if r.user else '알 수 없음',
@@ -151,7 +299,8 @@ def get_requests(current_user):
             'status': r.status,
             'details': details_data,
             'created_at': r.created_at.strftime('%Y-%m-%d %H:%M'),
-            'room_name': r.contract.room.name if r.contract and r.contract.room else (details_data.get('room_name') or 'N/A')
+            'room_name': r.contract.room.name if r.contract and r.contract.room else (details_data.get('room_name') or 'N/A'),
+            'branch_id': branch_id
         })
     return jsonify(results)
 
@@ -195,18 +344,30 @@ def update_request_status(current_user, id):
     if 'status' in data:
         req.status = data['status']
         
+        # Prepare details dict
+        details_dict = {}
+        if req.details:
+            try:
+                details_dict = json.loads(req.details)
+            except:
+                details_dict = {'raw': req.details}
+
         # Add response if provided
         if 'admin_response' in data:
-            details_dict = {}
-            if req.details:
-                try:
-                    details_dict = json.loads(req.details)
-                except:
-                    details_dict = {'raw': req.details}
-            
             details_dict['admin_response'] = data['admin_response']
             details_dict['responded_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
             req.details = json.dumps(details_dict)
+            
+        # Handle automatic actions for specific request types (Approval)
+        if data['status'] == 'done':
+            if req.type == 'extension' and req.contract:
+                months = details_dict.get('extension_months')
+                if months:
+                    # Extend the contract end date
+                    req.contract.end_date = req.contract.end_date + relativedelta(months=int(months))
+                    # Also update the request details to reflect it was processed
+                    details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                    req.details = json.dumps(details_dict)
             
         db.session.commit()
         return jsonify({'message': 'Request status updated'})
@@ -230,7 +391,16 @@ def get_branches(current_user):
         'traffic_info': b.traffic_info,
         'parking_info': b.parking_info,
         'map_info': b.map_info,
-        'images': [{'id': img.id, 'url': img.image_url} for img in b.images]
+        'images': [{'id': img.id, 'url': img.image_url} for img in b.images],
+        'rooms': [{
+            'id': r.id,
+            'name': r.name,
+            'price': r.price,
+            'deposit': r.deposit,
+            'status': r.status,
+            'floor': r.floor,
+            'room_type': r.room_type
+        } for r in b.rooms]
     } for b in branches])
 
 @admin_bp.route('/api/branches', methods=['POST'])
@@ -299,6 +469,7 @@ def get_branch(current_user, id):
         rooms_by_floor[floor].append({
             'id': room.id,
             'name': room.name,
+            'room_type': room.room_type,
             'price': room.price,
             'status': room.status,
             'description': room.description,
@@ -329,6 +500,7 @@ def get_branch(current_user, id):
         'rooms': [{
             'id': r.id,
             'name': r.name,
+            'room_type': r.room_type,
             'price': r.price,
             'deposit': r.deposit,
             'area': r.area,
@@ -529,6 +701,7 @@ def create_room(current_user):
     room = Room(
         branch_id=data['branch_id'],
         name=data['name'],
+        room_type=data.get('room_type', 'monthly'),
         price=data['price'],
         deposit=data.get('deposit'),
         area=data.get('area'),
@@ -555,6 +728,8 @@ def update_room(current_user, id):
         room.floor = data['floor']
     if 'name' in data:
         room.name = data['name']
+    if 'room_type' in data:
+        room.room_type = data['room_type']
     if 'price' in data:
         room.price = data['price']
     if 'deposit' in data:
@@ -835,3 +1010,98 @@ def search_user_for_contract(current_user, contract_id):
         'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else ''
     } for u in unique_users])
 
+
+# ============================================================
+# 회원 관리 API
+# ============================================================
+
+@admin_bp.route('/api/users', methods=['GET'])
+@admin_required
+@db_retry(max_retries=3, delay=1)
+def get_users(current_user):
+    """모든 회원 조회"""
+    users = User.query.all()
+    result = []
+    
+    for u in users:
+        active_branch_ids = [c.room.branch_id for c in u.contracts if c.status == 'active' and c.room]
+        result.append({
+            'id': u.id,
+            'name': u.name,
+            'email': u.email,
+            'phone': u.phone,
+            'kakao_id': u.kakao_id,
+            'role': u.role,
+            'onboarding_status': u.onboarding_status,
+            'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '',
+            'contract_count': len(active_branch_ids),
+            'branch_ids': list(set(active_branch_ids))
+        })
+    
+    return jsonify(result)
+
+@admin_bp.route('/api/users', methods=['POST'])
+@admin_required
+def create_user(current_user):
+    """회원 등록"""
+    data = request.get_json()
+    
+    # Validation
+    if not data.get('email') or not data.get('password') or not data.get('name'):
+        return jsonify({'error': '이름, 이메일, 비밀번호는 필수입니다.'}), 400
+        
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'error': '이미 존재하는 이메일입니다.'}), 400
+        
+    new_user = User(
+        email=data['email'],
+        name=data['name'],
+        phone=data.get('phone', ''),
+        role=data.get('role', 'user'),
+        onboarding_status='new_user_done' # Admin created users are assumed to be "done"
+    )
+    new_user.set_password(data['password'])
+    
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'User created',
+        'id': new_user.id
+    }), 201
+
+@admin_bp.route('/api/users/<int:id>', methods=['PUT'])
+@admin_required
+def update_user(current_user, id):
+    """회원 정보 수정"""
+    user = User.query.get_or_404(id)
+    data = request.get_json()
+    
+    if 'name' in data:
+        user.name = data['name']
+    if 'email' in data:
+        user.email = data['email']
+    if 'phone' in data:
+        user.phone = data['phone']
+    if 'role' in data:
+        user.role = data['role']
+    if 'onboarding_status' in data:
+        user.onboarding_status = data['onboarding_status']
+        
+    db.session.commit()
+    return jsonify({'message': 'User updated'})
+
+@admin_bp.route('/api/users/<int:id>', methods=['DELETE'])
+@admin_required
+def delete_user(current_user, id):
+    """회원 삭제"""
+    user = User.query.get_or_404(id)
+    
+    # Check dependencies (active contracts?)
+    active_contracts = user.contracts.filter(Contract.status == 'active').count()
+    if active_contracts > 0:
+        return jsonify({'error': '활성 계약이 있는 회원은 삭제할 수 없습니다.', 'active_contracts': active_contracts}), 400
+        
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': 'User deleted'})

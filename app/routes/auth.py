@@ -164,6 +164,10 @@ def email_register():
     db.session.add(user)
     db.session.commit()
     
+    # 🔗 새 사용자 생성 시 미매핑 계약 자동 매핑 시도
+    from app.services.contract_mapping_service import ContractMappingService
+    ContractMappingService.map_contracts_to_user(user)
+    
     # Generate token
     access_token = AuthService.generate_token(user.id)
     
@@ -224,9 +228,67 @@ def get_me(current_user):
         'id': current_user.id,
         'name': current_user.name,
         'email': current_user.email,
+        'phone': current_user.phone,
         'role': current_user.role,
         'onboarding_status': current_user.onboarding_status
     })
+
+@auth_bp.route('/profile', methods=['PUT'])
+@token_required
+def update_profile(current_user):
+    """Update user profile (name, email, password)"""
+    data = request.get_json()
+    
+    name = data.get('name')
+    email = data.get('email')
+    phone = data.get('phone')
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    
+    # 1. Update Name
+    if name:
+        current_user.name = name
+        
+    # 2. Update Email (with uniqueness check)
+    if email and email != current_user.email:
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return jsonify({'message': '이미 사용 중인 이메일입니다.'}), 400
+        current_user.email = email
+    
+    # 2-1. Update Phone
+    if phone:
+        current_user.phone = phone
+        
+    # 3. Update Password
+    if new_password:
+        if not current_password:
+            return jsonify({'message': '비밀번호를 변경하려면 현재 비밀번호를 입력해야 합니다.'}), 400
+        
+        if not current_user.check_password(current_password):
+            return jsonify({'message': '현재 비밀번호가 일치하지 않습니다.'}), 400
+            
+        current_user.set_password(new_password)
+    
+    try:
+        db.session.commit()
+        
+        # 🔗 정보 수정 시 계약 매핑 다시 시도 (전화번호 등이 변경되었을 수 있음)
+        from app.services.contract_mapping_service import ContractMappingService
+        ContractMappingService.map_contracts_to_user(current_user)
+        
+        return jsonify({
+            'message': '프로필이 성공적으로 업데이트되었습니다.',
+            'user': {
+                'id': current_user.id,
+                'name': current_user.name,
+                'email': current_user.email,
+                'phone': current_user.phone
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'업데이트 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @auth_bp.route('/onboarding', methods=['POST'])
 @token_required

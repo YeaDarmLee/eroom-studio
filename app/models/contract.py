@@ -15,8 +15,11 @@ class Contract(db.Model):
     
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.String(10), nullable=True) # For time_based rooms
+    end_time = db.Column(db.String(10), nullable=True)   # For time_based rooms
     months = db.Column(db.Integer)
-    total_price = db.Column(db.Integer)
+    price = db.Column(db.Integer)  # Monthly rent
+    deposit = db.Column(db.Integer) # Deposit
     
     status = db.Column(db.String(20), default='requested')
     # requested, approved, active, extend_requested, terminate_requested, terminated, cancelled

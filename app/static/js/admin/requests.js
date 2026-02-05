@@ -4,6 +4,8 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('requestsTab', () => ({
         allData: [],
         loading: false,
+        filterBranchId: 'all',
+        branches: [],
 
         // Modal state
         responseModalOpen: false,
@@ -13,6 +15,7 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.loadRequests();
+            this.loadBranches();
         },
 
         async loadRequests() {
@@ -32,12 +35,34 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async loadBranches() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/admin/api/branches', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    this.branches = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading branches:', error);
+            }
+        },
+
         get requests() {
-            return this.allData.filter(r => r.type !== 'inquiry');
+            let list = this.allData.filter(r => r.type !== 'inquiry');
+            if (this.filterBranchId !== 'all') {
+                list = list.filter(r => r.branch_id == this.filterBranchId);
+            }
+            return list;
         },
 
         get inquiries() {
-            return this.allData.filter(r => r.type === 'inquiry');
+            let list = this.allData.filter(r => r.type === 'inquiry');
+            if (this.filterBranchId !== 'all') {
+                list = list.filter(r => r.branch_id == this.filterBranchId);
+            }
+            return list;
         },
 
         openResponseModal(req) {
@@ -109,6 +134,8 @@ document.addEventListener('alpine:init', () => {
             const labels = {
                 'repair': '수리 요청',
                 'supplies': '비품 요청',
+                'extension': '연장 신청',
+                'termination': '퇴실 신청',
                 'complaint': '민원 접수',
                 'inquiry': '예약 문의',
                 'other': '기타'

@@ -60,6 +60,7 @@ class Room(db.Model):
     floor = db.Column(db.String(20))  # e.g., "B1", "1F", "2F", "3F"
     name = db.Column(db.String(50), nullable=False) # e.g., "101호"
     description = db.Column(db.Text)
+    room_type = db.Column(db.String(20), default='monthly') # monthly, time_based, manager
     price = db.Column(db.Integer)
     deposit = db.Column(db.Integer) # Security deposit
     area = db.Column(db.Float) # Room area in square meters

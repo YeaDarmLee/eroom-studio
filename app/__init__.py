@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from config import config
-from .extensions import db, migrate
+from .extensions import db, migrate, scheduler
 from flasgger import Swagger
 
 def create_app(config_name='default'):
@@ -24,6 +24,17 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     CORS(app)
     Swagger(app)
+
+    # Initialize Scheduler
+    from .tasks import terminate_expired_contracts
+    scheduler.init_app(app)
+    
+    # Add Job: Run every day at 00:00
+    @scheduler.task('cron', id='terminate_expired', hour=0, minute=0)
+    def scheduled_termination():
+        terminate_expired_contracts(app)
+        
+    scheduler.start()
 
     # Import models to ensure they are registered with SQLAlchemy
     from . import models

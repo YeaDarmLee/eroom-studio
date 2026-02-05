@@ -10,18 +10,16 @@ class ContractMappingService:
     @staticmethod
     def map_contracts_to_user(user):
         """
-        회원가입한 사용자에게 미매핑 계약을 자동으로 매핑
-        
-        Args:
-            user: User 객체
-            
-        Returns:
-            매핑된 계약 수
+        회원가입하거나 정보를 수정한 사용자에게 계약을 자동으로 매핑
+        1. 미매핑 계약(user_id가 None) 중 전화번호나 이메일이 일치하는 건 매핑
+        2. 임시 사용자(email이 'temp_'로 시작)에게 매핑된 계약 중 전화번호가 일치하는 건 현재 사용자로 재매핑
         """
         if not user:
             return 0
         
-        # 전화번호나 이메일로 미매핑 계약 찾기
+        mapped_count = 0
+        
+        # 1. 미매핑 계약 매핑
         unmapped_contracts = Contract.query.filter(
             Contract.user_id.is_(None),
             or_(
@@ -30,20 +28,41 @@ class ContractMappingService:
             )
         ).all()
         
-        mapped_count = 0
         for contract in unmapped_contracts:
-            # 매핑 전에 확인: 전화번호나 이메일이 일치하는지
-            phone_match = user.phone and contract.temp_user_phone == user.phone
-            email_match = user.email and contract.temp_user_email == user.email
+            contract.user_id = user.id
+            mapped_count += 1
+            print(f"✅ 미매핑 계약 #{contract.id}를 사용자 #{user.id}({user.name})에게 매핑")
+
+        # 2. 임시 사용자 계정의 계약 가로채기 (재매핑)
+        # 현재 사용자의 전화번호가 있고, 그 전화번호를 가진 임시 계정이 있다면
+        if user.phone:
+            placeholder_users = User.query.filter(
+                User.phone == user.phone,
+                User.email.like('temp_%'),
+                User.id != user.id
+            ).all()
             
-            if phone_match or email_match:
-                contract.user_id = user.id
-                mapped_count += 1
-                print(f"✅ 계약 #{contract.id}를 사용자 #{user.id}({user.name})에게 매핑")
+            for pu in placeholder_users:
+                # 이 임시 계정에 연결된 계약들을 현재 사용자에게 옮김
+                pu_contracts = Contract.query.filter_by(user_id=pu.id).all()
+                for c in pu_contracts:
+                    c.user_id = user.id
+                    mapped_count += 1
+                    print(f"🔄 임시 사용자 #{pu.id}의 계약 #{c.id}를 실제 사용자 #{user.id}에게 재매핑")
+                
+                # 임시 사용자의 요청(Request)들도 옮겨줌
+                from app.models.request import Request
+                pu_requests = Request.query.filter_by(user_id=pu.id).all()
+                for r in pu_requests:
+                    r.user_id = user.id
+                
+                # 중복 방지를 위해 임시 계정의 전화번호 제거 (또는 계정 삭제 고민 필요)
+                # 여기서는 번호만 제거하여 중복 매핑 방지
+                pu.phone = f"old_{pu.phone}_{pu.id}"
         
         if mapped_count > 0:
             db.session.commit()
-            print(f"🎉 총 {mapped_count}개의 계약이 매핑되었습니다!")
+            print(f"🎉 총 {mapped_count}개의 계약이 처리되었습니다!")
         
         return mapped_count
     

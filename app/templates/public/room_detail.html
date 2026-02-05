@@ -17,7 +17,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <!-- Image Gallery Section -->
             <div class="lg:col-span-3">
-                <div class="sticky top-32"
+                <div class=""
                     x-data="{ currentImage: 0, images: [{% for img in room.images %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}] }">
                     <!-- Main Image -->
                     <div class="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-2xl mb-4">
@@ -72,6 +72,138 @@
                         </div>
                     </template>
                 </div>
+
+                <!-- Real-time Reservation Timeline -->
+                {% if room.room_type == 'time_based' %}
+                <div class="mt-8 bg-white rounded-2xl shadow-lg p-6 lg:p-8 border border-gray-100"
+                    x-data="reservationTimeline({{ room.id }})" x-init="initTimeline()"
+                    @set-time.window="syncWithForm($event.detail)">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <div class="w-2 h-6 bg-primary rounded-full"></div>
+                                실시간 예약 현황
+                            </h3>
+                            <p class="text-xs text-gray-400 mt-1 ml-4" x-text="useDate + ' 일자 예약 상태입니다'"></p>
+                        </div>
+                        <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
+                            <div
+                                class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-50 text-gray-400 border border-gray-100">
+                                <div class="w-2 h-2 rounded-full bg-gray-300"></div>
+                                예약 가능
+                            </div>
+                            <div
+                                class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-50 text-red-500 border border-red-100">
+                                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                                예약 완료
+                            </div>
+                            <div
+                                class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 text-primary border border-primary/20">
+                                <div class="w-2 h-2 rounded-full bg-primary"></div>
+                                선택 중
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Grid -->
+                    <div class="relative px-2">
+                        <div class="grid grid-cols-6 sm:grid-cols-12 gap-x-3 gap-y-6">
+                            <template x-for="hour in 24" :key="hour-1">
+                                <div class="flex flex-col gap-2">
+                                    <div class="h-14 rounded-xl border transition-all duration-300 relative group overflow-hidden cursor-pointer"
+                                        @click="!isReserved(hour-1) && selectHour(hour-1)" :class="{
+                                            'bg-red-50 border-red-200 shadow-[inset_0_2px_4px_rgba(239,68,68,0.05)] cursor-not-allowed': isReserved(hour-1),
+                                            'bg-gray-50 border-gray-100 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md': !isReserved(hour-1) && !isSelected(hour-1),
+                                            'bg-primary/10 border-primary ring-2 ring-primary/20 shadow-lg': isSelected(hour-1)
+                                        }">
+
+                                        <!-- Reserved Pattern / Overlay -->
+                                        <template x-if="isReserved(hour-1)">
+                                            <div class="absolute inset-0 opacity-20"
+                                                style="background-image: repeating-linear-gradient(45deg, #ef4444 0, #ef4444 1px, transparent 0, transparent 50%); background-size: 8px 8px;">
+                                            </div>
+                                        </template>
+
+                                        <!-- Selection Pulse -->
+                                        <template x-if="isSelected(hour-1)">
+                                            <div class="absolute inset-0 bg-primary/10 animate-pulse"></div>
+                                        </template>
+
+                                        <!-- Status Indicator -->
+                                        <div class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full" :class="{
+                                                'bg-red-400': isReserved(hour-1),
+                                                'bg-primary shadow-[0_0_8px_rgba(243,156,18,0.6)]': isSelected(hour-1),
+                                                'bg-gray-200 group-hover:bg-primary/40': !isReserved(hour-1) && !isSelected(hour-1)
+                                            }">
+                                        </div>
+
+                                        <!-- Hour Label inside for mobile -->
+                                        <div
+                                            class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <span class="text-[10px] font-black" :class="{
+                                                    'text-red-300': isReserved(hour-1),
+                                                    'text-primary font-bold': isSelected(hour-1),
+                                                    'text-gray-300 group-hover:text-primary/20': !isReserved(hour-1) && !isSelected(hour-1)
+                                                }" x-text="(hour-1)"></span>
+                                        </div>
+
+                                        <!-- Tooltip -->
+                                        <div
+                                            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-2 bg-gray-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 shadow-xl translate-y-2 group-hover:translate-y-0">
+                                            <div class="font-bold border-b border-white/10 pb-1 mb-1"
+                                                x-text="(hour-1).toString().padStart(2, '0') + ':00 ~ ' + (hour).toString().padStart(2, '0') + ':00'">
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <div class="w-1.5 h-1.5 rounded-full"
+                                                    :class="isReserved(hour-1) ? 'bg-red-500' : (isSelected(hour-1) ? 'bg-primary' : 'bg-green-500')">
+                                                </div>
+                                                <span
+                                                    x-text="isReserved(hour-1) ? '선택 불가 (이미 예약됨)' : (isSelected(hour-1) ? '선택된 시간' : '클릭하여 선택')"></span>
+                                            </div>
+                                            <!-- Tooltip Arrow -->
+                                            <div
+                                                class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-[9px] font-bold text-gray-400 text-center tracking-tighter"
+                                        x-text="(hour-1).toString().padStart(2, '0') + 'H'"></div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Current Time Indicator -->
+                        <template x-if="isToday()">
+                            <div class="absolute top-0 bottom-6 w-px bg-primary z-20"
+                                :style="`left: calc(${calculateCurrentTimePosition()}% + 8px)`">
+                                <div
+                                    class="absolute -top-1 -left-1 w-2 h-2 bg-primary rounded-full border-2 border-white shadow-sm shadow-primary/50">
+                                </div>
+                                <div
+                                    class="absolute top-0 left-2 px-1.5 py-0.5 bg-primary text-white text-[8px] font-bold rounded shadow-lg whitespace-nowrap">
+                                    NOW</div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="mt-10 flex items-start gap-4 bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 shrink-0">
+                            <i class="ri-information-fill text-primary text-xl"></i>
+                        </div>
+                        <div class="text-xs text-gray-600 leading-relaxed">
+                            <p class="font-bold text-gray-900 mb-1">예약 현황 보는 법</p>
+                            <div class="space-y-1 text-gray-500 font-medium">
+                                <p>1. 타임라인의 <span class="text-primary font-bold">비어있는 칸을 클릭</span>하면 시작 시간으로 즉시 설정됩니다.
+                                </p>
+                                <p>2. 예약 폼에서 <span class="text-primary font-bold">시간을 변경</span>하면 타임라인에 선택 영역이 하이라이트됩니다.
+                                </p>
+                                <p>3. <span class="text-red-500 font-bold">빨간색 칸</span>은 이미 예약된 시간대입니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Room Info Section -->
@@ -81,7 +213,13 @@
                     <div class="mb-6">
                         <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ room.name }}</h1>
                         <div class="flex items-center gap-2">
-                            {% if room.status == 'available' %}
+                            {% if room.room_type == 'manager' %}
+                            <span
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                <i class="ri-admin-line mr-1"></i>
+                                총무방
+                            </span>
+                            {% elif room.status == 'available' %}
                             <span
                                 class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                                 <i class="ri-checkbox-circle-line mr-1"></i>
@@ -105,6 +243,12 @@
 
                     <!-- Price -->
                     <div class="mb-6 pb-6 border-b border-gray-100">
+                        {% if room.room_type == 'time_based' %}
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-bold text-primary">₩{{ "{:,}".format(room.price) }}</span>
+                            <span class="text-lg text-gray-500">/시간</span>
+                        </div>
+                        {% else %}
                         <div class="flex items-baseline gap-2">
                             <span class="text-4xl font-bold text-primary">₩{{ "{:,}".format(room.price) }}</span>
                             <span class="text-lg text-gray-500">/월</span>
@@ -112,6 +256,7 @@
                         <div class="mt-2 text-sm text-gray-500">
                             보증금: <span class="font-medium text-gray-700">₩{{ "{:,}".format(room.deposit or 0) }}</span>
                         </div>
+                        {% endif %}
                     </div>
 
                     <!-- Description -->
@@ -140,6 +285,7 @@
                                 </span>
                                 <span class="font-medium text-gray-900">{{ room.area or '-' }}㎡</span>
                             </div>
+                            {% if room.room_type != 'time_based' %}
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-600 flex items-center">
                                     <i class="ri-wallet-3-line mr-2 text-gray-400"></i>
@@ -147,11 +293,204 @@
                                 </span>
                                 <span class="font-medium text-gray-900">₩{{ "{:,}".format(room.deposit or 0) }}</span>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
 
                     <!-- Contract Form -->
-                    {% if room.status == 'available' %}
+                    {% if room.room_type == 'manager' %}
+                    <!-- Manager Room: Not Available for Contract -->
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ri-admin-line text-3xl text-purple-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">총무방</h3>
+                        <p class="text-gray-500">이 방은 계약이 불가능합니다</p>
+                    </div>
+
+                    {% elif room.room_type == 'time_based' and room.status == 'available' %}
+                    <!-- Time-based Room: Date + Time Selection -->
+                    <div x-data="timeBasedContractForm()"
+                        @select-slot.window="fromTimeline = true; startTime = $event.detail.start; endTime = $event.detail.end; $nextTick(() => fromTimeline = false)"
+                        x-init="$watch('startTime', val => !fromTimeline && $dispatch('set-time', {startTime: val, endTime: endTime})); $watch('endTime', val => !fromTimeline && $dispatch('set-time', {startTime: startTime, endTime: val}))">
+                        <form class="space-y-4" @submit.prevent="applyTimeBasedContract()">
+                            <div>
+                                <label for="use-date" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="ri-calendar-line mr-1"></i>
+                                    사용 날짜
+                                </label>
+                                <input type="date" id="use-date" x-model="useDate" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="start-time" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="ri-time-line mr-1"></i>
+                                        시작 시간
+                                    </label>
+                                    <select id="start-time" x-model="startTime" required
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                        <option value="00:00">00:00 (자정)</option>
+                                        <option value="01:00">01:00</option>
+                                        <option value="02:00">02:00</option>
+                                        <option value="03:00">03:00</option>
+                                        <option value="04:00">04:00</option>
+                                        <option value="05:00">05:00</option>
+                                        <option value="06:00">06:00</option>
+                                        <option value="07:00">07:00</option>
+                                        <option value="08:00">08:00</option>
+                                        <option value="09:00">09:00</option>
+                                        <option value="10:00">10:00</option>
+                                        <option value="11:00">11:00</option>
+                                        <option value="12:00">12:00 (정오)</option>
+                                        <option value="13:00">13:00</option>
+                                        <option value="14:00">14:00</option>
+                                        <option value="15:00">15:00</option>
+                                        <option value="16:00">16:00</option>
+                                        <option value="17:00">17:00</option>
+                                        <option value="18:00">18:00</option>
+                                        <option value="19:00">19:00</option>
+                                        <option value="20:00">20:00</option>
+                                        <option value="21:00">21:00</option>
+                                        <option value="22:00">22:00</option>
+                                        <option value="23:00">23:00</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="end-time" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="ri-time-line mr-1"></i>
+                                        종료 시간
+                                    </label>
+                                    <select id="end-time" x-model="endTime" required
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                        <option value="01:00">01:00</option>
+                                        <option value="02:00">02:00</option>
+                                        <option value="03:00">03:00</option>
+                                        <option value="04:00">04:00</option>
+                                        <option value="05:00">05:00</option>
+                                        <option value="06:00">06:00</option>
+                                        <option value="07:00">07:00</option>
+                                        <option value="08:00">08:00</option>
+                                        <option value="09:00">09:00</option>
+                                        <option value="10:00">10:00</option>
+                                        <option value="11:00">11:00</option>
+                                        <option value="12:00">12:00 (정오)</option>
+                                        <option value="13:00">13:00</option>
+                                        <option value="14:00">14:00</option>
+                                        <option value="15:00">15:00</option>
+                                        <option value="16:00">16:00</option>
+                                        <option value="17:00">17:00</option>
+                                        <option value="18:00">18:00</option>
+                                        <option value="19:00">19:00</option>
+                                        <option value="20:00">20:00</option>
+                                        <option value="21:00">21:00</option>
+                                        <option value="22:00">22:00</option>
+                                        <option value="23:00">23:00</option>
+                                        <option value="24:00">24:00 (자정)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Time-based Pricing Breakdown -->
+                            <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">시간당 가격</span>
+                                    <span class="font-medium text-gray-900">₩{{ "{:,}".format(room.price) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">사용 시간</span>
+                                    <span class="font-medium text-gray-900" x-text="calculateHours() + '시간'"></span>
+                                </div>
+                                <div class="pt-3 border-t border-gray-200/60 flex items-center justify-between">
+                                    <span class="text-sm font-semibold text-gray-900">총 금액</span>
+                                    <div class="text-xl font-bold text-primary">
+                                        ₩<span x-text="(calculateHours() * {{ room.price }}).toLocaleString()"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="space-y-3 pt-2">
+                                <button type="submit" :disabled="submitting"
+                                    class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>예약 신청하기</span>
+                                    <span x-show="submitting"><i class="ri-loader-4-line animate-spin mr-2"></i>처리
+                                        중...</span>
+                                </button>
+                                <button type="button" @click="openInquiry()"
+                                    class="w-full bg-white text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-200 hover:border-primary hover:text-primary transition-all">
+                                    <i class="ri-customer-service-line mr-2"></i>
+                                    문의하기
+                                </button>
+                            </div>
+                            <p class="text-xs text-center text-gray-500 mt-3">
+                                <i class="ri-information-line mr-1"></i>
+                                예약 신청 및 문의는 로그인이 필요합니다
+                            </p>
+                        </form>
+
+                        <!-- Inquiry Modal -->
+                        <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
+                            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+                            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+                            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                            <div
+                                class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                                <div class="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm"
+                                    @click="showInquiryModal = false"></div>
+
+                                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                                <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-2xl rounded-3xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-8"
+                                    x-transition:enter="transition ease-out duration-300"
+                                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                                    x-transition:leave="transition ease-in duration-200"
+                                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                                    <div class="flex items-center justify-between mb-6">
+                                        <h3 class="text-2xl font-bold text-gray-900">문의하기</h3>
+                                        <button @click="showInquiryModal = false"
+                                            class="text-gray-400 hover:text-gray-600 transition-colors">
+                                            <i class="ri-close-line text-2xl"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="mb-6 bg-primary/5 p-4 rounded-2xl flex items-start">
+                                        <i class="ri-information-line text-primary text-xl mr-3 mt-0.5"></i>
+                                        <p class="text-sm text-gray-600 leading-relaxed">
+                                            <span class="font-bold text-primary">{{ room.branch.name }} - {{ room.name
+                                                }}</span>에 대해 궁금한 점을 남겨주세요.
+                                            담당자가 확인 후 마이페이지와 연락처로 답변해 드립니다.
+                                        </p>
+                                    </div>
+
+                                    <form @submit.prevent="submitInquiry()" class="space-y-5">
+                                        <div>
+                                            <label for="inquiry-message"
+                                                class="block text-sm font-bold text-gray-700 mb-2 pl-1">상세 문의 내용</label>
+                                            <textarea id="inquiry-message" x-model="inquiryMessage" rows="5" required
+                                                placeholder="예: 실사 확인이 가능한 날짜를 알고 싶습니다. / 주차 공간이 넉넉한가요?"
+                                                class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none text-sm"></textarea>
+                                        </div>
+
+                                        <button type="submit" :disabled="submittingInquiry"
+                                            class="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">
+                                            <span x-show="!submittingInquiry">문의 내용 보내기</span>
+                                            <span x-show="submittingInquiry" class="flex items-center justify-center">
+                                                <i class="ri-loader-4-line animate-spin mr-2"></i> 전송 중...
+                                            </span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% elif room.status == 'available' %}
+                    <!-- Monthly Room: Existing Contract Form -->
                     <div x-data="contractForm()">
                         <form class="space-y-4" @submit.prevent="applyItem()">
                             <div>
@@ -305,6 +644,7 @@
         </div>
     </div>
 </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -314,8 +654,6 @@
             months: 1,
             startDate: new Date().toISOString().split('T')[0],
             submitting: false,
-
-            // Inquiry Modal State
             showInquiryModal: false,
             inquiryMessage: '',
             submittingInquiry: false,
@@ -382,10 +720,8 @@
 
             async submitInquiry() {
         if (!this.inquiryMessage.trim()) return;
-
         const token = localStorage.getItem('token');
         this.submittingInquiry = true;
-
         try {
             const response = await fetch('/api/requests', {
                 method: 'POST',
@@ -401,7 +737,6 @@
                     }
                 })
             });
-
             if (response.ok) {
                 window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
                 this.showInquiryModal = false;
@@ -416,6 +751,266 @@
             this.submittingInquiry = false;
         }
     }
+        }
+    }
+
+    function timeBasedContractForm() {
+        return {
+            useDate: new Date().toISOString().split('T')[0],
+            startTime: '09:00',
+            endTime: '10:00',
+            submitting: false,
+            showInquiryModal: false,
+            inquiryMessage: '',
+            submittingInquiry: false,
+            fromTimeline: false,
+
+            calculateHours() {
+                if (!this.startTime || !this.endTime) return 0;
+                const [startHour, startMin] = this.startTime.split(':').map(Number);
+                const [endHour, endMin] = this.endTime.split(':').map(Number);
+                const startMinutes = startHour * 60 + startMin;
+                const endMinutes = (endHour === 0 && this.endTime === '24:00') ? 24 * 60 : endHour * 60 + endMin;
+                const diffMinutes = endMinutes - startMinutes;
+                return Math.max(0, diffMinutes / 60);
+            },
+
+            async applyTimeBasedContract() {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                    });
+                    return;
+                }
+
+                if (!this.useDate || !this.startTime || !this.endTime) {
+                    window.showAlert('알림', '사용 날짜와 시간을 모두 선택해주세요.', 'warning');
+                    return;
+                }
+
+                const hours = this.calculateHours();
+                if (hours <= 0) {
+                    window.showAlert('알림', '종료 시간은 시작 시간보다 늦어야 합니다.', 'warning');
+                    return;
+                }
+
+                this.submitting = true;
+                try {
+                    const response = await fetch('/api/contracts', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            room_id: {{ room.id }},
+                        start_date: this.useDate,
+                        start_time: this.startTime,
+                        end_time: this.endTime,
+                        hours: hours
+                        })
+            });
+
+            if(response.ok) {
+            window.showAlert('신청 완료', '예약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
+                window.location.href = '/my/room';
+            });
+        } else {
+            const data = await response.json();
+            window.showAlert('신청 실패', data.message || '예약 신청 중 오류가 발생했습니다.', 'error');
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            }
+        }
+    } catch (error) {
+        console.error('Error applying for time-based contract:', error);
+        window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+    } finally {
+        this.submitting = false;
+    }
+            },
+
+    openInquiry() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
+                window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+            });
+            return;
+        }
+        this.showInquiryModal = true;
+    },
+
+            async submitInquiry() {
+        if (!this.inquiryMessage.trim()) return;
+        const token = localStorage.getItem('token');
+        this.submittingInquiry = true;
+        try {
+            const response = await fetch('/api/requests', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'inquiry',
+                    details: {
+                        message: this.inquiryMessage,
+                        room_name: '{{ room.branch.name }} - {{ room.name }}'
+                    }
+                })
+            });
+            if (response.ok) {
+                window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
+                this.showInquiryModal = false;
+                this.inquiryMessage = '';
+            } else {
+                window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
+            }
+        } catch (error) {
+            console.error('Error submitting inquiry:', error);
+            window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+        } finally {
+            this.submittingInquiry = false;
+        }
+    }
+        }
+    }
+
+    function reservationTimeline(roomId) {
+        return {
+            roomId: roomId,
+            reservations: [],
+            useDate: '',
+            selectedStart: null,
+            selectedEnd: null,
+            isSelectingEnd: false,
+
+            initTimeline() {
+                this.syncWithInput();
+                this.$nextTick(() => {
+                    const dateInput = document.getElementById('use-date');
+                    if (dateInput) {
+                        dateInput.addEventListener('change', () => this.syncWithInput());
+                        setInterval(() => this.syncWithInput(), 1000);
+                    }
+                });
+            },
+
+            syncWithInput() {
+                const dateInput = document.getElementById('use-date');
+                if (dateInput && dateInput.value !== this.useDate) {
+                    this.useDate = dateInput.value;
+                    this.fetchReservations();
+                }
+            },
+
+            syncWithForm(data) {
+                this.selectedStart = parseInt(data.startTime.split(':')[0]);
+                const endH = parseInt(data.endTime.split(':')[0]);
+                this.selectedEnd = (endH === 0 && data.endTime === '24:00') ? 24 : endH;
+                // 폼에서 변경된 경우, 범위 선택이 완료된 것으로 간주하여 리셋 (다음 클릭은 시작 시간 설정)
+                this.isSelectingEnd = false;
+            },
+
+            selectHour(hour) {
+                // Case 1: 시작 시간 선택 (첫 번째 클릭 또는 완료 후 재선택)
+                if (!this.isSelectingEnd) {
+                    this.selectedStart = hour;
+                    this.selectedEnd = hour + 1; // 기본 1시간 설정
+                    this.isSelectingEnd = true;
+
+                    const startStr = hour.toString().padStart(2, '0') + ':00';
+                    const endStr = (hour + 1).toString().padStart(2, '0') + ':00';
+                    this.$dispatch('select-slot', { start: startStr, end: endStr });
+
+                }
+                // Case 2: 종료 시간 선택 (두 번째 클릭)
+                else {
+                    // 시작 시간보다 이전 클릭 -> 새로운 시작 시간으로 변경
+                    if (hour < this.selectedStart) {
+                        this.selectedStart = hour;
+                        this.selectedEnd = hour + 1;
+                        this.isSelectingEnd = true;
+
+                        const startStr = hour.toString().padStart(2, '0') + ':00';
+                        const endStr = (hour + 1).toString().padStart(2, '0') + ':00';
+                        this.$dispatch('select-slot', { start: startStr, end: endStr });
+                        return;
+                    }
+
+                    // 같은 시간 클릭 -> 1시간 선택 완료
+                    if (hour === this.selectedStart) {
+                        this.isSelectingEnd = false; // 완료 상태로 전환
+                        return; // 이미 1시간으로 설정되어 있으므로 추가 작업 불필요
+                    }
+
+                    // 중간에 예약된 슬롯체크
+                    let hasReserved = false;
+                    for (let h = this.selectedStart; h <= hour; h++) {
+                        if (this.isReserved(h)) {
+                            hasReserved = true;
+                            break;
+                        }
+                    }
+
+                    if (hasReserved) {
+                        window.showAlert('선택 불가', '선택하신 범위 내에 이미 예약된 시간이 포함되어 있습니다.', 'warning');
+                        // 선택 상태 취소하지 않고 유지 (사용자가 다시 종료 시간 선택하도록)
+                        return;
+                    }
+
+                    // 정상 종료 시간 설정
+                    this.selectedEnd = hour + 1;
+                    this.isSelectingEnd = false;
+
+                    const startStr = this.selectedStart.toString().padStart(2, '0') + ':00';
+                    const endStr = this.selectedEnd.toString().padStart(2, '0') + ':00';
+                    this.$dispatch('select-slot', { start: startStr, end: endStr });
+                }
+            },
+
+            isSelected(hour) {
+                if (this.selectedStart === null || this.selectedEnd === null) return false;
+                return hour >= this.selectedStart && hour < this.selectedEnd;
+            },
+
+            async fetchReservations() {
+                if (!this.useDate) return;
+                try {
+                    const response = await fetch(`/api/public/rooms/${this.roomId}/reservations?date=${this.useDate}`);
+                    if (response.ok) {
+                        this.reservations = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error fetching reservations:', error);
+                }
+            },
+
+            isReserved(hour) {
+                return this.reservations.some(res => {
+                    const start = parseInt(res.start_time.split(':')[0]);
+                    const endText = res.end_time || '00:00';
+                    const end = parseInt(endText.split(':')[0]);
+                    const endHour = endText === '24:00' ? 24 : end;
+                    return hour >= start && hour < endHour;
+                });
+            },
+
+            isToday() {
+                const today = new Date().toLocaleDateString('en-CA');
+                return this.useDate === today;
+            },
+
+            calculateCurrentTimePosition() {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                const totalMinutes = hours * 60 + minutes;
+                return (totalMinutes / (24 * 60)) * 100;
+            }
         }
     }
 </script>

@@ -5,14 +5,166 @@ document.addEventListener('alpine:init', () => {
         contracts: [],
         loading: false,
         filterStatus: 'all',
+        filterBranchId: 'all',
 
         // Detailed Modal state
         detailModalOpen: false,
         selectedContract: null,
         submittingUpdate: false,
 
+        // Edit Modal State
+        editModalOpen: false,
+        editingContract: {},
+        editingBranchId: '',
+
+        // Create Contract Modal State
+        createModalOpen: false,
+        users: [],
+        rooms: [],
+        newContract: {
+            user_id: '',
+            room_id: '',
+            start_date: '',
+            end_date: '',
+            deposit: '',
+            price: ''
+        },
+        searchUserQuery: '',
+
         init() {
             this.loadContracts();
+            this.loadBranches(); // Load branches for filtering
+            this.$watch('createModalOpen', value => {
+                if (value) {
+                    this.loadBranches();
+                    if (this.users.length === 0) this.loadUsers();
+                }
+            });
+            this.$watch('selectedBranchId', () => {
+                this.newContract.room_id = '';
+                this.newContract.price = '';
+                this.newContract.deposit = '';
+            });
+        },
+
+        selectRoom(roomId) {
+            const room = this.availableRooms.find(r => r.id == roomId);
+            if (room) {
+                this.newContract.price = room.price;
+                this.newContract.deposit = room.deposit;
+            }
+        },
+
+        async loadUsers() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/admin/api/users', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    this.users = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        },
+
+        branches: [],
+        selectedBranchId: '',
+
+        async loadBranches() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/admin/api/branches', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (response.ok) {
+                    this.branches = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading branches:', error);
+            }
+        },
+
+        get availableRooms() {
+            if (!this.selectedBranchId && !this.editingBranchId) return [];
+            const branchId = this.editModalOpen ? this.editingBranchId : this.selectedBranchId;
+            const branch = this.branches.find(b => b.id == branchId);
+            if (!branch) return [];
+
+            return branch.rooms
+                .filter(room => {
+                    // Only show 'monthly' rooms for contracts
+                    if (room.room_type && room.room_type !== 'monthly') return false;
+
+                    if (room.status === 'available') return true;
+                    // If editing, include the room already assigned to this contract
+                    if (this.editModalOpen && this.editingContract && room.id == this.editingContract.room_id) return true;
+                    return false;
+                })
+                .map(room => ({
+                    id: room.id,
+                    name: room.name,
+                    price: room.price,
+                    deposit: room.deposit
+                }));
+        },
+
+        get filteredUsers() {
+            if (!this.searchUserQuery) return this.users;
+            const lower = this.searchUserQuery.toLowerCase();
+            return this.users.filter(u =>
+                u.name.toLowerCase().includes(lower) ||
+                u.email.toLowerCase().includes(lower) ||
+                (u.phone && u.phone.includes(lower))
+            );
+        },
+
+        openCreateModal() {
+            this.newContract = {
+                user_id: '',
+                room_id: '',
+                start_date: new Date().toISOString().split('T')[0],
+                end_date: '',
+                deposit: '',
+                price: ''
+            };
+            this.createModalOpen = true;
+        },
+
+
+        async createContract() {
+            if (!this.newContract.room_id || !this.newContract.start_date || !this.newContract.end_date) {
+                window.showAlert?.('입력 오류', '방, 시작일, 종료일은 필수입니다.', 'warning');
+                return;
+            }
+
+            this.submittingUpdate = true; // Reuse loading state
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch('/admin/api/contracts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(this.newContract)
+                });
+
+                if (response.ok) {
+                    await this.loadContracts();
+                    this.createModalOpen = false;
+                    window.showAlert?.('성공', '계약이 등록되었습니다.', 'success');
+                } else {
+                    const data = await response.json();
+                    window.showAlert?.('실패', data.error || '등록 실패', 'error');
+                }
+            } catch (error) {
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.submittingUpdate = false;
+            }
         },
 
         async loadContracts() {
@@ -32,14 +184,111 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        getContractCount(status) {
+            let list = this.contracts;
+            if (this.filterBranchId !== 'all') {
+                list = list.filter(c => c.branch_id == this.filterBranchId);
+            }
+
+            if (status === 'all') return list.length;
+            if (status === 'expiring_soon') {
+                return list.filter(c => this.isExpiringSoon(c)).length;
+            }
+            return list.filter(c => c.status === status).length;
+        },
+
+        isExpiringSoon(contract) {
+            if (contract.status !== 'active') return false;
+            if (!contract.end_date) return false;
+
+            const end = new Date(contract.end_date);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            const diffTime = end - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            return diffDays >= 0 && diffDays <= 30;
+        },
+
         get filteredContracts() {
-            if (this.filterStatus === 'all') return this.contracts;
-            return this.contracts.filter(c => c.status === this.filterStatus);
+            let list = this.contracts;
+
+            // Branch Filter
+            if (this.filterBranchId !== 'all') {
+                list = list.filter(c => c.branch_id == this.filterBranchId);
+            }
+
+            // Status Filter
+            if (this.filterStatus === 'all') return list;
+            if (this.filterStatus === 'expiring_soon') {
+                return list.filter(c => this.isExpiringSoon(c));
+            }
+            return list.filter(c => c.status === this.filterStatus);
         },
 
         openDetailModal(contract) {
             this.selectedContract = contract;
             this.detailModalOpen = true;
+        },
+
+        async openEditModal(contract) {
+            if (this.branches.length === 0) await this.loadBranches();
+            if (this.users.length === 0) await this.loadUsers();
+
+            this.editingBranchId = contract.branch_id || '';
+
+            this.editingContract = {
+                id: contract.id,
+                user_id: contract.user_id || '',
+                user_name: contract.user_name,
+                user_phone: contract.user_phone,
+                user_email: contract.user_email,
+                room_id: contract.room_id || '',
+                room_type: contract.room_type,
+                start_date: contract.start_date,
+                end_date: contract.end_date,
+                start_time: contract.start_time || '',
+                end_time: contract.end_time || '',
+                price: contract.price,
+                deposit: contract.deposit
+            };
+
+            this.editModalOpen = true;
+            this.detailModalOpen = false;
+        },
+
+        async updateContract() {
+            if (!this.editingContract.room_id || !this.editingContract.start_date || !this.editingContract.end_date) {
+                window.showAlert?.('입력 오류', '방, 시작일, 종료일은 필수입니다.', 'warning');
+                return;
+            }
+
+            this.submittingUpdate = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${this.editingContract.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(this.editingContract)
+                });
+
+                if (response.ok) {
+                    await this.loadContracts();
+                    this.editModalOpen = false;
+                    window.showAlert?.('성공', '계약 정보가 수정되었습니다.', 'success');
+                } else {
+                    const data = await response.json();
+                    window.showAlert?.('실패', data.error || '수정 실패', 'error');
+                }
+            } catch (error) {
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.submittingUpdate = false;
+            }
         },
 
         async updateStatus(id, newStatus) {

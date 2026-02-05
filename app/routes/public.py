@@ -1,6 +1,8 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from app.models.branch import Branch, Room
+from app.models.contract import Contract
 from app.utils.db_utils import db_retry
+from datetime import datetime
 
 public_bp = Blueprint('public', __name__, url_prefix='/api/public')
 
@@ -35,9 +37,12 @@ def get_branch(branch_id):
         rooms_by_floor[floor].append({
             'id': room.id,
             'name': room.name,
+            'room_type': room.room_type,
             'price': room.price,
+            'deposit': room.deposit,
             'status': room.status,
             'description': room.description,
+            'area': room.area,
             'floor': floor,
             'position_x': room.position_x,
             'position_y': room.position_y,
@@ -106,8 +111,41 @@ def get_room(room_id):
         'id': room.id,
         'branch_id': room.branch_id,
         'name': room.name,
+        'room_type': room.room_type,
         'price': room.price,
+        'deposit': room.deposit,
         'status': room.status,
         'description': room.description,
         'images': [{'id': img.id, 'url': img.image_url} for img in room.images]
     })
+
+@public_bp.route('/rooms/<int:room_id>/reservations', methods=['GET'])
+@db_retry(max_retries=3, delay=1)
+def get_room_reservations(room_id):
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Date is required'}), 400
+        
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+        
+    # Get all non-cancelled reservations for this room on this date
+    blocking_statuses = ['requested', 'approved', 'active', 'extend_requested']
+    
+    reservations = Contract.query.filter(
+        Contract.room_id == room_id,
+        Contract.start_date == target_date,
+        Contract.status.in_(blocking_statuses)
+    ).all()
+    
+    result = []
+    for res in reservations:
+        result.append({
+            'start_time': res.start_time,
+            'end_time': res.end_time,
+            'status': res.status
+        })
+        
+    return jsonify(result)

@@ -48,6 +48,7 @@ function registerBranchesPage() {
             branchRooms: [],
             roomFormData: {
                 name: '',
+                room_type: 'monthly',
                 price: '',
                 deposit: '',
                 area: '',
@@ -580,6 +581,7 @@ function registerBranchesPage() {
                 this.roomEditMode = false
                 this.roomFormData = {
                     name: '',
+                    room_type: 'monthly',
                     price: '',
                     deposit: '',
                     area: '',
