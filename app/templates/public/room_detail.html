@@ -510,7 +510,6 @@
                                 </label>
                                 <select id="months" name="months" x-model="months"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                                    <option value="1">1개월</option>
                                     <option value="2">2개월</option>
                                     <option value="3">3개월</option>
                                     <option value="6">6개월</option>
@@ -778,7 +777,7 @@
 
     window.contractFormConfig = {
         roomPrice: {{ room.price or 0 }},
-    roomDeposit: {{ room.deposit or 0 }},
+    roomDeposit: { { room.deposit or 0 } },
     roomId: "{{ room.id }}"
     };
 
@@ -847,13 +846,15 @@
                         this.couponApplied = false;
                         this.couponData = null;
                         this.couponMessage = data.error || '쿠폰 적용 실패';
-                    }} catch (e) {
+                    }
+                } catch (e) {
                     console.error(e);
                     this.couponMessage = '오류가 발생했습니다.';
                     this.couponApplied = false;
                 } finally {
                     this.validatingCoupon = false;
-                }},
+                }
+            },
 
 
             get durationDiscount() {
@@ -954,13 +955,15 @@
                         if (response.status === 401) {
                             localStorage.removeItem('token');
                             window.location.href = '/login';
-                        }}
+                        }
+                    }
                 } catch (error) {
                     console.error('Error applying for contract:', error);
                     window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
                 } finally {
                     this.submitting = false;
-                }},
+                }
+            },
 
 
             openInquiry() {
@@ -992,7 +995,8 @@
                             details: {
                                 message: this.inquiryMessage,
                                 room_id: window.contractFormConfig.roomId
-                            }})
+                            }
+                        })
                     });
 
                     if (response.ok) {
@@ -1001,12 +1005,14 @@
                         this.inquiryMessage = '';
                     } else {
                         window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
-                    }} catch (error) {
+                    }
+                } catch (error) {
                     console.error('Error submitting inquiry:', error);
                     window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
                 } finally {
                     this.submittingInquiry = false;
-                }}
+                }
+            }
         };
     }
 </script>
@@ -1079,7 +1085,8 @@
             if (response.status === 401) {
                 localStorage.removeItem('token');
                 window.location.href = '/login';
-            }}
+            }
+        }
     } catch (error) {
         console.error('Error applying for time-based contract:', error);
         window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
@@ -1114,7 +1121,8 @@
                     details: {
                         message: this.inquiryMessage,
                         room_name: '{{ room.branch.name }} - {{ room.name }}'
-                    }})
+                    }
+                })
             });
             if (response.ok) {
                 window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
@@ -1122,12 +1130,14 @@
                 this.inquiryMessage = '';
             } else {
                 window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
-            }} catch (error) {
+            }
+        } catch (error) {
             console.error('Error submitting inquiry:', error);
             window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
         } finally {
             this.submittingInquiry = false;
-        }}
+        }
+    }
         }}
 
     function reservationTimeline(roomId) {
@@ -1146,7 +1156,8 @@
                     if (dateInput) {
                         dateInput.addEventListener('change', () => this.syncWithInput());
                         setInterval(() => this.syncWithInput(), 1000);
-                    }});
+                    }
+                });
             },
 
             syncWithInput() {
@@ -1154,7 +1165,8 @@
                 if (dateInput && dateInput.value !== this.useDate) {
                     this.useDate = dateInput.value;
                     this.fetchReservations();
-                }},
+                }
+            },
 
             syncWithForm(data) {
                 this.selectedStart = parseInt(data.startTime.split(':')[0]);
@@ -1202,7 +1214,8 @@
                         if (this.isReserved(h)) {
                             hasReserved = true;
                             break;
-                        }}
+                        }
+                    }
 
                     if (hasReserved) {
                         window.showAlert('선택 불가', '선택하신 범위 내에 이미 예약된 시간이 포함되어 있습니다.', 'warning');
@@ -1217,7 +1230,8 @@
                     const startStr = this.selectedStart.toString().padStart(2, '0') + ':00';
                     const endStr = this.selectedEnd.toString().padStart(2, '0') + ':00';
                     this.$dispatch('select-slot', { start: startStr, end: endStr });
-                }},
+                }
+            },
 
             isSelected(hour) {
                 if (this.selectedStart === null || this.selectedEnd === null) return false;
@@ -1230,9 +1244,11 @@
                     const response = await fetch(`/api/public/rooms/${this.roomId}/reservations?date=${this.useDate}`);
                     if (response.ok) {
                         this.reservations = await response.json();
-                    }} catch (error) {
+                    }
+                } catch (error) {
                     console.error('Error fetching reservations:', error);
-                }},
+                }
+            },
 
             isReserved(hour) {
                 return this.reservations.some(res => {
@@ -1255,7 +1271,8 @@
                 const minutes = now.getMinutes();
                 const totalMinutes = hours * 60 + minutes;
                 return (totalMinutes / (24 * 60)) * 100;
-            }}
+            }
+        }
     }
 </script>
 <style>
