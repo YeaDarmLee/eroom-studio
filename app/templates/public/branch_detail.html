@@ -156,7 +156,7 @@
         <h1 class="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4">{{ branch.name }}</h1>
         <p class="text-gray-600 mb-8">{{ branch.address }}</p>
 
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-2 gap-6 mb-12">
             <div class="flex items-center">
                 <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full mr-3">
                     <i class="ri-time-line text-gray-600"></i>
@@ -177,62 +177,7 @@
             </div>
         </div>
 
-        <!-- Services (Dynamic from API) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16" x-data="{
-        commonServices: [],
-        specializedServices: [],
-        async init() {
-            try {
-                const response = await fetch('/api/public/branches/{{ branch.id }}');
-                if (response.ok) {
-                    const data = await response.json();
-                    this.commonServices = data.common_services || [];
-                    this.specializedServices = data.specialized_services || [];
-                }
-            } catch (error) {
-                console.error('Error loading services:', error);
-            }
-        }
-    }">
-            <div>
-                <h2 class="text-2xl font-bold mb-6">공통 제공 서비스</h2>
-                <div class="grid grid-cols-2 gap-6">
-                    <template x-for="service in commonServices" :key="service.id">
-                        <div class="p-6 bg-white rounded-lg border border-gray-100">
-                            <div class="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-lg mb-4">
-                                <i :class="service.icon || 'ri-service-line'" class="text-xl text-gray-600"></i>
-                            </div>
-                            <h3 class="font-medium mb-2" x-text="service.name"></h3>
-                            <p class="text-sm text-gray-600" x-text="service.description"></p>
-                        </div>
-                    </template>
-                    <template x-if="commonServices.length === 0">
-                        <div class="col-span-2 text-center py-8 text-gray-500">
-                            등록된 공통 서비스가 없습니다
-                        </div>
-                    </template>
-                </div>
-            </div>
-            <div>
-                <h2 class="text-2xl font-bold mb-6">지점 특화 서비스</h2>
-                <div class="grid grid-cols-2 gap-6">
-                    <template x-for="service in specializedServices" :key="service.id">
-                        <div class="p-6 bg-white rounded-lg border border-gray-100">
-                            <div class="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-lg mb-4">
-                                <i :class="service.icon || 'ri-service-line'" class="text-xl text-gray-600"></i>
-                            </div>
-                            <h3 class="font-medium mb-2" x-text="service.name"></h3>
-                            <p class="text-sm text-gray-600" x-text="service.description"></p>
-                        </div>
-                    </template>
-                    <template x-if="specializedServices.length === 0">
-                        <div class="col-span-2 text-center py-8 text-gray-500">
-                            등록된 특화 서비스가 없습니다
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Room List Cards with Tabs -->
         <div class="mb-16" x-data="{ activeRoomTab: 'monthly' }">

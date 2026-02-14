@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
 from app.extensions import db
 from app.models.user import User
-from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchService, BranchImage
+from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchImage
 from app.models.contract import Contract
+from app.models.coupon import Coupon
 from app.models.request import Request
 from app.routes.auth import admin_required
 from app.utils.db_utils import db_retry
@@ -159,12 +160,47 @@ def get_contracts(current_user):
             'end_date': c.end_date.strftime('%Y-%m-%d'),
             'start_time': c.start_time,
             'end_time': c.end_time,
+            'payment_day': c.payment_day,
             'status': c.status,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
         }
         result.append(contract_data)
     
     return jsonify(result)
+
+
+@admin_bp.route('/api/contracts/<int:id>', methods=['GET'])
+@admin_required
+@db_retry(max_retries=3, delay=1)
+def get_contract_detail(current_user, id):
+    """Get single contract details"""
+    c = Contract.query.get_or_404(id)
+    user_info = c.get_user_info()
+    
+    contract_data = {
+        'id': c.id,
+        'user_name': user_info['name'] or '알 수 없음',
+        'user_email': user_info['email'] or '',
+        'user_id': user_info['id'],
+        'user_phone': user_info['phone'] or '',
+        'is_mapped': user_info['is_mapped'],
+        'room_id': c.room_id,
+        'room_name': c.room.name if c.room else '알 수 없음',
+        'room_type': c.room.room_type if c.room else 'monthly',
+        'branch_id': c.room.branch_id if c.room else None,
+        'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+        'deposit': c.deposit if c.deposit is not None else (c.room.deposit if c.room else 0),
+        'price': c.price if c.price is not None else (c.room.price if c.room else 0),
+        'start_date': c.start_date.strftime('%Y-%m-%d'),
+        'end_date': c.end_date.strftime('%Y-%m-%d'),
+        'start_time': c.start_time,
+        'end_time': c.end_time,
+        'payment_day': c.payment_day,
+        'status': c.status,
+        'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
+    }
+    
+    return jsonify(contract_data)
 
 @admin_bp.route('/api/contracts', methods=['POST'])
 @admin_required
@@ -196,6 +232,7 @@ def create_contract(current_user):
         price=data.get('price', room.price),       # Use provided price or room default
         deposit=data.get('deposit', room.deposit), # Use provided deposit or room default
         months=months,
+        payment_day=data.get('payment_day', 1), # Default to 1st
         status='active', # Default to active for manual creation
         created_at=datetime.now()
     )
@@ -267,6 +304,12 @@ def update_contract(current_user, id):
         months = round(delta.days / 30)
         if months < 1: months = 1
         contract.months = months
+
+    if 'payment_day' in data:
+        try:
+            contract.payment_day = int(data['payment_day'])
+        except (ValueError, TypeError):
+            pass
 
     db.session.commit()
     return jsonify({'message': 'Contract updated'})
@@ -513,62 +556,10 @@ def get_branch(current_user, id):
         'floor_plans': floor_plans,
         'floors': [f.floor for f in branch.floors],
         'image_url': branch.image_url,
-        'images': [{'id': img.id, 'url': img.image_url} for img in branch.images],
-        'common_services': [{
-            'id': s.id,
-            'name': s.name,
-            'description': s.description,
-            'icon': s.icon,
-            'service_type': s.service_type
-        } for s in branch.services.filter_by(service_type='common').all()],
-        'specialized_services': [{
-            'id': s.id,
-            'name': s.name,
-            'description': s.description,
-            'icon': s.icon,
-            'service_type': s.service_type
-        } for s in branch.services.filter_by(service_type='specialized').all()]
+        'images': [{'id': img.id, 'url': img.image_url} for img in branch.images]
     })
 
-@admin_bp.route('/api/branches/<int:branch_id>/services', methods=['POST'])
-@admin_required
-def create_branch_service(current_user, branch_id):
-    """Create branch service"""
-    data = request.get_json()
-    service = BranchService(
-        branch_id=branch_id,
-        service_type=data.get('service_type', 'common'),
-        name=data['name'],
-        description=data.get('description'),
-        icon=data.get('icon')
-    )
-    db.session.add(service)
-    db.session.commit()
-    return jsonify({'message': 'Service created', 'id': service.id}), 201
 
-@admin_bp.route('/api/branches/<int:branch_id>/services/<int:service_id>', methods=['PUT', 'DELETE'])
-@admin_required
-def manage_branch_service(current_user, branch_id, service_id):
-    """Update or delete branch service"""
-    service = BranchService.query.filter_by(id=service_id, branch_id=branch_id).first_or_404()
-    
-    if request.method == 'DELETE':
-        db.session.delete(service)
-        db.session.commit()
-        return jsonify({'message': 'Service deleted'})
-    
-    data = request.get_json()
-    if 'name' in data:
-        service.name = data['name']
-    if 'description' in data:
-        service.description = data['description']
-    if 'icon' in data:
-        service.icon = data['icon']
-    if 'service_type' in data:
-        service.service_type = data['service_type']
-        
-    db.session.commit()
-    return jsonify({'message': 'Service updated'})
 
 @admin_bp.route('/api/branches/<int:id>', methods=['PUT'])
 @admin_required
@@ -1105,3 +1096,243 @@ def delete_user(current_user, id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': 'User deleted'})
+
+@admin_bp.route('/api/coupons', methods=['GET'])
+@admin_required
+def get_coupons(current_user):
+    """Get all coupons"""
+    coupons = Coupon.query.order_by(Coupon.created_at.desc()).all()
+    results = []
+    for c in coupons:
+        results.append({
+            'id': c.id,
+            'code': c.code,
+            'discount_type': c.discount_type,
+            'discount_value': c.discount_value,
+            'discount_cycle': c.discount_cycle,
+            'stack_policy': c.stack_policy,
+            'valid_from': c.valid_from.strftime('%Y-%m-%d'),
+            'valid_until': c.valid_until.strftime('%Y-%m-%d'),
+            'min_months': c.min_months,
+            'usage_limit': c.usage_limit,
+            'used_count': c.used_count,
+            'is_active': c.is_active,
+            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M')
+        })
+    return jsonify(results)
+
+@admin_bp.route('/api/coupons', methods=['POST'])
+@admin_required
+def create_coupon(current_user):
+    """Create new coupon"""
+    data = request.get_json()
+    
+    # Validation
+    required_fields = ['code', 'discount_type', 'discount_value', 'valid_from', 'valid_until']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'{field} is required'}), 400
+            
+    # Check duplicate code
+    if Coupon.query.filter_by(code=data['code']).first():
+        return jsonify({'error': 'Coupon code already exists'}), 400
+        
+    try:
+        valid_from = datetime.strptime(data['valid_from'], '%Y-%m-%d').date()
+        valid_until = datetime.strptime(data['valid_until'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+        
+    coupon = Coupon(
+        code=data['code'],
+        discount_type=data['discount_type'],
+        discount_value=int(data['discount_value']),
+        discount_cycle=data.get('discount_cycle', 'once'),
+        stack_policy=data.get('stack_policy', 'STACK_WITH_MONTHLY_PROMO'),
+        valid_from=valid_from,
+        valid_until=valid_until,
+        min_months=int(data.get('min_months')) if data.get('min_months') else None,
+        usage_limit=int(data.get('usage_limit')) if data.get('usage_limit') else None,
+        is_active=data.get('is_active', True)
+    )
+    
+    db.session.add(coupon)
+    db.session.commit()
+    
+    return jsonify({'message': 'Coupon created', 'id': coupon.id}), 201
+
+@admin_bp.route('/api/coupons/<int:id>', methods=['DELETE'])
+@admin_required
+def delete_coupon(current_user, id):
+    """Delete (Deactivate) coupon"""
+    coupon = Coupon.query.get_or_404(id)
+    if coupon.used_count > 0:
+        return jsonify({'error': '이미 사용된 쿠폰은 삭제할 수 없습니다.'}), 400
+
+    db.session.delete(coupon)
+    db.session.commit()
+    return jsonify({'message': 'Coupon deleted'})
+
+
+@admin_bp.route('/api/calendar/events', methods=['GET'])
+@admin_required
+def get_calendar_events(current_user):
+    """
+    Get calendar events for admin dashboard
+    Returns JSON array of events:
+    - Time-based reservations: displayed as time blocks
+    - Monthly payment days: displayed as all-day events
+    """
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    event_type = request.args.get('type', 'all') # 'all', 'time', 'monthly'
+    
+    if not start_str or not end_str:
+        return jsonify([])
+
+    try:
+        # FullCalendar sends ISO format (often with time, e.g., 2023-10-01T00:00:00-05:00)
+        # We only care about the date part for filtering range
+        start_date = datetime.fromisoformat(start_str.split('T')[0]).date()
+        end_date = datetime.fromisoformat(end_str.split('T')[0]).date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    events = []
+
+    # 1. Time-based Contracts (Reservations)
+    if event_type in ['all', 'time']:
+        time_contracts = Contract.query.join(Contract.room).filter(
+            Room.room_type == 'time_based',
+            Contract.start_date >= start_date,
+            Contract.end_date <= end_date
+        ).all()
+
+        for c in time_contracts:
+            user_info = c.get_user_info()
+            user_name = user_info['name'] or 'Unknown'
+            
+            # Combine date and time for FullCalendar
+            start_dt = f"{c.start_date}T{c.start_time}"
+            end_dt = f"{c.end_date}T{c.end_time}"
+            
+            branch_name = c.room.branch.name if c.room and c.room.branch else 'Unknown'
+            events.append({
+                'title': f'[{branch_name}] {user_name} ({c.start_time}~{c.end_time})',
+                'start': start_dt,
+                'end': end_dt,
+                'color': '#3b82f6', # Blue for time-based
+                'extendedProps': {
+                    'contract_id': c.id,
+                    'amount': c.price,
+                    'type': 'time',
+                    'room_name': c.room.name,
+                    'branch_name': branch_name
+                }
+            })
+
+    # 2. Monthly Contracts (Payment Days)
+    if event_type in ['all', 'monthly']:
+        monthly_contracts = Contract.query.join(Contract.room).filter(
+            Room.room_type != 'time_based',
+            Contract.status == 'active',
+            # Overlap check: Contract must be active during the requested window
+            Contract.start_date <= end_date,
+            Contract.end_date >= start_date
+        ).all()
+
+        for c in monthly_contracts:
+            if not c.payment_day:
+                continue
+                
+            # Iterate through months in the requested range to generate payment events
+            # Start iteration from the later of (range start, contract start)
+            current_iter_date = max(start_date, c.start_date)
+            # End iteration at the earlier of (range end, contract end)
+            end_iter_date = min(end_date, c.end_date)
+            
+            # Normalize to the first of the month to start iteration loop cleanly
+            iter_month = current_iter_date.replace(day=1)
+            
+            while iter_month <= end_iter_date:
+                # Calculate payment date for this month
+                # Handle short months (e.g., payment day 31 in Feb) -> standard approach is skip or last day.
+                # Here we will try to use the exact day. If invalid (e.g. Feb 30), we skip for simplicity or clamp.
+                # Creates a robust "last day" logic:
+                
+                try:
+                    payment_date = iter_month.replace(day=c.payment_day)
+                except ValueError:
+                    # If day is out of range for this month, set to last day of month
+                    # (e.g. payment day 31 in Feb -> Feb 28/29)
+                    next_month = iter_month + relativedelta(months=1)
+                    last_day_of_month = next_month - timedelta(days=1)
+                    payment_date = last_day_of_month
+                
+                # Check if this specific payment date is within the contract period AND requested range
+                if (payment_date >= c.start_date and 
+                    payment_date <= c.end_date and 
+                    payment_date >= start_date and 
+                    payment_date <= end_date):
+                    
+                    user_info = c.get_user_info()
+                    user_name = user_info['name'] or 'Unknown'
+                    
+                    branch_name = c.room.branch.name if c.room and c.room.branch else 'Unknown'
+                    events.append({
+                        'title': f'[{branch_name}] 결제: {user_name} ({c.room.name})',
+                        'start': payment_date.isoformat(),
+                        'allDay': True,
+                        'color': '#10b981', # Green for monthly payment
+                        'extendedProps': {
+                            'contract_id': c.id,
+                            'amount': c.price,
+                            'type': 'monthly',
+                            'room_name': c.room.name,
+                            'branch_name': branch_name
+                        }
+                    })
+                
+                # Move to next month
+                iter_month += relativedelta(months=1)
+            
+    return jsonify(events)
+
+
+@admin_bp.route('/api/monthly-payments', methods=['GET'])
+@admin_required
+def get_monthly_payments(current_user):
+    """
+    Get active monthly contracts grouped by payment day (1st and 15th)
+    """
+    monthly_contracts = Contract.query.join(Contract.room).filter(
+        Room.room_type != 'time_based',
+        Contract.status == 'active'
+    ).all()
+    
+    day1_list = []
+    day15_list = []
+    others_list = []
+    
+    for c in monthly_contracts:
+        user_info = c.get_user_info()
+        data = {
+            'id': c.id,
+            'user_name': user_info['name'] or 'Unknown',
+            'room_name': c.room.name,
+            'branch_name': c.room.branch.name if c.room and c.room.branch else 'Unknown',
+            'price': c.price,
+            'payment_day': c.payment_day
+        }
+        if c.payment_day == 1:
+            day1_list.append(data)
+        elif c.payment_day == 15:
+            day15_list.append(data)
+        else:
+            others_list.append(data)
+            
+    return jsonify({
+        'day1': day1_list,
+        'day15': day15_list,
+        'others': others_list
+    })

@@ -27,7 +27,8 @@ document.addEventListener('alpine:init', () => {
             start_date: '',
             end_date: '',
             deposit: '',
-            price: ''
+            price: '',
+            payment_day: 1
         },
         searchUserQuery: '',
 
@@ -128,7 +129,8 @@ document.addEventListener('alpine:init', () => {
                 start_date: new Date().toISOString().split('T')[0],
                 end_date: '',
                 deposit: '',
-                price: ''
+                price: '',
+                payment_day: 1
             };
             this.createModalOpen = true;
         },
@@ -251,7 +253,8 @@ document.addEventListener('alpine:init', () => {
                 start_time: contract.start_time || '',
                 end_time: contract.end_time || '',
                 price: contract.price,
-                deposit: contract.deposit
+                deposit: contract.deposit,
+                payment_day: contract.payment_day || 1
             };
 
             this.editModalOpen = true;

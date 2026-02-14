@@ -17,7 +17,7 @@ class Branch(db.Model):
     parking_info = db.Column(db.Text) # Parking details
     
     rooms = db.relationship('Room', backref='branch', lazy='dynamic')
-    services = db.relationship('BranchService', backref='branch', lazy='dynamic', cascade='all, delete-orphan')
+
     images = db.relationship('BranchImage', backref='branch', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
@@ -37,20 +37,7 @@ class BranchFloor(db.Model):
         db.UniqueConstraint('branch_id', 'floor', name='unique_branch_floor'),
     )
 
-class BranchService(db.Model):
-    __tablename__ = 'branch_services'
 
-    id = db.Column(db.Integer, primary_key=True)
-    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
-    service_type = db.Column(db.String(20), nullable=False)  # 'common' or 'specialized'
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.String(200))
-    icon = db.Column(db.String(50))  # Remix Icon class name (e.g., 'ri-wifi-line')
-    order_index = db.Column(db.Integer, default=0)  # For ordering services
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<BranchService {self.name} ({self.service_type})>'
 
 class Room(db.Model):
     __tablename__ = 'rooms'

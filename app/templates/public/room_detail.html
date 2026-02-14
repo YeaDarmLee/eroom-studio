@@ -76,7 +76,7 @@
                 <!-- Real-time Reservation Timeline -->
                 {% if room.room_type == 'time_based' %}
                 <div class="mt-8 bg-white rounded-2xl shadow-lg p-6 lg:p-8 border border-gray-100"
-                    x-data="reservationTimeline({{ room.id }})" x-init="initTimeline()"
+                    x-data="reservationTimeline({{ room.id or 0 }})" x-init="initTimeline()"
                     @set-time.window="syncWithForm($event.detail)">
                     <div class="flex items-center justify-between mb-8">
                         <div>
@@ -405,7 +405,8 @@
                                 <div class="pt-3 border-t border-gray-200/60 flex items-center justify-between">
                                     <span class="text-sm font-semibold text-gray-900">총 금액</span>
                                     <div class="text-xl font-bold text-primary">
-                                        ₩<span x-text="(calculateHours() * {{ room.price }}).toLocaleString()"></span>
+                                        ₩<span
+                                            x-text="(calculateHours() * {{ room.price or 0 }}).toLocaleString()"></span>
                                     </div>
                                 </div>
                             </div>
@@ -517,39 +518,164 @@
                                 </select>
                             </div>
 
+                            <!-- Payment Day Selection -->
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="ri-calendar-check-line mr-1"></i>
+                                    희망 결제일
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label
+                                        class="relative flex flex-col items-center justify-center p-3 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                        :class="paymentDay === 1 ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                        <input type="radio" name="paymentDay" :value="1" x-model.number="paymentDay"
+                                            class="absolute opacity-0 w-full h-full cursor-pointer">
+                                        <span class="text-sm font-bold"
+                                            :class="paymentDay === 1 ? 'text-primary' : 'text-gray-600'">매월 1일</span>
+                                    </label>
+                                    <label
+                                        class="relative flex flex-col items-center justify-center p-3 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                        :class="paymentDay === 15 ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                        <input type="radio" name="paymentDay" :value="15" x-model.number="paymentDay"
+                                            class="absolute opacity-0 w-full h-full cursor-pointer">
+                                        <span class="text-sm font-bold"
+                                            :class="paymentDay === 15 ? 'text-primary' : 'text-gray-600'">매월 15일</span>
+                                    </label>
+                                </div>
+                                <template x-if="proratedAmount !== 0">
+                                    <div class="mt-2 text-xs"
+                                        :class="proratedAmount > 0 ? 'text-orange-600' : 'text-blue-600'">
+                                        <i
+                                            :class="proratedAmount > 0 ? 'ri-add-circle-line' : 'ri-indeterminate-circle-line'"></i>
+                                        <span
+                                            x-text="proratedAmount > 0 ? '입주가 빨라 일할 계산됨 (추가금)' : '입주가 늦어 일할 계산됨 (할인)'"></span>
+                                        <span class="font-bold ml-1"
+                                            x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Coupon Input -->
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="ri-ticket-2-line mr-1"></i>
+                                    프로모션 코드 (선택)
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" x-model="couponCode" placeholder="쿠폰 코드 입력"
+                                        class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary uppercase">
+                                    <button type="button" @click="applyCoupon()"
+                                        :disabled="validatingCoupon || !couponCode"
+                                        class="px-5 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap">
+                                        <span x-show="!validatingCoupon">적용</span>
+                                        <span x-show="validatingCoupon"><i
+                                                class="ri-loader-4-line animate-spin"></i></span>
+                                    </button>
+                                </div>
+                                <template x-if="couponMessage">
+                                    <p class="text-xs mt-2 font-medium"
+                                        :class="couponApplied ? 'text-green-600' : 'text-red-500'"
+                                        x-text="couponMessage"></p>
+                                </template>
+                            </div>
+
+                            <!-- Payment Method Selection -->
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="ri-money-dollar-circle-line mr-1"></i>
+                                    결제 수단
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label
+                                        class="relative flex flex-col items-center justify-center p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                        :class="paymentMethod === 'bank' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                        <input type="radio" name="paymentMethod" value="bank" x-model="paymentMethod"
+                                            class="absolute opacity-0 w-full h-full cursor-pointer">
+                                        <i class="ri-money-dollar-circle-line text-2xl mb-2"
+                                            :class="paymentMethod === 'bank' ? 'text-primary' : 'text-gray-400'"></i>
+                                        <span class="text-sm font-bold"
+                                            :class="paymentMethod === 'bank' ? 'text-primary' : 'text-gray-600'">무통장입금</span>
+                                    </label>
+                                    <label
+                                        class="relative flex flex-col items-center justify-center p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                        :class="paymentMethod === 'card' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                        <input type="radio" name="paymentMethod" value="card" x-model="paymentMethod"
+                                            class="absolute opacity-0 w-full h-full cursor-pointer">
+                                        <i class="ri-bank-card-2-line text-2xl mb-2"
+                                            :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-400'"></i>
+                                        <span class="text-sm font-bold"
+                                            :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-600'">카드
+                                            결제</span>
+                                        <span class="text-[10px] text-gray-400 mt-1"
+                                            x-show="paymentMethod === 'card'">부가세 10% 포함</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <!-- Monthly Rent Model Breakdown -->
                             <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-4">
-                                <!-- Initial Payment -->
-                                <div class="flex items-center justify-between pb-3 border-b border-gray-200/60">
-                                    <div>
-                                        <span class="text-sm font-semibold text-gray-900">첫 달 결제 금액</span>
-                                        <p class="text-[10px] text-gray-400 mt-0.5">(보증금 + 1회차 임대료)</p>
+                                <div class="space-y-2 pb-3 border-b border-gray-200/60 text-sm">
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>기본 월요금</span>
+                                        <span>₩<span x-text="basePrice.toLocaleString()"></span></span>
                                     </div>
-                                    <div class="text-xl font-bold text-primary">
-                                        ₩<span
-                                            x-text="({{ room.price }} + {{ room.deposit or 0 }}).toLocaleString()"></span>
-                                    </div>
+                                    <template x-if="durationDiscount > 0">
+                                        <div class="flex justify-between text-blue-600">
+                                            <span>기간 할인 (<span x-text="months"></span>개월)</span>
+                                            <span>-₩<span x-text="durationDiscount.toLocaleString()"></span></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="couponApplied && couponDiscount > 0">
+                                        <div class="flex justify-between text-primary font-medium">
+                                            <span>쿠폰 할인</span>
+                                            <span>-₩<span x-text="couponDiscount.toLocaleString()"></span></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="proratedAmount !== 0">
+                                        <div class="flex justify-between text-xs pt-1"
+                                            :class="proratedAmount > 0 ? 'text-orange-600' : 'text-blue-600'">
+                                            <span>일할 계산</span>
+                                            <span
+                                                x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="paymentMethod === 'card'">
+                                        <div class="flex justify-between text-gray-500 text-xs">
+                                            <span>부가세 (10%)</span>
+                                            <span>포함</span>
+                                        </div>
+                                    </template>
                                 </div>
 
-                                <!-- Monthly Ongoing -->
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <span class="text-sm font-medium text-gray-700">이후 월 납부액</span>
-                                        <p class="text-[10px] text-gray-400 mt-0.5">(2회차부터 종료일차까지)</p>
+                                        <span class="text-sm font-bold text-gray-900">첫 달 결제 금액</span>
+                                        <p class="text-[10px] text-gray-400 mt-0.5">(보증금 포함)</p>
                                     </div>
-                                    <div class="text-lg font-semibold text-gray-800">
-                                        ₩{{ "{:,}".format(room.price) }}
+                                    <div class="text-xl font-bold text-primary">
+                                        ₩<span x-text="finalFirstPayment.toLocaleString()"></span>
                                     </div>
                                 </div>
 
-                                <!-- Total Summary (Subtle) -->
-                                <div class="pt-2 flex justify-end">
-                                    <span class="text-[11px] text-gray-400">
-                                        총 계약 기간: <span x-text="months"></span>개월 |
-                                        총액: ₩<span
-                                            x-text="(months * {{ room.price }} + {{ room.deposit or 0 }}).toLocaleString()"></span>
-                                    </span>
+                                <div class="flex items-center justify-between pt-2 border-t border-gray-200/60">
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700">이후 월 납부액</span>
+                                        <template x-if="couponApplied && couponData && couponData.cycle === 'once'">
+                                            <span class="text-[10px] text-gray-400 ml-1">(쿠폰 미적용)</span>
+                                        </template>
+                                    </div>
+                                    <div class="text-lg font-semibold text-gray-800">
+                                        ₩<span x-text="finalRecurringPayment.toLocaleString()"></span>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div class="pt-2 flex justify-end">
+                                <span class="text-[11px] text-gray-400">
+                                    총 계약 기간: <span x-text="months"></span>개월 |
+                                    총액: ₩<span
+                                        x-text="(months * {{ room.price or 0 }} + {{ room.deposit or 0 }}).toLocaleString()"></span>
+                                </span>
                             </div>
 
                             <!-- Action Buttons -->
@@ -649,14 +775,142 @@
 
 {% block scripts %}
 <script>
+
+    window.contractFormConfig = {
+        roomPrice: {{ room.price or 0 }},
+    roomDeposit: {{ room.deposit or 0 }},
+    roomId: "{{ room.id }}"
+    };
+
+    console.log('Contract Form Script Loaded');
+
     function contractForm() {
         return {
+
             months: 1,
             startDate: new Date().toISOString().split('T')[0],
+            basePrice: 0,
+            paymentDay: 1,
+            paymentMethod: 'bank',
+
+
+            couponCode: '',
+            couponApplied: false,
+            validatingCoupon: false,
+            couponMessage: '',
+            couponData: null,
+
+
             submitting: false,
             showInquiryModal: false,
             inquiryMessage: '',
             submittingInquiry: false,
+
+
+            init() {
+
+                this.basePrice = window.contractFormConfig.roomPrice || 0;
+            },
+
+
+            async applyCoupon() {
+                if (!this.couponCode) return;
+                this.validatingCoupon = true;
+                this.couponMessage = '';
+
+                try {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        this.couponMessage = '로그인이 필요합니다.';
+                        return;
+                    }
+
+                    const response = await fetch('/api/contracts/validate-coupon', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            room_id: window.contractFormConfig.roomId,
+                            months: parseInt(this.months),
+                            coupon_code: this.couponCode
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (response.ok) {
+                        this.couponApplied = true;
+                        this.couponData = data;
+                        this.couponMessage = '쿠폰이 적용되었습니다.';
+                    } else {
+                        this.couponApplied = false;
+                        this.couponData = null;
+                        this.couponMessage = data.error || '쿠폰 적용 실패';
+                    }} catch (e) {
+                    console.error(e);
+                    this.couponMessage = '오류가 발생했습니다.';
+                    this.couponApplied = false;
+                } finally {
+                    this.validatingCoupon = false;
+                }},
+
+
+            get durationDiscount() {
+                const m = parseInt(this.months);
+                if (m >= 12) return 50000;
+                if (m >= 6) return 30000;
+                if (m >= 3) return 20000;
+                return 0;
+            },
+
+
+            get couponDiscount() {
+                return (this.couponApplied && this.couponData) ? (this.couponData.coupon_discount || 0) : 0;
+            },
+
+
+            get recurringPrice() {
+                let price = this.basePrice - this.durationDiscount;
+                if (this.couponApplied && this.couponData && this.couponData.cycle === 'every_month') {
+                    price -= this.couponDiscount;
+                }
+                return Math.max(0, price);
+            },
+
+
+            get firstMonthPrice() {
+                let price = this.basePrice - this.durationDiscount - this.couponDiscount;
+                return Math.max(0, price);
+            },
+
+
+            get proratedAmount() {
+                if (!this.startDate) return 0;
+                const start = new Date(this.startDate);
+                const year = start.getFullYear();
+                const month = start.getMonth();
+                const anchorDate = new Date(year, month, this.paymentDay);
+                const diffDays = Math.ceil((anchorDate - start) / (1000 * 60 * 60 * 24));
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const dailyRate = this.recurringPrice / daysInMonth;
+                return Math.round((diffDays * dailyRate) / 1000) * 1000;
+            },
+
+
+            get finalFirstPayment() {
+                let price = this.firstMonthPrice + this.proratedAmount;
+                if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
+                return price + window.contractFormConfig.roomDeposit;
+            },
+
+
+            get finalRecurringPayment() {
+                let price = this.recurringPrice;
+                if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
+                return price;
+            },
+
 
             async applyItem() {
                 const token = localStorage.getItem('token');
@@ -681,79 +935,82 @@
                             'Authorization': `Bearer ${token}`
                         },
                         body: JSON.stringify({
-                            room_id: {{ room.id }},
-                        start_date: this.startDate,
-                        months: parseInt(this.months)
+                            room_id: window.contractFormConfig.roomId,
+                            start_date: this.startDate,
+                            months: parseInt(this.months),
+                            payment_day: this.paymentDay,
+                            payment_method: this.paymentMethod,
+                            coupon_code: this.couponApplied ? this.couponCode : null
                         })
-            });
+                    });
 
-            if(response.ok) {
-            window.showAlert('신청 완료', '계약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
-                window.location.href = '/my/room';
-            });
-        } else {
-            const data = await response.json();
-            window.showAlert('신청 실패', data.message || '계약 신청 중 오류가 발생했습니다.', 'error');
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                window.location.href = '/login';
-            }
-        }
-    } catch (error) {
-        console.error('Error applying for contract:', error);
-        window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
-    } finally {
-        this.submitting = false;
-    }
+                    if (response.ok) {
+                        window.showAlert('신청 완료', '계약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
+                            window.location.href = '/my/room';
+                        });
+                    } else {
+                        const data = await response.json();
+                        window.showAlert('신청 실패', data.message || '계약 신청 중 오류가 발생했습니다.', 'error');
+                        if (response.status === 401) {
+                            localStorage.removeItem('token');
+                            window.location.href = '/login';
+                        }}
+                } catch (error) {
+                    console.error('Error applying for contract:', error);
+                    window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+                } finally {
+                    this.submitting = false;
+                }},
+
+
+            openInquiry() {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
+                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                    });
+                    return;
+                }
+                this.showInquiryModal = true;
             },
 
-    openInquiry() {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
-                window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-            });
-            return;
-        }
-        this.showInquiryModal = true;
-    },
 
             async submitInquiry() {
-        if (!this.inquiryMessage.trim()) return;
-        const token = localStorage.getItem('token');
-        this.submittingInquiry = true;
-        try {
-            const response = await fetch('/api/requests', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    type: 'inquiry',
-                    details: {
-                        message: this.inquiryMessage,
-                        room_name: '{{ room.branch.name }} - {{ room.name }}'
-                    }
-                })
-            });
-            if (response.ok) {
-                window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
-                this.showInquiryModal = false;
-                this.inquiryMessage = '';
-            } else {
-                window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
-            }
-        } catch (error) {
-            console.error('Error submitting inquiry:', error);
-            window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
-        } finally {
-            this.submittingInquiry = false;
-        }
-    }
-        }
-    }
+                if (!this.inquiryMessage.trim()) return;
+                const token = localStorage.getItem('token');
+                this.submittingInquiry = true;
 
+                try {
+                    const response = await fetch('/api/requests', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            type: 'inquiry',
+                            details: {
+                                message: this.inquiryMessage,
+                                room_id: window.contractFormConfig.roomId
+                            }})
+                    });
+
+                    if (response.ok) {
+                        window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
+                        this.showInquiryModal = false;
+                        this.inquiryMessage = '';
+                    } else {
+                        window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
+                    }} catch (error) {
+                    console.error('Error submitting inquiry:', error);
+                    window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+                } finally {
+                    this.submittingInquiry = false;
+                }}
+        };
+    }
+</script>
+<script>
     function timeBasedContractForm() {
         return {
             useDate: new Date().toISOString().split('T')[0],
@@ -804,7 +1061,7 @@
                             'Authorization': `Bearer ${token}`
                         },
                         body: JSON.stringify({
-                            room_id: {{ room.id }},
+                            room_id: {{ room.id or 0 }},
                         start_date: this.useDate,
                         start_time: this.startTime,
                         end_time: this.endTime,
@@ -822,15 +1079,13 @@
             if (response.status === 401) {
                 localStorage.removeItem('token');
                 window.location.href = '/login';
-            }
-        }
+            }}
     } catch (error) {
         console.error('Error applying for time-based contract:', error);
         window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
     } finally {
         this.submitting = false;
-    }
-            },
+    }},
 
     openInquiry() {
         const token = localStorage.getItem('token');
@@ -859,8 +1114,7 @@
                     details: {
                         message: this.inquiryMessage,
                         room_name: '{{ room.branch.name }} - {{ room.name }}'
-                    }
-                })
+                    }})
             });
             if (response.ok) {
                 window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
@@ -868,16 +1122,13 @@
                 this.inquiryMessage = '';
             } else {
                 window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
-            }
-        } catch (error) {
+            }} catch (error) {
             console.error('Error submitting inquiry:', error);
             window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
         } finally {
             this.submittingInquiry = false;
-        }
-    }
-        }
-    }
+        }}
+        }}
 
     function reservationTimeline(roomId) {
         return {
@@ -895,8 +1146,7 @@
                     if (dateInput) {
                         dateInput.addEventListener('change', () => this.syncWithInput());
                         setInterval(() => this.syncWithInput(), 1000);
-                    }
-                });
+                    }});
             },
 
             syncWithInput() {
@@ -904,22 +1154,21 @@
                 if (dateInput && dateInput.value !== this.useDate) {
                     this.useDate = dateInput.value;
                     this.fetchReservations();
-                }
-            },
+                }},
 
             syncWithForm(data) {
                 this.selectedStart = parseInt(data.startTime.split(':')[0]);
                 const endH = parseInt(data.endTime.split(':')[0]);
                 this.selectedEnd = (endH === 0 && data.endTime === '24:00') ? 24 : endH;
-                // 폼에서 변경된 경우, 범위 선택이 완료된 것으로 간주하여 리셋 (다음 클릭은 시작 시간 설정)
+
                 this.isSelectingEnd = false;
             },
 
             selectHour(hour) {
-                // Case 1: 시작 시간 선택 (첫 번째 클릭 또는 완료 후 재선택)
+
                 if (!this.isSelectingEnd) {
                     this.selectedStart = hour;
-                    this.selectedEnd = hour + 1; // 기본 1시간 설정
+                    this.selectedEnd = hour + 1;
                     this.isSelectingEnd = true;
 
                     const startStr = hour.toString().padStart(2, '0') + ':00';
@@ -927,9 +1176,9 @@
                     this.$dispatch('select-slot', { start: startStr, end: endStr });
 
                 }
-                // Case 2: 종료 시간 선택 (두 번째 클릭)
+
                 else {
-                    // 시작 시간보다 이전 클릭 -> 새로운 시작 시간으로 변경
+
                     if (hour < this.selectedStart) {
                         this.selectedStart = hour;
                         this.selectedEnd = hour + 1;
@@ -941,36 +1190,34 @@
                         return;
                     }
 
-                    // 같은 시간 클릭 -> 1시간 선택 완료
+
                     if (hour === this.selectedStart) {
-                        this.isSelectingEnd = false; // 완료 상태로 전환
-                        return; // 이미 1시간으로 설정되어 있으므로 추가 작업 불필요
+                        this.isSelectingEnd = false;
+                        return;
                     }
 
-                    // 중간에 예약된 슬롯체크
+
                     let hasReserved = false;
                     for (let h = this.selectedStart; h <= hour; h++) {
                         if (this.isReserved(h)) {
                             hasReserved = true;
                             break;
-                        }
-                    }
+                        }}
 
                     if (hasReserved) {
                         window.showAlert('선택 불가', '선택하신 범위 내에 이미 예약된 시간이 포함되어 있습니다.', 'warning');
-                        // 선택 상태 취소하지 않고 유지 (사용자가 다시 종료 시간 선택하도록)
+
                         return;
                     }
 
-                    // 정상 종료 시간 설정
+
                     this.selectedEnd = hour + 1;
                     this.isSelectingEnd = false;
 
                     const startStr = this.selectedStart.toString().padStart(2, '0') + ':00';
                     const endStr = this.selectedEnd.toString().padStart(2, '0') + ':00';
                     this.$dispatch('select-slot', { start: startStr, end: endStr });
-                }
-            },
+                }},
 
             isSelected(hour) {
                 if (this.selectedStart === null || this.selectedEnd === null) return false;
@@ -983,11 +1230,9 @@
                     const response = await fetch(`/api/public/rooms/${this.roomId}/reservations?date=${this.useDate}`);
                     if (response.ok) {
                         this.reservations = await response.json();
-                    }
-                } catch (error) {
+                    }} catch (error) {
                     console.error('Error fetching reservations:', error);
-                }
-            },
+                }},
 
             isReserved(hour) {
                 return this.reservations.some(res => {
@@ -1010,8 +1255,7 @@
                 const minutes = now.getMinutes();
                 const totalMinutes = hours * 60 + minutes;
                 return (totalMinutes / (24 * 60)) * 100;
-            }
-        }
+            }}
     }
 </script>
 <style>

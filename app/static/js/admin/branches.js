@@ -75,19 +75,7 @@ function registerBranchesPage() {
             animationFrame: null,
             uploadingFloor: null,
 
-            // Services Management
-            showServicesModal: false,
-            showServiceFormModal: false,
-            serviceEditMode: false,
-            currentService: null,
-            commonServices: [],
-            specializedServices: [],
-            serviceFormData: {
-                name: '',
-                description: '',
-                icon: '',
-                service_type: 'common'
-            },
+
 
             // ==================== Initialization ====================
             // (init is defined at the top of this object)
@@ -859,115 +847,7 @@ function registerBranchesPage() {
                 }
             },
 
-            // ==================== Services Management Methods ====================
 
-            async loadBranchServices(branch) {
-                // OPEN IMMEDIATELY
-                this.showModal = false;
-                this.showRoomModal = false;
-                this.showServicesModal = true;
-                this.loadingData = true;
-                this.currentBranch = branch;
-                this.commonServices = [];
-                this.specializedServices = [];
-
-                const token = localStorage.getItem('token');
-                try {
-                    const response = await fetch(`/admin/api/branches/${branch.id}`, {
-                        headers: { Authorization: 'Bearer ' + token }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.commonServices = data.common_services || [];
-                        this.specializedServices = data.specialized_services || [];
-                        this.currentBranch = { ...branch, floors: data.floors || [] };
-                    }
-                } catch (error) {
-                    console.error('Error loading services:', error);
-                } finally {
-                    this.loadingData = false;
-                }
-            },
-
-            closeServicesModal() {
-                this.showServicesModal = false
-                this.commonServices = []
-                this.specializedServices = []
-                this.currentBranch = null
-            },
-
-            openServiceForm(type) {
-                this.serviceEditMode = false
-                this.serviceFormData = {
-                    name: '',
-                    description: '',
-                    icon: '',
-                    service_type: type
-                }
-                this.showServiceFormModal = true
-            },
-
-            editService(service) {
-                this.serviceEditMode = true
-                this.currentService = service
-                this.serviceFormData = { ...service }
-                this.showServiceFormModal = true
-            },
-
-            async saveService() {
-                const token = localStorage.getItem('token')
-                const url = this.serviceEditMode
-                    ? `/admin/api/branches/${this.currentBranch.id}/services/${this.currentService.id}`
-                    : `/admin/api/branches/${this.currentBranch.id}/services`
-                const method = this.serviceEditMode ? 'PUT' : 'POST'
-
-                try {
-                    const response = await fetch(url, {
-                        method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: 'Bearer ' + token
-                        },
-                        body: JSON.stringify(this.serviceFormData)
-                    })
-
-                    if (response.ok) {
-                        this.showServiceFormModal = false
-                        await this.loadBranchServices(this.currentBranch)
-                        alert(this.serviceEditMode ? '서비스가 수정되었습니다.' : '서비스가 추가되었습니다.')
-                    } else {
-                        alert('저장에 실패했습니다.')
-                    }
-                } catch (error) {
-                    console.error('Error saving service:', error)
-                    alert('오류가 발생했습니다.')
-                }
-            },
-
-            async deleteService(service) {
-                if (!confirm(`"${service.name}" 서비스를 삭제하시겠습니까?`)) return
-
-                const token = localStorage.getItem('token')
-                try {
-                    const response = await fetch(
-                        `/admin/api/branches/${this.currentBranch.id}/services/${service.id}`,
-                        {
-                            method: 'DELETE',
-                            headers: { Authorization: 'Bearer ' + token }
-                        }
-                    )
-
-                    if (response.ok) {
-                        await this.loadBranchServices(this.currentBranch)
-                        alert('서비스가 삭제되었습니다.')
-                    } else {
-                        alert('삭제에 실패했습니다.')
-                    }
-                } catch (error) {
-                    console.error('Error deleting service:', error)
-                    alert('오류가 발생했습니다.')
-                }
-            }
         }));
     }
 }

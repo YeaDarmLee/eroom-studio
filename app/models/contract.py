@@ -21,6 +21,15 @@ class Contract(db.Model):
     price = db.Column(db.Integer)  # Monthly rent
     deposit = db.Column(db.Integer) # Deposit
     
+    # New Fields for Payment
+    payment_method = db.Column(db.String(20), default='bank') # bank, card
+    payment_day = db.Column(db.Integer, default=1) # 1, 15
+    
+    # Coupon & Discount
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id'), nullable=True)
+    coupon = db.relationship('Coupon', backref='contracts')
+    discount_details = db.Column(db.Text, nullable=True) # JSON stored as Text for SQLite compatibility
+    
     status = db.Column(db.String(20), default='requested')
     # requested, approved, active, extend_requested, terminate_requested, terminated, cancelled
     

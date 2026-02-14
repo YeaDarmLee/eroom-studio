@@ -56,23 +56,6 @@ def get_branch(branch_id):
     for fp in branch.floors:
         floor_plans[fp.floor] = fp.floor_plan_image
     
-    # Get services grouped by type
-    common_services = []
-    specialized_services = []
-    
-    for service in branch.services:
-        service_data = {
-            'id': service.id,
-            'name': service.name,
-            'description': service.description,
-            'icon': service.icon
-        }
-        
-        if service.service_type == 'common':
-            common_services.append(service_data)
-        elif service.service_type == 'specialized':
-            specialized_services.append(service_data)
-    
     return jsonify({
         'id': branch.id,
         'name': branch.name,
@@ -81,9 +64,7 @@ def get_branch(branch_id):
         'facilities': branch.facilities,
         'map_info': branch.map_info,
         'rooms_by_floor': rooms_by_floor,
-        'floor_plans': floor_plans,
-        'common_services': common_services,
-        'specialized_services': specialized_services
+        'floor_plans': floor_plans
     })
 
 @public_bp.route('/branches/<int:branch_id>/rooms', methods=['GET'])
