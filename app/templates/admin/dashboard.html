@@ -294,18 +294,36 @@
                     </div>
 
                     <!-- Reservations & Payments Section -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" x-data="{ 
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                        x-init="fetchMonthlyPayments()" x-data="{ 
                             currentSubTab: 'monthly',
                             monthlyPayments: { day1: [], day15: [], others: [] },
                             contractModalOpen: false,
                             selectedContract: null,
                             loadingDetail: false,
+                            selectedBranch: '전체',
+                            uniqueBranches: [],
+                            
+                            getFilteredList(list) {
+                                if (this.selectedBranch === '전체') return list;
+                                return list.filter(item => item.branch_name === this.selectedBranch);
+                            },
+
                             async fetchMonthlyPayments() {
                                 try {
                                     const response = await fetch('/admin/api/monthly-payments', {
                                         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
                                     });
                                     this.monthlyPayments = await response.json();
+                                    
+                                    // Extract unique branches from all lists
+                                    const allItems = [
+                                        ...this.monthlyPayments.day1, 
+                                        ...this.monthlyPayments.day15, 
+                                        ...this.monthlyPayments.others
+                                    ];
+                                    this.uniqueBranches = [...new Set(allItems.map(item => item.branch_name))].sort();
+                                    
                                 } catch (e) {
                                     console.error('Failed to fetch monthly payments', e);
                                 }
@@ -474,6 +492,24 @@
                                 </button>
                             </div>
 
+                            <!-- Branch Filter -->
+                            <div class="flex items-center gap-2" x-show="currentSubTab === 'monthly'">
+                                <label class="text-xs font-bold text-gray-400">지점 선택</label>
+                                <div class="relative">
+                                    <select x-model="selectedBranch"
+                                        class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer hover:border-gray-300 transition-colors">
+                                        <option value="전체">전체 지점</option>
+                                        <template x-for="branch in uniqueBranches" :key="branch">
+                                            <option :value="branch" x-text="branch"></option>
+                                        </template>
+                                    </select>
+                                    <div
+                                        class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+                                        <i class="ri-arrow-down-s-line"></i>
+                                    </div>
+                                </div>
+                            </div>
+
                             {#
                             <!-- Legends/Filter for Search Tab 1 (only show when 'time') -->
                             <div x-show="currentSubTab === 'time'" class="flex items-center gap-4 text-xs font-medium">
@@ -508,10 +544,11 @@
                                             매월 1일 결제자
                                         </h4>
                                         <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold"
-                                            x-text="`${monthlyPayments.day1.length}명`"></span>
+                                            x-text="`${getFilteredList(monthlyPayments.day1).length}명`"></span>
                                     </div>
-                                    <div class="grid gap-2.5">
-                                        <template x-for="item in monthlyPayments.day1" :key="item.id">
+                                    <div
+                                        class="grid grid-cols-2 gap-2.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                        <template x-for="item in getFilteredList(monthlyPayments.day1)" :key="item.id">
                                             <div @click="openContractModal(item.id)"
                                                 class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 cursor-pointer transition-colors group">
                                                 <div class="flex items-center gap-2.5">
@@ -555,10 +592,11 @@
                                         </h4>
                                         <span
                                             class="px-3 py-1 bg-green-50 text-green-600 rounded-full text-xs font-bold"
-                                            x-text="`${monthlyPayments.day15.length}명`"></span>
+                                            x-text="`${getFilteredList(monthlyPayments.day15).length}명`"></span>
                                     </div>
-                                    <div class="grid gap-2.5">
-                                        <template x-for="item in monthlyPayments.day15" :key="item.id">
+                                    <div
+                                        class="grid grid-cols-2 gap-2.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                        <template x-for="item in getFilteredList(monthlyPayments.day15)" :key="item.id">
                                             <div @click="openContractModal(item.id)"
                                                 class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:border-green-200 cursor-pointer transition-colors group">
                                                 <div class="flex items-center gap-2.5">
@@ -600,7 +638,8 @@
                                         결제일
                                     </h4>
                                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                                        <template x-for="item in monthlyPayments.others" :key="item.id">
+                                        <template x-for="item in getFilteredList(monthlyPayments.others)"
+                                            :key="item.id">
                                             <div @click="openContractModal(item.id)"
                                                 class="p-2.5 bg-white border border-gray-100 rounded-xl flex items-center gap-2.5 hover:border-primary cursor-pointer transition-colors">
                                                 <div class="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-[10px]"

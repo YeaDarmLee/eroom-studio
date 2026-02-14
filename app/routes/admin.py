@@ -240,7 +240,7 @@ def create_contract(current_user):
         if months < 1: months = 1
     
     contract = Contract(
-        user_id=data.get('user_id'), # Optional
+        user_id=data.get('user_id') or None, # Optional: Ensure empty string becomes None
         room_id=room.id,
         start_date=start_date,
         end_date=end_date,
@@ -335,6 +335,43 @@ def update_contract(current_user, id):
 
     db.session.commit()
     return jsonify({'message': 'Contract updated'})
+
+@admin_bp.route('/api/monthly-payments', methods=['GET'])
+@admin_required
+def get_monthly_payments(current_user):
+    """Get active contracts grouped by payment day"""
+    active_contracts = Contract.query.filter_by(status='active').all()
+    
+    day1 = []
+    day15 = []
+    others = []
+    
+    for c in active_contracts:
+        user_info = c.get_user_info()
+        item = {
+            'id': c.id,
+            'user_name': user_info['name'] or c.temp_user_name or '알 수 없음',
+            'room_name': c.room.name if c.room else '알 수 없음',
+            'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+            'price': c.price if c.price is not None else (c.room.price if c.room else 0),
+            'payment_day': c.payment_day
+        }
+        
+        if c.payment_day == 1:
+            day1.append(item)
+        elif c.payment_day == 15:
+            day15.append(item)
+        else:
+            others.append(item)
+            
+    # Sort others by payment day
+    others.sort(key=lambda x: (x['payment_day'] or 0))
+    
+    return jsonify({
+        'day1': day1,
+        'day15': day15,
+        'others': others
+    })
 
 @admin_bp.route('/api/requests', methods=['GET'])
 @admin_required
@@ -1321,40 +1358,4 @@ def get_calendar_events(current_user):
     return jsonify(events)
 
 
-@admin_bp.route('/api/monthly-payments', methods=['GET'])
-@admin_required
-def get_monthly_payments(current_user):
-    """
-    Get active monthly contracts grouped by payment day (1st and 15th)
-    """
-    monthly_contracts = Contract.query.join(Contract.room).filter(
-        Room.room_type != 'time_based',
-        Contract.status == 'active'
-    ).all()
-    
-    day1_list = []
-    day15_list = []
-    others_list = []
-    
-    for c in monthly_contracts:
-        user_info = c.get_user_info()
-        data = {
-            'id': c.id,
-            'user_name': user_info['name'] or 'Unknown',
-            'room_name': c.room.name,
-            'branch_name': c.room.branch.name if c.room and c.room.branch else 'Unknown',
-            'price': c.price,
-            'payment_day': c.payment_day
-        }
-        if c.payment_day == 1:
-            day1_list.append(data)
-        elif c.payment_day == 15:
-            day15_list.append(data)
-        else:
-            others_list.append(data)
-            
-    return jsonify({
-        'day1': day1_list,
-        'day15': day15_list,
-        'others': others_list
-    })
+
