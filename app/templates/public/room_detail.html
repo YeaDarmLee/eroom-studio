@@ -413,7 +413,7 @@
 
                             <!-- Action Buttons -->
                             <div class="space-y-3 pt-2">
-                                <button type="submit" :disabled="submitting"
+                                <button type="button" @click="requestApply()" :disabled="submitting"
                                     class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>예약 신청하기</span>
                                     <span x-show="submitting"><i class="ri-loader-4-line animate-spin mr-2"></i>처리
@@ -430,6 +430,9 @@
                                 예약 신청 및 문의는 로그인이 필요합니다
                             </p>
                         </form>
+
+                        <!-- Confirmation Modal -->
+                        {% include "public/contract_confirm_modal.html" %}
 
                         <!-- Inquiry Modal -->
                         <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
@@ -618,6 +621,10 @@
                                         <span>기본 월요금</span>
                                         <span>₩<span x-text="basePrice.toLocaleString()"></span></span>
                                     </div>
+                                    <div class="flex justify-between text-gray-500 text-xs">
+                                        <span>보증금</span>
+                                        <span>₩{{ "{:,.0f}".format(room.deposit or 0) }}</span>
+                                    </div>
                                     <template x-if="durationDiscount > 0">
                                         <div class="flex justify-between text-blue-600">
                                             <span>기간 할인 (<span x-text="months"></span>개월)</span>
@@ -647,7 +654,7 @@
                                 </div>
 
                                 <div class="flex items-center justify-between">
-                                    <div>
+                                    <div class="text-left">
                                         <span class="text-sm font-bold text-gray-900">첫 달 결제 금액</span>
                                         <p class="text-[10px] text-gray-400 mt-0.5">(보증금 포함)</p>
                                     </div>
@@ -656,30 +663,31 @@
                                     </div>
                                 </div>
 
-                                <div class="flex items-center justify-between pt-2 border-t border-gray-200/60">
+                                <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                                     <div>
-                                        <span class="text-sm font-medium text-gray-700">이후 월 납부액</span>
+                                        <span class="text-sm font-bold text-gray-900">이후 월 납부액</span>
                                         <template x-if="couponApplied && couponData && couponData.cycle === 'once'">
                                             <span class="text-[10px] text-gray-400 ml-1">(쿠폰 미적용)</span>
                                         </template>
                                     </div>
-                                    <div class="text-lg font-semibold text-gray-800">
+                                    <div class="text-xl font-bold text-gray-800">
                                         ₩<span x-text="finalRecurringPayment.toLocaleString()"></span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="pt-2 flex justify-end">
-                                <span class="text-[11px] text-gray-400">
-                                    총 계약 기간: <span x-text="months"></span>개월 |
-                                    총액: ₩<span
-                                        x-text="(months * {{ room.price or 0 }} + {{ room.deposit or 0 }}).toLocaleString()"></span>
+                            <div class="pt-3 flex flex-col items-end">
+                                <span class="text-sm font-medium text-gray-500">
+                                    총 계약 기간: <span class="text-gray-900 font-bold"><span
+                                            x-text="months"></span>개월</span>
+                                    <span class="text-[11px] text-gray-400 ml-1">(<span x-text="startDate"></span> ~
+                                        <span class="text-primary font-bold" x-text="endDate"></span>)</span>
                                 </span>
                             </div>
 
                             <!-- Action Buttons -->
                             <div class="space-y-3 pt-2">
-                                <button type="submit" :disabled="submitting"
+                                <button type="button" @click="requestApply()" :disabled="submitting"
                                     class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>계약 신청하기</span>
                                     <span x-show="submitting"><i class="ri-loader-4-line animate-spin mr-2"></i>처리
@@ -696,6 +704,9 @@
                                 계약 신청 및 문의는 로그인이 필요합니다
                             </p>
                         </form>
+
+                        <!-- Confirmation Modal -->
+                        {% include "public/contract_confirm_modal.html" %}
 
                         <!-- Inquiry Modal -->
                         <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
@@ -776,15 +787,15 @@
 <script>
     window.contractFormConfig = {
         roomPrice: {{ room.price or 0 }},
-		roomDeposit: {{ room.deposit or 0 }},
-		roomId: "{{ room.id }}"
+    roomDeposit: {{ room.deposit or 0 }},
+    roomId: "{{ room.id }}"
     };
 
     console.log('Contract Form Script Loaded');
 
     function contractForm() {
         return {
-            months: 1,
+            months: 2,
             startDate: new Date().toISOString().split('T')[0],
             basePrice: 0,
             paymentDay: 1,
@@ -795,6 +806,7 @@
             couponMessage: '',
             couponData: null,
             submitting: false,
+            showConfirmModal: false,
             showInquiryModal: false,
             inquiryMessage: '',
             submittingInquiry: false,
@@ -874,14 +886,23 @@
                 const start = new Date(this.startDate);
                 const year = start.getFullYear();
                 const month = start.getMonth();
+
+                // 이번 결제 주기의 시작일 (anchorDate)
                 const anchorDate = new Date(year, month, this.paymentDay);
-                const diffDays = Math.ceil((anchorDate - start) / (1000 * 60 * 60 * 24));
+
+                // 결제 기준일로부터 며칠 차이가 나는지 계산 (초과 시 차감, 미달 시 추가)
+                const diffDays = Math.round((anchorDate - start) / (1000 * 60 * 60 * 24));
+
+                // 해당 월의 하루 기준 금액 (월세 / 월 일수)
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
                 const dailyRate = this.recurringPrice / daysInMonth;
+
+                // diffDays가 양수면 기준일보다 일찍 들어온 것(추가), 음수면 늦게 들어온 것(차감)
                 return Math.round((diffDays * dailyRate) / 1000) * 1000;
             },
 
             get finalFirstPayment() {
+                // 첫 결제액 = 첫 달 고정비용 + 일할 정산분(추가/차감) + 보증금
                 let price = this.firstMonthPrice + this.proratedAmount;
                 if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
                 return price + window.contractFormConfig.roomDeposit;
@@ -893,7 +914,40 @@
                 return price;
             },
 
+            get endDate() {
+                if (!this.startDate) return '';
+                const parts = this.startDate.split('-');
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1;
+
+                // 결제 주기가 완성되는 기준일
+                const anchorDate = new Date(year, month, this.paymentDay);
+                // 기준일로부터 정해진 개월수(months)만큼 주기가 끝나는 날 계산
+                const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + parseInt(this.months), anchorDate.getDate() - 1);
+
+                const y = end.getFullYear();
+                const m = String(end.getMonth() + 1).padStart(2, '0');
+                const d = String(end.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            },
+
+            requestApply() {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.showAlert('로그인 필요', '계약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                    });
+                    return;
+                }
+                if (!this.startDate) {
+                    window.showAlert('알림', '입주 희망일을 선택해주세요.', 'warning');
+                    return;
+                }
+                this.showConfirmModal = true;
+            },
+
             async applyItem() {
+                this.showConfirmModal = false;
                 const token = localStorage.getItem('token');
                 if (!token) {
                     window.showAlert('로그인 필요', '계약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
@@ -995,6 +1049,7 @@
             startTime: '09:00',
             endTime: '10:00',
             submitting: false,
+            showConfirmModal: false,
             showInquiryModal: false,
             inquiryMessage: '',
             submittingInquiry: false,
@@ -1010,7 +1065,28 @@
                 return Math.max(0, diffMinutes / 60);
             },
 
+            requestApply() {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                    });
+                    return;
+                }
+                if (!this.useDate || !this.startTime || !this.endTime) {
+                    window.showAlert('알림', '사용 날짜와 시간을 모두 선택해주세요.', 'warning');
+                    return;
+                }
+                const hours = this.calculateHours();
+                if (hours <= 0) {
+                    window.showAlert('알림', '종료 시간은 시작 시간보다 늦어야 합니다.', 'warning');
+                    return;
+                }
+                this.showConfirmModal = true;
+            },
+
             async applyTimeBasedContract() {
+                this.showConfirmModal = false;
                 const token = localStorage.getItem('token');
                 if (!token) {
                     window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
