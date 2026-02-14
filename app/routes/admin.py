@@ -147,7 +147,6 @@ def get_contracts(current_user):
             'user_email': user_info['email'] or '',
             'user_id': user_info['id'],
             'user_phone': user_info['phone'] or '',
-            'user_email': user_info['email'] or '',
             'is_mapped': user_info['is_mapped'],
             'room_id': c.room_id,
             'room_name': c.room.name if c.room else '알 수 없음',
@@ -161,7 +160,10 @@ def get_contracts(current_user):
             'start_time': c.start_time,
             'end_time': c.end_time,
             'payment_day': c.payment_day,
+            'payment_method': c.payment_method,
             'status': c.status,
+            'discount_details': json.loads(c.discount_details) if c.discount_details else None,
+            'coupon_name': c.coupon.name if c.coupon else None,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
         }
         result.append(contract_data)
@@ -196,7 +198,10 @@ def get_contract_detail(current_user, id):
         'start_time': c.start_time,
         'end_time': c.end_time,
         'payment_day': c.payment_day,
+        'payment_method': c.payment_method,
         'status': c.status,
+        'discount_details': json.loads(c.discount_details) if c.discount_details else None,
+        'coupon_name': c.coupon.name if c.coupon else None,
         'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
     }
     

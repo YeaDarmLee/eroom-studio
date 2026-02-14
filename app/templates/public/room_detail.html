@@ -208,1105 +208,1180 @@
 
             <!-- Room Info Section -->
             <div class="lg:col-span-2">
-                <div class="bg-white rounded-2xl shadow-lg p-6 lg:p-8 sticky top-32">
-                    <!-- Room Title -->
-                    <div class="mb-6">
-                        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ room.name }}</h1>
-                        <div class="flex items-center gap-2">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden sticky top-32 border border-gray-100"
+                    x-data="{ activeTab: 'info' }">
+                    <!-- Room Header -->
+                    <div class="p-6 lg:p-8 pb-0">
+                        <div class="mb-6">
+                            <h1 class="text-2xl font-black text-gray-900 mb-2">{{ room.name }}</h1>
+                            <div class="flex items-center gap-2">
+                                {% if room.room_type == 'manager' %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
+                                    <i class="ri-admin-line mr-1"></i> 총무방
+                                </span>
+                                {% elif room.status == 'available' %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                    <i class="ri-checkbox-circle-line mr-1"></i> 계약가능
+                                </span>
+                                {% elif room.status == 'reserved' %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
+                                    <i class="ri-time-line mr-1"></i> 검토중
+                                </span>
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
+                                    <i class="ri-close-circle-line mr-1"></i> 계약완료
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Modern Tab Switcher -->
+                        <div class="flex p-1 bg-gray-50 rounded-xl mb-6 border border-gray-200/60">
+                            <button @click="activeTab = 'info'"
+                                :class="activeTab === 'info' ? 'bg-white text-gray-900 shadow-sm border-gray-200' : 'text-gray-500 hover:text-gray-700 border-transparent'"
+                                class="flex-1 flex items-center justify-center py-2 text-sm font-bold rounded-lg transition-all border">
+                                <i class="ri-information-line mr-1.5"
+                                    :class="activeTab === 'info' ? 'text-primary' : ''"></i>
+                                룸 정보
+                            </button>
+                            <button @click="activeTab = 'contract'"
+                                :class="activeTab === 'contract' ? 'bg-white text-gray-900 shadow-sm border-gray-200' : 'text-gray-500 hover:text-gray-700 border-transparent'"
+                                class="flex-1 flex items-center justify-center py-2 text-sm font-bold rounded-lg transition-all border">
+                                <i class="ri-file-list-3-line mr-1.5"
+                                    :class="activeTab === 'contract' ? 'text-primary' : ''"></i>
+                                신청하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="px-6 lg:px-8 pb-8">
+                        <!-- Info Tab Content -->
+                        <div x-show="activeTab === 'info'" x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0">
+                            <!-- Price Display -->
+                            <div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/10">
+                                {% if room.room_type == 'time_based' %}
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-3xl font-black text-primary">₩{{ "{:,}".format(room.price)
+                                        }}</span>
+                                    <span class="text-sm font-bold text-gray-500">/ 시간</span>
+                                </div>
+                                {% else %}
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-3xl font-black text-primary">₩{{ "{:,}".format(room.price)
+                                        }}</span>
+                                    <span class="text-sm font-bold text-gray-500">/ 월</span>
+                                </div>
+                                <div class="mt-2 flex items-center text-sm font-medium text-gray-500">
+                                    <span class="w-12">보증금</span>
+                                    <span class="text-gray-900 font-bold">₩{{ "{:,}".format(room.deposit or 0)
+                                        }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Description -->
+                            {% if room.description %}
+                            <div class="mb-8">
+                                <h3 class="flex items-center text-sm font-bold text-gray-900 mb-3">
+                                    <i class="ri-chat-1-line mr-2 text-primary"></i> 설명
+                                </h3>
+                                <div
+                                    class="text-gray-600 leading-relaxed text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    {{ room.description }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Details Grid -->
+                            <div>
+                                <h3 class="flex items-center text-sm font-bold text-gray-900 mb-3">
+                                    <i class="ri-list-check mr-2 text-primary"></i> 상세 정보
+                                </h3>
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div
+                                        class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white shadow-sm">
+                                        <span class="text-gray-500 text-xs font-bold flex items-center">
+                                            <i class="ri-building-line mr-2 text-gray-400"></i> 소속 층수
+                                        </span>
+                                        <span class="font-bold text-gray-900 text-sm">{{ room.floor or '1F'
+                                            }}</span>
+                                    </div>
+                                    <div
+                                        class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white shadow-sm">
+                                        <span class="text-gray-500 text-xs font-bold flex items-center">
+                                            <i class="ri-ruler-line mr-2 text-gray-400"></i> 방 면적
+                                        </span>
+                                        <span class="font-bold text-gray-900 text-sm">{{ room.area or '-' }}㎡</span>
+                                    </div>
+                                    {% if room.room_type != 'time_based' %}
+                                    <div
+                                        class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white shadow-sm">
+                                        <span class="text-gray-500 text-xs font-bold flex items-center">
+                                            <i class="ri-wallet-3-line mr-2 text-gray-400"></i> 초기 보증금
+                                        </span>
+                                        <span class="font-bold text-gray-900 text-sm">₩{{ "{:,}".format(room.deposit
+                                            or
+                                            0) }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contract Tab Content -->
+                        <div x-show="activeTab === 'contract'" x-cloak
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0">
+                            <!-- Contract Form Content Starts Here -->
                             {% if room.room_type == 'manager' %}
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                                <i class="ri-admin-line mr-1"></i>
-                                총무방
-                            </span>
-                            {% elif room.status == 'available' %}
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                <i class="ri-checkbox-circle-line mr-1"></i>
-                                계약가능
-                            </span>
-                            {% elif room.status == 'reserved' %}
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                                <i class="ri-time-line mr-1"></i>
-                                검토중
-                            </span>
-                            {% else %}
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                                <i class="ri-close-circle-line mr-1"></i>
-                                계약완료
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Price -->
-                    <div class="mb-6 pb-6 border-b border-gray-100">
-                        {% if room.room_type == 'time_based' %}
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-4xl font-bold text-primary">₩{{ "{:,}".format(room.price) }}</span>
-                            <span class="text-lg text-gray-500">/시간</span>
-                        </div>
-                        {% else %}
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-4xl font-bold text-primary">₩{{ "{:,}".format(room.price) }}</span>
-                            <span class="text-lg text-gray-500">/월</span>
-                        </div>
-                        <div class="mt-2 text-sm text-gray-500">
-                            보증금: <span class="font-medium text-gray-700">₩{{ "{:,}".format(room.deposit or 0) }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Description -->
-                    {% if room.description %}
-                    <div class="mb-6 pb-6 border-b border-gray-100">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-2 uppercase tracking-wide">설명</h3>
-                        <p class="text-gray-600 leading-relaxed">{{ room.description }}</p>
-                    </div>
-                    {% endif %}
-
-                    <!-- Room Details -->
-                    <div class="mb-6 pb-6 border-b border-gray-100">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wide">상세 정보</h3>
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-600 flex items-center">
-                                    <i class="ri-building-line mr-2 text-gray-400"></i>
-                                    층수
-                                </span>
-                                <span class="font-medium text-gray-900">{{ room.floor or '1F' }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-600 flex items-center">
-                                    <i class="ri-ruler-line mr-2 text-gray-400"></i>
-                                    면적
-                                </span>
-                                <span class="font-medium text-gray-900">{{ room.area or '-' }}㎡</span>
-                            </div>
-                            {% if room.room_type != 'time_based' %}
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-600 flex items-center">
-                                    <i class="ri-wallet-3-line mr-2 text-gray-400"></i>
-                                    보증금
-                                </span>
-                                <span class="font-medium text-gray-900">₩{{ "{:,}".format(room.deposit or 0) }}</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Contract Form -->
-                    {% if room.room_type == 'manager' %}
-                    <!-- Manager Room: Not Available for Contract -->
-                    <div class="text-center py-8">
-                        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="ri-admin-line text-3xl text-purple-600"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">총무방</h3>
-                        <p class="text-gray-500">이 방은 계약이 불가능합니다</p>
-                    </div>
-
-                    {% elif room.room_type == 'time_based' and room.status == 'available' %}
-                    <!-- Time-based Room: Date + Time Selection -->
-                    <div x-data="timeBasedContractForm()"
-                        @select-slot.window="fromTimeline = true; startTime = $event.detail.start; endTime = $event.detail.end; $nextTick(() => fromTimeline = false)"
-                        x-init="$watch('startTime', val => !fromTimeline && $dispatch('set-time', {startTime: val, endTime: endTime})); $watch('endTime', val => !fromTimeline && $dispatch('set-time', {startTime: startTime, endTime: val}))">
-                        <form class="space-y-4" @submit.prevent="applyTimeBasedContract()">
-                            <div>
-                                <label for="use-date" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="ri-calendar-line mr-1"></i>
-                                    사용 날짜
-                                </label>
-                                <input type="date" id="use-date" x-model="useDate" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="start-time" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="ri-time-line mr-1"></i>
-                                        시작 시간
-                                    </label>
-                                    <select id="start-time" x-model="startTime" required
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                                        <option value="00:00">00:00 (자정)</option>
-                                        <option value="01:00">01:00</option>
-                                        <option value="02:00">02:00</option>
-                                        <option value="03:00">03:00</option>
-                                        <option value="04:00">04:00</option>
-                                        <option value="05:00">05:00</option>
-                                        <option value="06:00">06:00</option>
-                                        <option value="07:00">07:00</option>
-                                        <option value="08:00">08:00</option>
-                                        <option value="09:00">09:00</option>
-                                        <option value="10:00">10:00</option>
-                                        <option value="11:00">11:00</option>
-                                        <option value="12:00">12:00 (정오)</option>
-                                        <option value="13:00">13:00</option>
-                                        <option value="14:00">14:00</option>
-                                        <option value="15:00">15:00</option>
-                                        <option value="16:00">16:00</option>
-                                        <option value="17:00">17:00</option>
-                                        <option value="18:00">18:00</option>
-                                        <option value="19:00">19:00</option>
-                                        <option value="20:00">20:00</option>
-                                        <option value="21:00">21:00</option>
-                                        <option value="22:00">22:00</option>
-                                        <option value="23:00">23:00</option>
-                                    </select>
+                            <!-- Manager Room: Not Available for Contract -->
+                            <div class="text-center py-8">
+                                <div
+                                    class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="ri-admin-line text-3xl text-purple-600"></i>
                                 </div>
-                                <div>
-                                    <label for="end-time" class="block text-sm font-medium text-gray-700 mb-2">
-                                        <i class="ri-time-line mr-1"></i>
-                                        종료 시간
-                                    </label>
-                                    <select id="end-time" x-model="endTime" required
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                                        <option value="01:00">01:00</option>
-                                        <option value="02:00">02:00</option>
-                                        <option value="03:00">03:00</option>
-                                        <option value="04:00">04:00</option>
-                                        <option value="05:00">05:00</option>
-                                        <option value="06:00">06:00</option>
-                                        <option value="07:00">07:00</option>
-                                        <option value="08:00">08:00</option>
-                                        <option value="09:00">09:00</option>
-                                        <option value="10:00">10:00</option>
-                                        <option value="11:00">11:00</option>
-                                        <option value="12:00">12:00 (정오)</option>
-                                        <option value="13:00">13:00</option>
-                                        <option value="14:00">14:00</option>
-                                        <option value="15:00">15:00</option>
-                                        <option value="16:00">16:00</option>
-                                        <option value="17:00">17:00</option>
-                                        <option value="18:00">18:00</option>
-                                        <option value="19:00">19:00</option>
-                                        <option value="20:00">20:00</option>
-                                        <option value="21:00">21:00</option>
-                                        <option value="22:00">22:00</option>
-                                        <option value="23:00">23:00</option>
-                                        <option value="24:00">24:00 (자정)</option>
-                                    </select>
-                                </div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">총무방</h3>
+                                <p class="text-gray-500">이 방은 계약이 불가능합니다</p>
                             </div>
 
-                            <!-- Time-based Pricing Breakdown -->
-                            <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-gray-600">시간당 가격</span>
-                                    <span class="font-medium text-gray-900">₩{{ "{:,}".format(room.price) }}</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-gray-600">사용 시간</span>
-                                    <span class="font-medium text-gray-900" x-text="calculateHours() + '시간'"></span>
-                                </div>
-                                <div class="pt-3 border-t border-gray-200/60 flex items-center justify-between">
-                                    <span class="text-sm font-semibold text-gray-900">총 금액</span>
-                                    <div class="text-xl font-bold text-primary">
-                                        ₩<span
-                                            x-text="(calculateHours() * {{ room.price or 0 }}).toLocaleString()"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="space-y-3 pt-2">
-                                <button type="button" @click="requestApply()" :disabled="submitting"
-                                    class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>예약 신청하기</span>
-                                    <span x-show="submitting"><i class="ri-loader-4-line animate-spin mr-2"></i>처리
-                                        중...</span>
-                                </button>
-                                <button type="button" @click="openInquiry()"
-                                    class="w-full bg-white text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-200 hover:border-primary hover:text-primary transition-all">
-                                    <i class="ri-customer-service-line mr-2"></i>
-                                    문의하기
-                                </button>
-                            </div>
-                            <p class="text-xs text-center text-gray-500 mt-3">
-                                <i class="ri-information-line mr-1"></i>
-                                예약 신청 및 문의는 로그인이 필요합니다
-                            </p>
-                        </form>
-
-                        <!-- Confirmation Modal -->
-                        {% include "public/contract_confirm_modal.html" %}
-
-                        <!-- Inquiry Modal -->
-                        <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
-                            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
-                            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
-                            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-                            <div
-                                class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                                <div class="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm"
-                                    @click="showInquiryModal = false"></div>
-
-                                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-
-                                <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-2xl rounded-3xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-8"
-                                    x-transition:enter="transition ease-out duration-300"
-                                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                                    x-transition:leave="transition ease-in duration-200"
-                                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-
-                                    <div class="flex items-center justify-between mb-6">
-                                        <h3 class="text-2xl font-bold text-gray-900">문의하기</h3>
-                                        <button @click="showInquiryModal = false"
-                                            class="text-gray-400 hover:text-gray-600 transition-colors">
-                                            <i class="ri-close-line text-2xl"></i>
-                                        </button>
-                                    </div>
-
-                                    <div class="mb-6 bg-primary/5 p-4 rounded-2xl flex items-start">
-                                        <i class="ri-information-line text-primary text-xl mr-3 mt-0.5"></i>
-                                        <p class="text-sm text-gray-600 leading-relaxed">
-                                            <span class="font-bold text-primary">{{ room.branch.name }} - {{ room.name
-                                                }}</span>에 대해 궁금한 점을 남겨주세요.
-                                            담당자가 확인 후 마이페이지와 연락처로 답변해 드립니다.
-                                        </p>
-                                    </div>
-
-                                    <form @submit.prevent="submitInquiry()" class="space-y-5">
-                                        <div>
-                                            <label for="inquiry-message"
-                                                class="block text-sm font-bold text-gray-700 mb-2 pl-1">상세 문의 내용</label>
-                                            <textarea id="inquiry-message" x-model="inquiryMessage" rows="5" required
-                                                placeholder="예: 실사 확인이 가능한 날짜를 알고 싶습니다. / 주차 공간이 넉넉한가요?"
-                                                class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none text-sm"></textarea>
-                                        </div>
-
-                                        <button type="submit" :disabled="submittingInquiry"
-                                            class="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">
-                                            <span x-show="!submittingInquiry">문의 내용 보내기</span>
-                                            <span x-show="submittingInquiry" class="flex items-center justify-center">
-                                                <i class="ri-loader-4-line animate-spin mr-2"></i> 전송 중...
-                                            </span>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {% elif room.status == 'available' %}
-                    <!-- Monthly Room: Existing Contract Form -->
-                    <div x-data="contractForm()">
-                        <form class="space-y-4" @submit.prevent="applyItem()">
-                            <div>
-                                <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="ri-calendar-line mr-1"></i>
-                                    입주 희망일
-                                </label>
-                                <input type="date" id="start-date" name="start-date" x-model="startDate" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                            </div>
-
-                            <div>
-                                <label for="months" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="ri-time-line mr-1"></i>
-                                    계약 기간
-                                </label>
-                                <select id="months" name="months" x-model="months"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                                    <option value="2">2개월</option>
-                                    <option value="3">3개월</option>
-                                    <option value="6">6개월</option>
-                                    <option value="12">12개월</option>
-                                </select>
-                            </div>
-
-                            <!-- Payment Day Selection -->
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="ri-calendar-check-line mr-1"></i>
-                                    희망 결제일
-                                </label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <label
-                                        class="relative flex flex-col items-center justify-center p-3 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
-                                        :class="paymentDay === 1 ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
-                                        <input type="radio" name="paymentDay" :value="1" x-model.number="paymentDay"
-                                            class="absolute opacity-0 w-full h-full cursor-pointer">
-                                        <span class="text-sm font-bold"
-                                            :class="paymentDay === 1 ? 'text-primary' : 'text-gray-600'">매월 1일</span>
-                                    </label>
-                                    <label
-                                        class="relative flex flex-col items-center justify-center p-3 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
-                                        :class="paymentDay === 15 ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
-                                        <input type="radio" name="paymentDay" :value="15" x-model.number="paymentDay"
-                                            class="absolute opacity-0 w-full h-full cursor-pointer">
-                                        <span class="text-sm font-bold"
-                                            :class="paymentDay === 15 ? 'text-primary' : 'text-gray-600'">매월 15일</span>
-                                    </label>
-                                </div>
-                                <template x-if="proratedAmount !== 0">
-                                    <div class="mt-2 text-xs"
-                                        :class="proratedAmount > 0 ? 'text-orange-600' : 'text-blue-600'">
-                                        <i
-                                            :class="proratedAmount > 0 ? 'ri-add-circle-line' : 'ri-indeterminate-circle-line'"></i>
-                                        <span
-                                            x-text="proratedAmount > 0 ? '입주가 빨라 일할 계산됨 (추가금)' : '입주가 늦어 일할 계산됨 (할인)'"></span>
-                                        <span class="font-bold ml-1"
-                                            x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
-                                    </div>
-                                </template>
-                            </div>
-
-                            <!-- Coupon Input -->
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="ri-ticket-2-line mr-1"></i>
-                                    프로모션 코드 (선택)
-                                </label>
-                                <div class="flex gap-2">
-                                    <input type="text" x-model="couponCode" placeholder="쿠폰 코드 입력"
-                                        class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary uppercase">
-                                    <button type="button" @click="applyCoupon()"
-                                        :disabled="validatingCoupon || !couponCode"
-                                        class="px-5 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap">
-                                        <span x-show="!validatingCoupon">적용</span>
-                                        <span x-show="validatingCoupon"><i
-                                                class="ri-loader-4-line animate-spin"></i></span>
-                                    </button>
-                                </div>
-                                <template x-if="couponMessage">
-                                    <p class="text-xs mt-2 font-medium"
-                                        :class="couponApplied ? 'text-green-600' : 'text-red-500'"
-                                        x-text="couponMessage"></p>
-                                </template>
-                            </div>
-
-                            <!-- Payment Method Selection -->
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="ri-money-dollar-circle-line mr-1"></i>
-                                    결제 수단
-                                </label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <label
-                                        class="relative flex flex-col items-center justify-center p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
-                                        :class="paymentMethod === 'bank' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
-                                        <input type="radio" name="paymentMethod" value="bank" x-model="paymentMethod"
-                                            class="absolute opacity-0 w-full h-full cursor-pointer">
-                                        <i class="ri-money-dollar-circle-line text-2xl mb-2"
-                                            :class="paymentMethod === 'bank' ? 'text-primary' : 'text-gray-400'"></i>
-                                        <span class="text-sm font-bold"
-                                            :class="paymentMethod === 'bank' ? 'text-primary' : 'text-gray-600'">무통장입금</span>
-                                    </label>
-                                    <label
-                                        class="relative flex flex-col items-center justify-center p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
-                                        :class="paymentMethod === 'card' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
-                                        <input type="radio" name="paymentMethod" value="card" x-model="paymentMethod"
-                                            class="absolute opacity-0 w-full h-full cursor-pointer">
-                                        <i class="ri-bank-card-2-line text-2xl mb-2"
-                                            :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-400'"></i>
-                                        <span class="text-sm font-bold"
-                                            :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-600'">카드
-                                            결제</span>
-                                        <span class="text-[10px] text-gray-400 mt-1"
-                                            x-show="paymentMethod === 'card'">부가세 10% 포함</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Monthly Rent Model Breakdown -->
-                            <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-4">
-                                <div class="space-y-2 pb-3 border-b border-gray-200/60 text-sm">
-                                    <div class="flex justify-between text-gray-600">
-                                        <span>기본 월요금</span>
-                                        <span>₩<span x-text="basePrice.toLocaleString()"></span></span>
-                                    </div>
-                                    <div class="flex justify-between text-gray-500 text-xs">
-                                        <span>보증금</span>
-                                        <span>₩{{ "{:,.0f}".format(room.deposit or 0) }}</span>
-                                    </div>
-                                    <template x-if="durationDiscount > 0">
-                                        <div class="flex justify-between text-blue-600">
-                                            <span>기간 할인 (<span x-text="months"></span>개월)</span>
-                                            <span>-₩<span x-text="durationDiscount.toLocaleString()"></span></span>
-                                        </div>
-                                    </template>
-                                    <template x-if="couponApplied && couponDiscount > 0">
-                                        <div class="flex justify-between text-primary font-medium">
-                                            <span>쿠폰 할인</span>
-                                            <span>-₩<span x-text="couponDiscount.toLocaleString()"></span></span>
-                                        </div>
-                                    </template>
-                                    <template x-if="proratedAmount !== 0">
-                                        <div class="flex justify-between text-xs pt-1"
-                                            :class="proratedAmount > 0 ? 'text-orange-600' : 'text-blue-600'">
-                                            <span>일할 계산</span>
-                                            <span
-                                                x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
-                                        </div>
-                                    </template>
-                                    <template x-if="paymentMethod === 'card'">
-                                        <div class="flex justify-between text-gray-500 text-xs">
-                                            <span>부가세 (10%)</span>
-                                            <span>포함</span>
-                                        </div>
-                                    </template>
-                                </div>
-
-                                <div class="flex items-center justify-between">
-                                    <div class="text-left">
-                                        <span class="text-sm font-bold text-gray-900">첫 달 결제 금액</span>
-                                        <p class="text-[10px] text-gray-400 mt-0.5">(보증금 포함)</p>
-                                    </div>
-                                    <div class="text-xl font-bold text-primary">
-                                        ₩<span x-text="finalFirstPayment.toLocaleString()"></span>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                            {% elif room.room_type == 'time_based' and room.status == 'available' %}
+                            <!-- Time-based Room: Date + Time Selection -->
+                            <div x-data="timeBasedContractForm()"
+                                @select-slot.window="fromTimeline = true; startTime = $event.detail.start; endTime = $event.detail.end; $nextTick(() => fromTimeline = false)"
+                                x-init="$watch('startTime', val => !fromTimeline && $dispatch('set-time', {startTime: val, endTime: endTime})); $watch('endTime', val => !fromTimeline && $dispatch('set-time', {startTime: startTime, endTime: val}))">
+                                <form class="space-y-4" @submit.prevent="applyTimeBasedContract()">
                                     <div>
-                                        <span class="text-sm font-bold text-gray-900">이후 월 납부액</span>
-                                        <template x-if="couponApplied && couponData && couponData.cycle === 'once'">
-                                            <span class="text-[10px] text-gray-400 ml-1">(쿠폰 미적용)</span>
+                                        <label for="use-date" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="ri-calendar-line mr-1"></i>
+                                            사용 날짜
+                                        </label>
+                                        <input type="date" id="use-date" x-model="useDate" required
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="start-time"
+                                                class="block text-sm font-medium text-gray-700 mb-2">
+                                                <i class="ri-time-line mr-1"></i>
+                                                시작 시간
+                                            </label>
+                                            <select id="start-time" x-model="startTime" required
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                                <option value="00:00">00:00 (자정)</option>
+                                                <option value="01:00">01:00</option>
+                                                <option value="02:00">02:00</option>
+                                                <option value="03:00">03:00</option>
+                                                <option value="04:00">04:00</option>
+                                                <option value="05:00">05:00</option>
+                                                <option value="06:00">06:00</option>
+                                                <option value="07:00">07:00</option>
+                                                <option value="08:00">08:00</option>
+                                                <option value="09:00">09:00</option>
+                                                <option value="10:00">10:00</option>
+                                                <option value="11:00">11:00</option>
+                                                <option value="12:00">12:00 (정오)</option>
+                                                <option value="13:00">13:00</option>
+                                                <option value="14:00">14:00</option>
+                                                <option value="15:00">15:00</option>
+                                                <option value="16:00">16:00</option>
+                                                <option value="17:00">17:00</option>
+                                                <option value="18:00">18:00</option>
+                                                <option value="19:00">19:00</option>
+                                                <option value="20:00">20:00</option>
+                                                <option value="21:00">21:00</option>
+                                                <option value="22:00">22:00</option>
+                                                <option value="23:00">23:00</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="end-time" class="block text-sm font-medium text-gray-700 mb-2">
+                                                <i class="ri-time-line mr-1"></i>
+                                                종료 시간
+                                            </label>
+                                            <select id="end-time" x-model="endTime" required
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                                <option value="01:00">01:00</option>
+                                                <option value="02:00">02:00</option>
+                                                <option value="03:00">03:00</option>
+                                                <option value="04:00">04:00</option>
+                                                <option value="05:00">05:00</option>
+                                                <option value="06:00">06:00</option>
+                                                <option value="07:00">07:00</option>
+                                                <option value="08:00">08:00</option>
+                                                <option value="09:00">09:00</option>
+                                                <option value="10:00">10:00</option>
+                                                <option value="11:00">11:00</option>
+                                                <option value="12:00">12:00 (정오)</option>
+                                                <option value="13:00">13:00</option>
+                                                <option value="14:00">14:00</option>
+                                                <option value="15:00">15:00</option>
+                                                <option value="16:00">16:00</option>
+                                                <option value="17:00">17:00</option>
+                                                <option value="18:00">18:00</option>
+                                                <option value="19:00">19:00</option>
+                                                <option value="20:00">20:00</option>
+                                                <option value="21:00">21:00</option>
+                                                <option value="22:00">22:00</option>
+                                                <option value="23:00">23:00</option>
+                                                <option value="24:00">24:00 (자정)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Time-based Pricing Breakdown -->
+                                    <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600">시간당 가격</span>
+                                            <span class="font-medium text-gray-900">₩{{ "{:,}".format(room.price)
+                                                }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm text-gray-600">사용 시간</span>
+                                            <span class="font-medium text-gray-900"
+                                                x-text="calculateHours() + '시간'"></span>
+                                        </div>
+                                        <div class="pt-3 border-t border-gray-200/60 flex items-center justify-between">
+                                            <span class="text-sm font-semibold text-gray-900">총 금액</span>
+                                            <div class="text-xl font-bold text-primary">
+                                                ₩<span
+                                                    x-text="(calculateHours() * {{ room.price or 0 }}).toLocaleString()"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="space-y-3 pt-2">
+                                        <button type="button" @click="requestApply()" :disabled="submitting"
+                                            class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>예약
+                                                신청하기</span>
+                                            <span x-show="submitting"><i
+                                                    class="ri-loader-4-line animate-spin mr-2"></i>처리
+                                                중...</span>
+                                        </button>
+                                        <button type="button" @click="openInquiry()"
+                                            class="w-full bg-white text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-200 hover:border-primary hover:text-primary transition-all">
+                                            <i class="ri-customer-service-line mr-2"></i>
+                                            문의하기
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-center text-gray-500 mt-3">
+                                        <i class="ri-information-line mr-1"></i>
+                                        예약 신청 및 문의는 로그인이 필요합니다
+                                    </p>
+                                </form>
+
+                                <!-- Confirmation Modal -->
+                                {% include "public/contract_confirm_modal.html" %}
+
+                                <!-- Inquiry Modal -->
+                                <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
+                                    x-transition:enter="transition ease-out duration-300"
+                                    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                    x-transition:leave="transition ease-in duration-200"
+                                    x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                                    <div
+                                        class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                                        <div class="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm"
+                                            @click="showInquiryModal = false"></div>
+
+                                        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                                        <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-2xl rounded-3xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-8"
+                                            x-transition:enter="transition ease-out duration-300"
+                                            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                            x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                                            x-transition:leave="transition ease-in duration-200"
+                                            x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                                            x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                                            <div class="flex items-center justify-between mb-6">
+                                                <h3 class="text-2xl font-bold text-gray-900">문의하기</h3>
+                                                <button @click="showInquiryModal = false"
+                                                    class="text-gray-400 hover:text-gray-600 transition-colors">
+                                                    <i class="ri-close-line text-2xl"></i>
+                                                </button>
+                                            </div>
+
+                                            <div class="mb-6 bg-primary/5 p-4 rounded-2xl flex items-start">
+                                                <i class="ri-information-line text-primary text-xl mr-3 mt-0.5"></i>
+                                                <p class="text-sm text-gray-600 leading-relaxed">
+                                                    <span class="font-bold text-primary">{{ room.branch.name }} - {{
+                                                        room.name
+                                                        }}</span>에 대해 궁금한 점을 남겨주세요.
+                                                    담당자가 확인 후 마이페이지와 연락처로 답변해 드립니다.
+                                                </p>
+                                            </div>
+
+                                            <form @submit.prevent="submitInquiry()" class="space-y-5">
+                                                <div>
+                                                    <label for="inquiry-message"
+                                                        class="block text-sm font-bold text-gray-700 mb-2 pl-1">상세
+                                                        문의
+                                                        내용</label>
+                                                    <textarea id="inquiry-message" x-model="inquiryMessage" rows="5"
+                                                        required
+                                                        placeholder="예: 실사 확인이 가능한 날짜를 알고 싶습니다. / 주차 공간이 넉넉한가요?"
+                                                        class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none text-sm"></textarea>
+                                                </div>
+
+                                                <button type="submit" :disabled="submittingInquiry"
+                                                    class="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">
+                                                    <span x-show="!submittingInquiry">문의 내용 보내기</span>
+                                                    <span x-show="submittingInquiry"
+                                                        class="flex items-center justify-center">
+                                                        <i class="ri-loader-4-line animate-spin mr-2"></i> 전송 중...
+                                                    </span>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% elif room.status == 'available' %}
+                            <!-- Monthly Room: Existing Contract Form -->
+                            <div x-data="contractForm()">
+                                <form class="space-y-4" @submit.prevent="applyItem()">
+                                    <div>
+                                        <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="ri-calendar-line mr-1"></i>
+                                            입주 희망일
+                                        </label>
+                                        <input type="date" id="start-date" name="start-date" x-model="startDate"
+                                            required
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                    </div>
+
+                                    <div>
+                                        <label for="months" class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="ri-time-line mr-1"></i>
+                                            계약 기간
+                                        </label>
+                                        <select id="months" name="months" x-model="months"
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                            <option value="2">2개월</option>
+                                            <option value="3">3개월</option>
+                                            <option value="6">6개월</option>
+                                            <option value="12">12개월</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Payment Day Selection -->
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="ri-calendar-check-line mr-1"></i>
+                                            희망 결제일
+                                        </label>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <label
+                                                class="relative flex flex-col items-center justify-center p-3 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                                :class="paymentDay === 1 ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                                <input type="radio" name="paymentDay" :value="1"
+                                                    x-model.number="paymentDay"
+                                                    class="absolute opacity-0 w-full h-full cursor-pointer">
+                                                <span class="text-sm font-bold"
+                                                    :class="paymentDay === 1 ? 'text-primary' : 'text-gray-600'">매월
+                                                    1일</span>
+                                            </label>
+                                            <label
+                                                class="relative flex flex-col items-center justify-center p-3 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                                :class="paymentDay === 15 ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                                <input type="radio" name="paymentDay" :value="15"
+                                                    x-model.number="paymentDay"
+                                                    class="absolute opacity-0 w-full h-full cursor-pointer">
+                                                <span class="text-sm font-bold"
+                                                    :class="paymentDay === 15 ? 'text-primary' : 'text-gray-600'">매월
+                                                    15일</span>
+                                            </label>
+                                        </div>
+                                        <template x-if="proratedAmount !== 0">
+                                            <div class="mt-2 text-xs"
+                                                :class="proratedAmount > 0 ? 'text-orange-600' : 'text-blue-600'">
+                                                <i
+                                                    :class="proratedAmount > 0 ? 'ri-add-circle-line' : 'ri-indeterminate-circle-line'"></i>
+                                                <span
+                                                    x-text="proratedAmount > 0 ? '입주가 빨라 일할 계산됨 (추가금)' : '입주가 늦어 일할 계산됨 (할인)'"></span>
+                                                <span class="font-bold ml-1"
+                                                    x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
+                                            </div>
                                         </template>
                                     </div>
-                                    <div class="text-xl font-bold text-gray-800">
-                                        ₩<span x-text="finalRecurringPayment.toLocaleString()"></span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div class="pt-3 flex flex-col items-end">
-                                <span class="text-sm font-medium text-gray-500">
-                                    총 계약 기간: <span class="text-gray-900 font-bold"><span
-                                            x-text="months"></span>개월</span>
-                                    <span class="text-[11px] text-gray-400 ml-1">(<span x-text="startDate"></span> ~
-                                        <span class="text-primary font-bold" x-text="endDate"></span>)</span>
-                                </span>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="space-y-3 pt-2">
-                                <button type="button" @click="requestApply()" :disabled="submitting"
-                                    class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>계약 신청하기</span>
-                                    <span x-show="submitting"><i class="ri-loader-4-line animate-spin mr-2"></i>처리
-                                        중...</span>
-                                </button>
-                                <button type="button" @click="openInquiry()"
-                                    class="w-full bg-white text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-200 hover:border-primary hover:text-primary transition-all">
-                                    <i class="ri-customer-service-line mr-2"></i>
-                                    문의하기
-                                </button>
-                            </div>
-                            <p class="text-xs text-center text-gray-500 mt-3">
-                                <i class="ri-information-line mr-1"></i>
-                                계약 신청 및 문의는 로그인이 필요합니다
-                            </p>
-                        </form>
-
-                        <!-- Confirmation Modal -->
-                        {% include "public/contract_confirm_modal.html" %}
-
-                        <!-- Inquiry Modal -->
-                        <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
-                            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
-                            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
-                            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-                            <div
-                                class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                                <div class="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm"
-                                    @click="showInquiryModal = false"></div>
-
-                                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-
-                                <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-2xl rounded-3xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-8"
-                                    x-transition:enter="transition ease-out duration-300"
-                                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                                    x-transition:leave="transition ease-in duration-200"
-                                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-
-                                    <div class="flex items-center justify-between mb-6">
-                                        <h3 class="text-2xl font-bold text-gray-900">문의하기</h3>
-                                        <button @click="showInquiryModal = false"
-                                            class="text-gray-400 hover:text-gray-600 transition-colors">
-                                            <i class="ri-close-line text-2xl"></i>
-                                        </button>
+                                    <!-- Coupon Input -->
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="ri-ticket-2-line mr-1"></i>
+                                            프로모션 코드 (선택)
+                                        </label>
+                                        <div class="flex gap-2">
+                                            <input type="text" x-model="couponCode" placeholder="쿠폰 코드 입력"
+                                                class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary uppercase">
+                                            <button type="button" @click="applyCoupon()"
+                                                :disabled="validatingCoupon || !couponCode"
+                                                class="px-5 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap">
+                                                <span x-show="!validatingCoupon">적용</span>
+                                                <span x-show="validatingCoupon"><i
+                                                        class="ri-loader-4-line animate-spin"></i></span>
+                                            </button>
+                                        </div>
+                                        <template x-if="couponMessage">
+                                            <p class="text-xs mt-2 font-medium"
+                                                :class="couponApplied ? 'text-green-600' : 'text-red-500'"
+                                                x-text="couponMessage"></p>
+                                        </template>
                                     </div>
 
-                                    <div class="mb-6 bg-primary/5 p-4 rounded-2xl flex items-start">
-                                        <i class="ri-information-line text-primary text-xl mr-3 mt-0.5"></i>
-                                        <p class="text-sm text-gray-600 leading-relaxed">
-                                            <span class="font-bold text-primary">{{ room.branch.name }} - {{ room.name
-                                                }}</span>에 대해 궁금한 점을 남겨주세요.
-                                            담당자가 확인 후 마이페이지와 연락처로 답변해 드립니다.
-                                        </p>
+                                    <!-- Payment Method Selection -->
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="ri-money-dollar-circle-line mr-1"></i>
+                                            결제 수단
+                                        </label>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <label
+                                                class="relative flex flex-col items-center justify-center p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                                :class="paymentMethod === 'bank' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                                <input type="radio" name="paymentMethod" value="bank"
+                                                    x-model="paymentMethod"
+                                                    class="absolute opacity-0 w-full h-full cursor-pointer">
+                                                <i class="ri-money-dollar-circle-line text-2xl mb-2"
+                                                    :class="paymentMethod === 'bank' ? 'text-primary' : 'text-gray-400'"></i>
+                                                <span class="text-sm font-bold"
+                                                    :class="paymentMethod === 'bank' ? 'text-primary' : 'text-gray-600'">무통장입금</span>
+                                            </label>
+                                            <label
+                                                class="relative flex flex-col items-center justify-center p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50"
+                                                :class="paymentMethod === 'card' ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-gray-200'">
+                                                <input type="radio" name="paymentMethod" value="card"
+                                                    x-model="paymentMethod"
+                                                    class="absolute opacity-0 w-full h-full cursor-pointer">
+                                                <i class="ri-bank-card-2-line text-2xl mb-2"
+                                                    :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-400'"></i>
+                                                <span class="text-sm font-bold"
+                                                    :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-600'">카드
+                                                    결제</span>
+                                                <span class="text-[10px] text-gray-400 mt-1"
+                                                    x-show="paymentMethod === 'card'">부가세 10% 포함</span>
+                                            </label>
+                                        </div>
                                     </div>
 
-                                    <form @submit.prevent="submitInquiry()" class="space-y-5">
-                                        <div>
-                                            <label for="inquiry-message"
-                                                class="block text-sm font-bold text-gray-700 mb-2 pl-1">상세 문의 내용</label>
-                                            <textarea id="inquiry-message" x-model="inquiryMessage" rows="5" required
-                                                placeholder="예: 실사 확인이 가능한 날짜를 알고 싶습니다. / 주차 공간이 넉넉한가요?"
-                                                class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none text-sm"></textarea>
+                                    <!-- Monthly Rent Model Breakdown -->
+                                    <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-4">
+                                        <div class="space-y-2 pb-3 border-b border-gray-200/60 text-sm">
+                                            <div class="flex justify-between text-gray-600">
+                                                <span>기본 월요금</span>
+                                                <span>₩<span x-text="basePrice.toLocaleString()"></span></span>
+                                            </div>
+                                            <div class="flex justify-between text-gray-500 text-xs">
+                                                <span>보증금</span>
+                                                <span>₩{{ "{:,.0f}".format(room.deposit or 0) }}</span>
+                                            </div>
+                                            <template x-if="durationDiscount > 0">
+                                                <div class="flex justify-between text-blue-600">
+                                                    <span>기간 할인 (<span x-text="months"></span>개월)</span>
+                                                    <span>-₩<span
+                                                            x-text="durationDiscount.toLocaleString()"></span></span>
+                                                </div>
+                                            </template>
+                                            <template x-if="couponApplied && couponDiscount > 0">
+                                                <div class="flex justify-between text-primary font-medium">
+                                                    <span>쿠폰 할인</span>
+                                                    <span>-₩<span
+                                                            x-text="couponDiscount.toLocaleString()"></span></span>
+                                                </div>
+                                            </template>
+                                            <template x-if="proratedAmount !== 0">
+                                                <div class="flex justify-between text-xs pt-1"
+                                                    :class="proratedAmount > 0 ? 'text-orange-600' : 'text-blue-600'">
+                                                    <span>일할 계산</span>
+                                                    <span
+                                                        x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
+                                                </div>
+                                            </template>
+                                            <template x-if="paymentMethod === 'card'">
+                                                <div class="flex justify-between text-gray-500 text-xs">
+                                                    <span>부가세 (10%)</span>
+                                                    <span>포함</span>
+                                                </div>
+                                            </template>
                                         </div>
 
-                                        <button type="submit" :disabled="submittingInquiry"
-                                            class="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">
-                                            <span x-show="!submittingInquiry">문의 내용 보내기</span>
-                                            <span x-show="submittingInquiry" class="flex items-center justify-center">
-                                                <i class="ri-loader-4-line animate-spin mr-2"></i> 전송 중...
-                                            </span>
+                                        <div class="flex items-center justify-between">
+                                            <div class="text-left">
+                                                <span class="text-sm font-bold text-gray-900">첫 달 결제 금액</span>
+                                                <p class="text-[10px] text-gray-400 mt-0.5">(보증금 포함)</p>
+                                            </div>
+                                            <div class="text-xl font-bold text-primary">
+                                                ₩<span x-text="finalFirstPayment.toLocaleString()"></span>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                                            <div>
+                                                <span class="text-sm font-bold text-gray-900">이후 월 납부액</span>
+                                                <template
+                                                    x-if="couponApplied && couponData && couponData.cycle === 'once'">
+                                                    <span class="text-[10px] text-gray-400 ml-1">(쿠폰 미적용)</span>
+                                                </template>
+                                            </div>
+                                            <div class="text-xl font-bold text-gray-800">
+                                                ₩<span x-text="finalRecurringPayment.toLocaleString()"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-3 flex flex-col items-end">
+                                        <span class="text-sm font-medium text-gray-500">
+                                            총 계약 기간: <span class="text-gray-900 font-bold"><span
+                                                    x-text="months"></span>개월</span>
+                                            <span class="text-[11px] text-gray-400 ml-1">(<span
+                                                    x-text="startDate"></span> ~
+                                                <span class="text-primary font-bold" x-text="endDate"></span>)</span>
+                                        </span>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="space-y-3 pt-2">
+                                        <button type="button" @click="requestApply()" :disabled="submitting"
+                                            class="w-full bg-primary text-white py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <span x-show="!submitting"><i class="ri-file-text-line mr-2"></i>계약
+                                                신청하기</span>
+                                            <span x-show="submitting"><i
+                                                    class="ri-loader-4-line animate-spin mr-2"></i>처리
+                                                중...</span>
                                         </button>
-                                    </form>
+                                        <button type="button" @click="openInquiry()"
+                                            class="w-full bg-white text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-200 hover:border-primary hover:text-primary transition-all">
+                                            <i class="ri-customer-service-line mr-2"></i>
+                                            문의하기
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-center text-gray-500 mt-3">
+                                        <i class="ri-information-line mr-1"></i>
+                                        계약 신청 및 문의는 로그인이 필요합니다
+                                    </p>
+                                </form>
+
+                                <!-- Confirmation Modal -->
+                                {% include "public/contract_confirm_modal.html" %}
+
+                                <!-- Inquiry Modal -->
+                                <div x-show="showInquiryModal" class="fixed inset-0 z-[100] overflow-y-auto" x-cloak
+                                    x-transition:enter="transition ease-out duration-300"
+                                    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                    x-transition:leave="transition ease-in duration-200"
+                                    x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                                    <div
+                                        class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                                        <div class="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm"
+                                            @click="showInquiryModal = false"></div>
+
+                                        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+                                        <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-2xl rounded-3xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-8"
+                                            x-transition:enter="transition ease-out duration-300"
+                                            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                            x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                                            x-transition:leave="transition ease-in duration-200"
+                                            x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                                            x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                                            <div class="flex items-center justify-between mb-6">
+                                                <h3 class="text-2xl font-bold text-gray-900">문의하기</h3>
+                                                <button @click="showInquiryModal = false"
+                                                    class="text-gray-400 hover:text-gray-600 transition-colors">
+                                                    <i class="ri-close-line text-2xl"></i>
+                                                </button>
+                                            </div>
+
+                                            <div class="mb-6 bg-primary/5 p-4 rounded-2xl flex items-start">
+                                                <i class="ri-information-line text-primary text-xl mr-3 mt-0.5"></i>
+                                                <p class="text-sm text-gray-600 leading-relaxed">
+                                                    <span class="font-bold text-primary">{{ room.branch.name }} - {{
+                                                        room.name
+                                                        }}</span>에 대해 궁금한 점을 남겨주세요.
+                                                    담당자가 확인 후 마이페이지와 연락처로 답변해 드립니다.
+                                                </p>
+                                            </div>
+
+                                            <form @submit.prevent="submitInquiry()" class="space-y-5">
+                                                <div>
+                                                    <label for="inquiry-message"
+                                                        class="block text-sm font-bold text-gray-700 mb-2 pl-1">상세
+                                                        문의
+                                                        내용</label>
+                                                    <textarea id="inquiry-message" x-model="inquiryMessage" rows="5"
+                                                        required
+                                                        placeholder="예: 실사 확인이 가능한 날짜를 알고 싶습니다. / 주차 공간이 넉넉한가요?"
+                                                        class="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none text-sm"></textarea>
+                                                </div>
+
+                                                <button type="submit" :disabled="submittingInquiry"
+                                                    class="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">
+                                                    <span x-show="!submittingInquiry">문의 내용 보내기</span>
+                                                    <span x-show="submittingInquiry"
+                                                        class="flex items-center justify-center">
+                                                        <i class="ri-loader-4-line animate-spin mr-2"></i> 전송 중...
+                                                    </span>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                            {% else %}
+                            <div class="text-center py-12">
+                                <div
+                                    class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                                    <i class="ri-close-circle-line text-3xl text-gray-300"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 mb-2">현재 계약 불가</h3>
+                                <p class="text-sm text-gray-500">이 방은 현재 계약이 불가능합니다</p>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% else %}
-                    <div class="text-center py-8">
-                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="ri-close-circle-line text-3xl text-gray-400"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">현재 계약 불가</h3>
-                        <p class="text-gray-500">이 방은 현재 계약이 불가능합니다</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-</div>
-</div>
-{% endblock %}
+    {% endblock %}
 
-{% block scripts %}
-<script>
-    window.contractFormConfig = {
-        roomPrice: {{ room.price or 0 }},
-    roomDeposit: {{ room.deposit or 0 }},
-    roomId: "{{ room.id }}"
+    {% block scripts %}
+    <script>
+        window.contractFormConfig = {
+            roomPrice: {{ room.price or 0 }},
+        roomDeposit: {{ room.deposit or 0 }},
+        roomId: "{{ room.id }}"
     };
 
-    console.log('Contract Form Script Loaded');
+        console.log('Contract Form Script Loaded');
 
-    function contractForm() {
-        return {
-            months: 2,
-            startDate: new Date().toISOString().split('T')[0],
-            basePrice: 0,
-            paymentDay: 1,
-            paymentMethod: 'bank',
-            couponCode: '',
-            couponApplied: false,
-            validatingCoupon: false,
-            couponMessage: '',
-            couponData: null,
-            submitting: false,
-            showConfirmModal: false,
-            showInquiryModal: false,
-            inquiryMessage: '',
-            submittingInquiry: false,
+        function contractForm() {
+            return {
+                months: 2,
+                startDate: new Date().toISOString().split('T')[0],
+                basePrice: 0,
+                paymentDay: 1,
+                paymentMethod: 'bank',
+                couponCode: '',
+                couponApplied: false,
+                validatingCoupon: false,
+                couponMessage: '',
+                couponData: null,
+                submitting: false,
+                showConfirmModal: false,
+                showInquiryModal: false,
+                inquiryMessage: '',
+                submittingInquiry: false,
 
-            init() {
-                this.basePrice = window.contractFormConfig.roomPrice || 0;
-            },
+                init() {
+                    this.basePrice = window.contractFormConfig.roomPrice || 0;
+                },
 
-            async applyCoupon() {
-                if (!this.couponCode) return;
-                this.validatingCoupon = true;
-                this.couponMessage = '';
-                try {
+                async applyCoupon() {
+                    if (!this.couponCode) return;
+                    this.validatingCoupon = true;
+                    this.couponMessage = '';
+                    try {
+                        const token = localStorage.getItem('token');
+                        if (!token) {
+                            this.couponMessage = '로그인이 필요합니다.';
+                            return;
+                        }
+                        const response = await fetch('/api/contracts/validate-coupon', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                room_id: window.contractFormConfig.roomId,
+                                months: parseInt(this.months),
+                                coupon_code: this.couponCode
+                            })
+                        });
+                        const data = await response.json();
+                        if (response.ok) {
+                            this.couponApplied = true;
+                            this.couponData = data;
+                            this.couponMessage = '쿠폰이 적용되었습니다.';
+                        } else {
+                            this.couponApplied = false;
+                            this.couponData = null;
+                            this.couponMessage = data.error || '쿠폰 적용 실패';
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        this.couponMessage = '오류가 발생했습니다.';
+                        this.couponApplied = false;
+                    } finally {
+                        this.validatingCoupon = false;
+                    }
+                },
+
+                get durationDiscount() {
+                    const m = parseInt(this.months);
+                    if (m >= 12) return 50000;
+                    if (m >= 6) return 30000;
+                    if (m >= 3) return 20000;
+                    return 0;
+                },
+
+                get couponDiscount() {
+                    return (this.couponApplied && this.couponData) ? (this.couponData.coupon_discount || 0) : 0;
+                },
+
+                get recurringPrice() {
+                    let price = this.basePrice - this.durationDiscount;
+                    if (this.couponApplied && this.couponData && this.couponData.cycle === 'every_month') {
+                        price -= this.couponDiscount;
+                    }
+                    return Math.max(0, price);
+                },
+
+                get firstMonthPrice() {
+                    let price = this.basePrice - this.durationDiscount - this.couponDiscount;
+                    return Math.max(0, price);
+                },
+
+                get proratedAmount() {
+                    if (!this.startDate) return 0;
+                    const start = new Date(this.startDate);
+                    const year = start.getFullYear();
+                    const month = start.getMonth();
+
+                    // 이번 결제 주기의 시작일 (anchorDate)
+                    const anchorDate = new Date(year, month, this.paymentDay);
+
+                    // 결제 기준일로부터 며칠 차이가 나는지 계산 (초과 시 차감, 미달 시 추가)
+                    const diffDays = Math.round((anchorDate - start) / (1000 * 60 * 60 * 24));
+
+                    // 해당 월의 하루 기준 금액 (월세 / 월 일수)
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const dailyRate = this.recurringPrice / daysInMonth;
+
+                    // diffDays가 양수면 기준일보다 일찍 들어온 것(추가), 음수면 늦게 들어온 것(차감)
+                    return Math.round((diffDays * dailyRate) / 1000) * 1000;
+                },
+
+                get finalFirstPayment() {
+                    // 첫 결제액 = 첫 달 고정비용 + 일할 정산분(추가/차감) + 보증금
+                    let price = this.firstMonthPrice + this.proratedAmount;
+                    if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
+                    return price + window.contractFormConfig.roomDeposit;
+                },
+
+                get finalRecurringPayment() {
+                    let price = this.recurringPrice;
+                    if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
+                    return price;
+                },
+
+                get endDate() {
+                    if (!this.startDate) return '';
+                    const parts = this.startDate.split('-');
+                    const year = parseInt(parts[0]);
+                    const month = parseInt(parts[1]) - 1;
+
+                    // 결제 주기가 완성되는 기준일 (시작 달의 결제일)
+                    const anchorDate = new Date(year, month, this.paymentDay);
+                    // 기준일로부터 정해진 개월수(months)만큼 주기가 끝나는 날 계산 (전날 종료)
+                    const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + parseInt(this.months), anchorDate.getDate() - 1);
+
+                    const y = end.getFullYear();
+                    const m = String(end.getMonth() + 1).padStart(2, '0');
+                    const d = String(end.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${d}`;
+                },
+
+                requestApply() {
                     const token = localStorage.getItem('token');
                     if (!token) {
-                        this.couponMessage = '로그인이 필요합니다.';
+                        window.showAlert('로그인 필요', '계약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                            window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                        });
                         return;
                     }
-                    const response = await fetch('/api/contracts/validate-coupon', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            room_id: window.contractFormConfig.roomId,
-                            months: parseInt(this.months),
-                            coupon_code: this.couponCode
-                        })
-                    });
-                    const data = await response.json();
-                    if (response.ok) {
-                        this.couponApplied = true;
-                        this.couponData = data;
-                        this.couponMessage = '쿠폰이 적용되었습니다.';
-                    } else {
-                        this.couponApplied = false;
-                        this.couponData = null;
-                        this.couponMessage = data.error || '쿠폰 적용 실패';
+                    if (!this.startDate) {
+                        window.showAlert('알림', '입주 희망일을 선택해주세요.', 'warning');
+                        return;
                     }
-                } catch (e) {
-                    console.error(e);
-                    this.couponMessage = '오류가 발생했습니다.';
-                    this.couponApplied = false;
-                } finally {
-                    this.validatingCoupon = false;
-                }
-            },
+                    this.showConfirmModal = true;
+                },
 
-            get durationDiscount() {
-                const m = parseInt(this.months);
-                if (m >= 12) return 50000;
-                if (m >= 6) return 30000;
-                if (m >= 3) return 20000;
-                return 0;
-            },
-
-            get couponDiscount() {
-                return (this.couponApplied && this.couponData) ? (this.couponData.coupon_discount || 0) : 0;
-            },
-
-            get recurringPrice() {
-                let price = this.basePrice - this.durationDiscount;
-                if (this.couponApplied && this.couponData && this.couponData.cycle === 'every_month') {
-                    price -= this.couponDiscount;
-                }
-                return Math.max(0, price);
-            },
-
-            get firstMonthPrice() {
-                let price = this.basePrice - this.durationDiscount - this.couponDiscount;
-                return Math.max(0, price);
-            },
-
-            get proratedAmount() {
-                if (!this.startDate) return 0;
-                const start = new Date(this.startDate);
-                const year = start.getFullYear();
-                const month = start.getMonth();
-
-                // 이번 결제 주기의 시작일 (anchorDate)
-                const anchorDate = new Date(year, month, this.paymentDay);
-
-                // 결제 기준일로부터 며칠 차이가 나는지 계산 (초과 시 차감, 미달 시 추가)
-                const diffDays = Math.round((anchorDate - start) / (1000 * 60 * 60 * 24));
-
-                // 해당 월의 하루 기준 금액 (월세 / 월 일수)
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                const dailyRate = this.recurringPrice / daysInMonth;
-
-                // diffDays가 양수면 기준일보다 일찍 들어온 것(추가), 음수면 늦게 들어온 것(차감)
-                return Math.round((diffDays * dailyRate) / 1000) * 1000;
-            },
-
-            get finalFirstPayment() {
-                // 첫 결제액 = 첫 달 고정비용 + 일할 정산분(추가/차감) + 보증금
-                let price = this.firstMonthPrice + this.proratedAmount;
-                if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
-                return price + window.contractFormConfig.roomDeposit;
-            },
-
-            get finalRecurringPayment() {
-                let price = this.recurringPrice;
-                if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
-                return price;
-            },
-
-            get endDate() {
-                if (!this.startDate) return '';
-                const parts = this.startDate.split('-');
-                const year = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1;
-
-                // 결제 주기가 완성되는 기준일
-                const anchorDate = new Date(year, month, this.paymentDay);
-                // 기준일로부터 정해진 개월수(months)만큼 주기가 끝나는 날 계산
-                const end = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + parseInt(this.months), anchorDate.getDate() - 1);
-
-                const y = end.getFullYear();
-                const m = String(end.getMonth() + 1).padStart(2, '0');
-                const d = String(end.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            },
-
-            requestApply() {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.showAlert('로그인 필요', '계약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
-                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-                    });
-                    return;
-                }
-                if (!this.startDate) {
-                    window.showAlert('알림', '입주 희망일을 선택해주세요.', 'warning');
-                    return;
-                }
-                this.showConfirmModal = true;
-            },
-
-            async applyItem() {
-                this.showConfirmModal = false;
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.showAlert('로그인 필요', '계약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
-                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-                    });
-                    return;
-                }
-                if (!this.startDate) {
-                    window.showAlert('알림', '입주 희망일을 선택해주세요.', 'warning');
-                    return;
-                }
-                this.submitting = true;
-                try {
-                    const response = await fetch('/api/contracts', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            room_id: window.contractFormConfig.roomId,
-                            start_date: this.startDate,
-                            months: parseInt(this.months),
-                            payment_day: this.paymentDay,
-                            payment_method: this.paymentMethod,
-                            coupon_code: this.couponApplied ? this.couponCode : null
-                        })
-                    });
-                    if (response.ok) {
-                        window.showAlert('신청 완료', '계약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
-                            window.location.href = '/my/room';
+                async applyItem() {
+                    this.showConfirmModal = false;
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.showAlert('로그인 필요', '계약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                            window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
                         });
-                    } else {
-                        const data = await response.json();
-                        window.showAlert('신청 실패', data.message || '계약 신청 중 오류가 발생했습니다.', 'error');
-                        if (response.status === 401) {
-                            localStorage.removeItem('token');
-                            window.location.href = '/login';
-                        }
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error applying for contract:', error);
-                    window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
-                } finally {
-                    this.submitting = false;
-                }
-            },
-
-            openInquiry() {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
-                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-                    });
-                    return;
-                }
-                this.showInquiryModal = true;
-            },
-
-            async submitInquiry() {
-                if (!this.inquiryMessage.trim()) return;
-                const token = localStorage.getItem('token');
-                this.submittingInquiry = true;
-                try {
-                    const response = await fetch('/api/requests', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            type: 'inquiry',
-                            details: {
-                                message: this.inquiryMessage,
-                                room_id: window.contractFormConfig.roomId
-                            }
-                        })
-                    });
-                    if (response.ok) {
-                        window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
-                        this.showInquiryModal = false;
-                        this.inquiryMessage = '';
-                    } else {
-                        window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
+                    if (!this.startDate) {
+                        window.showAlert('알림', '입주 희망일을 선택해주세요.', 'warning');
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error submitting inquiry:', error);
-                    window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
-                } finally {
-                    this.submittingInquiry = false;
-                }
-            }
-        };
-    }
-
-    function timeBasedContractForm() {
-        return {
-            useDate: new Date().toISOString().split('T')[0],
-            startTime: '09:00',
-            endTime: '10:00',
-            submitting: false,
-            showConfirmModal: false,
-            showInquiryModal: false,
-            inquiryMessage: '',
-            submittingInquiry: false,
-            fromTimeline: false,
-
-            calculateHours() {
-                if (!this.startTime || !this.endTime) return 0;
-                const [startHour, startMin] = this.startTime.split(':').map(Number);
-                const [endHour, endMin] = this.endTime.split(':').map(Number);
-                const startMinutes = startHour * 60 + startMin;
-                const endMinutes = (endHour === 0 && this.endTime === '24:00') ? 24 * 60 : endHour * 60 + endMin;
-                const diffMinutes = endMinutes - startMinutes;
-                return Math.max(0, diffMinutes / 60);
-            },
-
-            requestApply() {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
-                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-                    });
-                    return;
-                }
-                if (!this.useDate || !this.startTime || !this.endTime) {
-                    window.showAlert('알림', '사용 날짜와 시간을 모두 선택해주세요.', 'warning');
-                    return;
-                }
-                const hours = this.calculateHours();
-                if (hours <= 0) {
-                    window.showAlert('알림', '종료 시간은 시작 시간보다 늦어야 합니다.', 'warning');
-                    return;
-                }
-                this.showConfirmModal = true;
-            },
-
-            async applyTimeBasedContract() {
-                this.showConfirmModal = false;
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
-                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-                    });
-                    return;
-                }
-                if (!this.useDate || !this.startTime || !this.endTime) {
-                    window.showAlert('알림', '사용 날짜와 시간을 모두 선택해주세요.', 'warning');
-                    return;
-                }
-                const hours = this.calculateHours();
-                if (hours <= 0) {
-                    window.showAlert('알림', '종료 시간은 시작 시간보다 늦어야 합니다.', 'warning');
-                    return;
-                }
-                this.submitting = true;
-                try {
-                    const response = await fetch('/api/contracts', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            room_id: "{{ room.id }}",
-                            start_date: this.useDate,
-                            start_time: this.startTime,
-                            end_time: this.endTime,
-                            hours: hours
-                        })
-                    });
-                    if (response.ok) {
-                        window.showAlert('신청 완료', '예약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
-                            window.location.href = '/my/room';
+                    this.submitting = true;
+                    try {
+                        const response = await fetch('/api/contracts', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                room_id: window.contractFormConfig.roomId,
+                                start_date: this.startDate,
+                                months: parseInt(this.months),
+                                payment_day: this.paymentDay,
+                                payment_method: this.paymentMethod,
+                                coupon_code: this.couponApplied ? this.couponCode : null
+                            })
                         });
-                    } else {
-                        const data = await response.json();
-                        window.showAlert('신청 실패', data.message || '예약 신청 중 오류가 발생했습니다.', 'error');
-                        if (response.status === 401) {
-                            localStorage.removeItem('token');
-                            window.location.href = '/login';
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error applying for time-based contract:', error);
-                    window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
-                } finally {
-                    this.submitting = false;
-                }
-            },
-
-            openInquiry() {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
-                        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
-                    });
-                    return;
-                }
-                this.showInquiryModal = true;
-            },
-
-            async submitInquiry() {
-                if (!this.inquiryMessage.trim()) return;
-                const token = localStorage.getItem('token');
-                this.submittingInquiry = true;
-                try {
-                    const response = await fetch('/api/requests', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            type: 'inquiry',
-                            details: {
-                                message: this.inquiryMessage,
-                                room_name: '{{ room.branch.name }} - {{ room.name }}'
+                        if (response.ok) {
+                            window.showAlert('신청 완료', '계약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
+                                window.location.href = '/my/room';
+                            });
+                        } else {
+                            const data = await response.json();
+                            window.showAlert('신청 실패', data.message || '계약 신청 중 오류가 발생했습니다.', 'error');
+                            if (response.status === 401) {
+                                localStorage.removeItem('token');
+                                window.location.href = '/login';
                             }
-                        })
-                    });
-                    if (response.ok) {
-                        window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
-                        this.showInquiryModal = false;
-                        this.inquiryMessage = '';
-                    } else {
-                        window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error applying for contract:', error);
+                        window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+                    } finally {
+                        this.submitting = false;
                     }
-                } catch (error) {
-                    console.error('Error submitting inquiry:', error);
-                    window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
-                } finally {
-                    this.submittingInquiry = false;
+                },
+
+                openInquiry() {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
+                            window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                        });
+                        return;
+                    }
+                    this.showInquiryModal = true;
+                },
+
+                async submitInquiry() {
+                    if (!this.inquiryMessage.trim()) return;
+                    const token = localStorage.getItem('token');
+                    this.submittingInquiry = true;
+                    try {
+                        const response = await fetch('/api/requests', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                type: 'inquiry',
+                                details: {
+                                    message: this.inquiryMessage,
+                                    room_id: window.contractFormConfig.roomId
+                                }
+                            })
+                        });
+                        if (response.ok) {
+                            window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
+                            this.showInquiryModal = false;
+                            this.inquiryMessage = '';
+                        } else {
+                            window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error submitting inquiry:', error);
+                        window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+                    } finally {
+                        this.submittingInquiry = false;
+                    }
                 }
-            }
-        };
-    }
+            };
+        }
 
-    function reservationTimeline(roomId) {
-        return {
-            roomId: roomId,
-            reservations: [],
-            useDate: '',
-            selectedStart: null,
-            selectedEnd: null,
-            isSelectingEnd: false,
+        function timeBasedContractForm() {
+            return {
+                useDate: new Date().toISOString().split('T')[0],
+                startTime: '09:00',
+                endTime: '10:00',
+                submitting: false,
+                showConfirmModal: false,
+                showInquiryModal: false,
+                inquiryMessage: '',
+                submittingInquiry: false,
+                fromTimeline: false,
 
-            initTimeline() {
-                this.syncWithInput();
-                this.$nextTick(() => {
+                calculateHours() {
+                    if (!this.startTime || !this.endTime) return 0;
+                    const [startHour, startMin] = this.startTime.split(':').map(Number);
+                    const [endHour, endMin] = this.endTime.split(':').map(Number);
+                    const startMinutes = startHour * 60 + startMin;
+                    const endMinutes = (endHour === 0 && this.endTime === '24:00') ? 24 * 60 : endHour * 60 + endMin;
+                    const diffMinutes = endMinutes - startMinutes;
+                    return Math.max(0, diffMinutes / 60);
+                },
+
+                requestApply() {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                            window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                        });
+                        return;
+                    }
+                    if (!this.useDate || !this.startTime || !this.endTime) {
+                        window.showAlert('알림', '사용 날짜와 시간을 모두 선택해주세요.', 'warning');
+                        return;
+                    }
+                    const hours = this.calculateHours();
+                    if (hours <= 0) {
+                        window.showAlert('알림', '종료 시간은 시작 시간보다 늦어야 합니다.', 'warning');
+                        return;
+                    }
+                    this.showConfirmModal = true;
+                },
+
+                async applyTimeBasedContract() {
+                    this.showConfirmModal = false;
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.showAlert('로그인 필요', '예약 신청을 위해 로그인이 필요합니다.', 'warning', () => {
+                            window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                        });
+                        return;
+                    }
+                    if (!this.useDate || !this.startTime || !this.endTime) {
+                        window.showAlert('알림', '사용 날짜와 시간을 모두 선택해주세요.', 'warning');
+                        return;
+                    }
+                    const hours = this.calculateHours();
+                    if (hours <= 0) {
+                        window.showAlert('알림', '종료 시간은 시작 시간보다 늦어야 합니다.', 'warning');
+                        return;
+                    }
+                    this.submitting = true;
+                    try {
+                        const response = await fetch('/api/contracts', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                room_id: "{{ room.id }}",
+                                start_date: this.useDate,
+                                start_time: this.startTime,
+                                end_time: this.endTime,
+                                hours: hours
+                            })
+                        });
+                        if (response.ok) {
+                            window.showAlert('신청 완료', '예약 신청이 완료되었습니다. 담당자 확인 후 연락드리겠습니다.', 'success', () => {
+                                window.location.href = '/my/room';
+                            });
+                        } else {
+                            const data = await response.json();
+                            window.showAlert('신청 실패', data.message || '예약 신청 중 오류가 발생했습니다.', 'error');
+                            if (response.status === 401) {
+                                localStorage.removeItem('token');
+                                window.location.href = '/login';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error applying for time-based contract:', error);
+                        window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+
+                openInquiry() {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.showAlert('로그인 필요', '문의를 위해 로그인이 필요합니다.', 'warning', () => {
+                            window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+                        });
+                        return;
+                    }
+                    this.showInquiryModal = true;
+                },
+
+                async submitInquiry() {
+                    if (!this.inquiryMessage.trim()) return;
+                    const token = localStorage.getItem('token');
+                    this.submittingInquiry = true;
+                    try {
+                        const response = await fetch('/api/requests', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                type: 'inquiry',
+                                details: {
+                                    message: this.inquiryMessage,
+                                    room_name: '{{ room.branch.name }} - {{ room.name }}'
+                                }
+                            })
+                        });
+                        if (response.ok) {
+                            window.showAlert('문의 완료', '문의가 성공적으로 전달되었습니다.', 'success');
+                            this.showInquiryModal = false;
+                            this.inquiryMessage = '';
+                        } else {
+                            window.showAlert('전송 실패', '문의 전송 중 오류가 발생했습니다.', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error submitting inquiry:', error);
+                        window.showAlert('오류', '서버와의 통신 중 오류가 발생했습니다.', 'error');
+                    } finally {
+                        this.submittingInquiry = false;
+                    }
+                }
+            };
+        }
+
+        function reservationTimeline(roomId) {
+            return {
+                roomId: roomId,
+                reservations: [],
+                useDate: '',
+                selectedStart: null,
+                selectedEnd: null,
+                isSelectingEnd: false,
+
+                initTimeline() {
+                    this.syncWithInput();
+                    this.$nextTick(() => {
+                        const dateInput = document.getElementById('use-date');
+                        if (dateInput) {
+                            dateInput.addEventListener('change', () => this.syncWithInput());
+                            setInterval(() => this.syncWithInput(), 1000);
+                        }
+                    });
+                },
+
+                syncWithInput() {
                     const dateInput = document.getElementById('use-date');
-                    if (dateInput) {
-                        dateInput.addEventListener('change', () => this.syncWithInput());
-                        setInterval(() => this.syncWithInput(), 1000);
+                    if (dateInput && dateInput.value !== this.useDate) {
+                        this.useDate = dateInput.value;
+                        this.fetchReservations();
                     }
-                });
-            },
+                },
 
-            syncWithInput() {
-                const dateInput = document.getElementById('use-date');
-                if (dateInput && dateInput.value !== this.useDate) {
-                    this.useDate = dateInput.value;
-                    this.fetchReservations();
-                }
-            },
+                syncWithForm(data) {
+                    this.selectedStart = parseInt(data.startTime.split(':')[0]);
+                    const endH = parseInt(data.endTime.split(':')[0]);
+                    this.selectedEnd = (endH === 0 && data.endTime === '24:00') ? 24 : endH;
+                    this.isSelectingEnd = false;
+                },
 
-            syncWithForm(data) {
-                this.selectedStart = parseInt(data.startTime.split(':')[0]);
-                const endH = parseInt(data.endTime.split(':')[0]);
-                this.selectedEnd = (endH === 0 && data.endTime === '24:00') ? 24 : endH;
-                this.isSelectingEnd = false;
-            },
-
-            selectHour(hour) {
-                if (!this.isSelectingEnd) {
-                    this.selectedStart = hour;
-                    this.selectedEnd = hour + 1;
-                    this.isSelectingEnd = true;
-                    const startStr = hour.toString().padStart(2, '0') + ':00';
-                    const endStr = (hour + 1).toString().padStart(2, '0') + ':00';
-                    this.$dispatch('select-slot', { start: startStr, end: endStr });
-                } else {
-                    if (hour < this.selectedStart) {
+                selectHour(hour) {
+                    if (!this.isSelectingEnd) {
                         this.selectedStart = hour;
                         this.selectedEnd = hour + 1;
                         this.isSelectingEnd = true;
                         const startStr = hour.toString().padStart(2, '0') + ':00';
                         const endStr = (hour + 1).toString().padStart(2, '0') + ':00';
                         this.$dispatch('select-slot', { start: startStr, end: endStr });
-                        return;
-                    }
-                    if (hour === this.selectedStart) {
-                        this.isSelectingEnd = false;
-                        return;
-                    }
-                    let hasReserved = false;
-                    for (let h = this.selectedStart; h <= hour; h++) {
-                        if (this.isReserved(h)) {
-                            hasReserved = true;
-                            break;
+                    } else {
+                        if (hour < this.selectedStart) {
+                            this.selectedStart = hour;
+                            this.selectedEnd = hour + 1;
+                            this.isSelectingEnd = true;
+                            const startStr = hour.toString().padStart(2, '0') + ':00';
+                            const endStr = (hour + 1).toString().padStart(2, '0') + ':00';
+                            this.$dispatch('select-slot', { start: startStr, end: endStr });
+                            return;
                         }
+                        if (hour === this.selectedStart) {
+                            this.isSelectingEnd = false;
+                            return;
+                        }
+                        let hasReserved = false;
+                        for (let h = this.selectedStart; h <= hour; h++) {
+                            if (this.isReserved(h)) {
+                                hasReserved = true;
+                                break;
+                            }
+                        }
+                        if (hasReserved) {
+                            window.showAlert('선택 불가', '선택하신 범위 내에 이미 예약된 시간이 포함되어 있습니다.', 'warning');
+                            return;
+                        }
+                        this.selectedEnd = hour + 1;
+                        this.isSelectingEnd = false;
+                        const startStr = this.selectedStart.toString().padStart(2, '0') + ':00';
+                        const endStr = this.selectedEnd.toString().padStart(2, '0') + ':00';
+                        this.$dispatch('select-slot', { start: startStr, end: endStr });
                     }
-                    if (hasReserved) {
-                        window.showAlert('선택 불가', '선택하신 범위 내에 이미 예약된 시간이 포함되어 있습니다.', 'warning');
-                        return;
+                },
+
+                isSelected(hour) {
+                    if (this.selectedStart === null || this.selectedEnd === null) return false;
+                    return hour >= this.selectedStart && hour < this.selectedEnd;
+                },
+
+                async fetchReservations() {
+                    if (!this.useDate) return;
+                    try {
+                        const response = await fetch(`/api/public/rooms/${this.roomId}/reservations?date=${this.useDate}`);
+                        if (response.ok) {
+                            this.reservations = await response.json();
+                        }
+                    } catch (error) {
+                        console.error('Error fetching reservations:', error);
                     }
-                    this.selectedEnd = hour + 1;
-                    this.isSelectingEnd = false;
-                    const startStr = this.selectedStart.toString().padStart(2, '0') + ':00';
-                    const endStr = this.selectedEnd.toString().padStart(2, '0') + ':00';
-                    this.$dispatch('select-slot', { start: startStr, end: endStr });
+                },
+
+                isReserved(hour) {
+                    return this.reservations.some(res => {
+                        const start = parseInt(res.start_time.split(':')[0]);
+                        const endText = res.end_time || '00:00';
+                        const end = parseInt(endText.split(':')[0]);
+                        const endHour = endText === '24:00' ? 24 : end;
+                        return hour >= start && hour < endHour;
+                    });
+                },
+
+                isToday() {
+                    const today = new Date().toLocaleDateString('en-CA');
+                    return this.useDate === today;
+                },
+
+                calculateCurrentTimePosition() {
+                    const now = new Date();
+                    const hours = now.getHours();
+                    const minutes = now.getMinutes();
+                    const totalMinutes = hours * 60 + minutes;
+                    return (totalMinutes / (24 * 60)) * 100;
                 }
-            },
-
-            isSelected(hour) {
-                if (this.selectedStart === null || this.selectedEnd === null) return false;
-                return hour >= this.selectedStart && hour < this.selectedEnd;
-            },
-
-            async fetchReservations() {
-                if (!this.useDate) return;
-                try {
-                    const response = await fetch(`/api/public/rooms/${this.roomId}/reservations?date=${this.useDate}`);
-                    if (response.ok) {
-                        this.reservations = await response.json();
-                    }
-                } catch (error) {
-                    console.error('Error fetching reservations:', error);
-                }
-            },
-
-            isReserved(hour) {
-                return this.reservations.some(res => {
-                    const start = parseInt(res.start_time.split(':')[0]);
-                    const endText = res.end_time || '00:00';
-                    const end = parseInt(endText.split(':')[0]);
-                    const endHour = endText === '24:00' ? 24 : end;
-                    return hour >= start && hour < endHour;
-                });
-            },
-
-            isToday() {
-                const today = new Date().toLocaleDateString('en-CA');
-                return this.useDate === today;
-            },
-
-            calculateCurrentTimePosition() {
-                const now = new Date();
-                const hours = now.getHours();
-                const minutes = now.getMinutes();
-                const totalMinutes = hours * 60 + minutes;
-                return (totalMinutes / (24 * 60)) * 100;
-            }
-        };
-    }
-</script>
-<style>
-    [x-cloak] {
-        display: none !important;
-    }
-</style>
-{% endblock %}
+            };
+        }
+    </script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+    {% endblock %}

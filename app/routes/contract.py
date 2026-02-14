@@ -142,21 +142,26 @@ def create_contract(current_user):
         start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
     except ValueError:
         return jsonify({'message': 'Invalid date format'}), 400
+
+    payment_day = data.get('payment_day', 1)
         
     # Calculate end date
     if room.room_type == 'time_based':
         end_date = start_date
     else:
         # Simple month add (logic existed previously but imported calendar inside? Simplification here)
+        try:
+            # 시작일의 연/월과 지정한 payment_day로 기준일 설정
+            anchor_date = start_date.replace(day=payment_day)
+        except ValueError:
+            # 예: 2월 31일 같은 경우 대비하여 해당 월의 마지막 날로 설정
+            import calendar
+            last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+            anchor_date = start_date.replace(day=last_day)
+            
         import dateutil.relativedelta
-        end_date = start_date + dateutil.relativedelta.relativedelta(months=months)
-        # Note: previous code logic was implicit or imported calendar locally. 
-        # I'll stick to simple logic or reuse what was likely there/intended.
-        # Original code: `import calendar` inside `else`. But didn't use it visible in snippet.
-        # Let's use relativedelta if available, or simple approximation.
-        # Since I cannot see all imports, I'll add the import if needed.
-        # Better: use the logic from admin.py `relativedelta` or just simple approx for now if library missing?
-        # Expectation: dateutil is common.
+        # 기준일로부터 n개월 뒤의 전날 종료 (프론트엔드와 일치)
+        end_date = anchor_date + dateutil.relativedelta.relativedelta(months=months) - datetime.timedelta(days=1)
     
     # --- Price Calculation with Coupon ---
     breakdown, coupon = calculate_coupon_discount(room, months, coupon_code)
@@ -179,8 +184,7 @@ def create_contract(current_user):
              # Better: Coupon.query.filter_by(id=coupon.id).update({'used_count': Coupon.used_count + 1})
              db.session.query(Coupon).filter(Coupon.id == coupon.id).update({'used_count': Coupon.used_count + 1})
 
-    # Prorated Calculation
-    payment_day = data.get('payment_day', 1)
+    # Prorated Calculation (payment_day already extracted)
     
     # Parse start_date (already done)
     start_dt = start_date
@@ -206,8 +210,11 @@ def create_contract(current_user):
     
     # Recurring Monthly Price
     recurring_price = breakdown['final_monthly_price']
-
-    daily_rate = recurring_price / 30
+    
+    # Get actual days in start month for better accuracy
+    import calendar
+    days_in_month = calendar.monthrange(start_dt.year, start_dt.month)[1]
+    daily_rate = recurring_price / days_in_month
     proration_adjustment = int(diff_days * daily_rate)
     
     # Round to nearest 1000 won (as requested by user)
@@ -230,6 +237,11 @@ def create_contract(current_user):
     payment_method = data.get('payment_method', 'bank')
     if payment_method == 'card':
         final_price = int(final_price * 1.1)
+
+    # breakdown 업데이트 (프론트엔드 표시용)
+    breakdown['proration_adjustment'] = proration_adjustment
+    breakdown['first_month_rent'] = final_price # 일할 계산 + VAT 적용된 첫 달 임대료 부분
+    breakdown['first_month_total'] = final_price + (room.deposit if room.room_type != 'time_based' else 0)
 
     contract = Contract(
         user_id=current_user.id,
@@ -268,17 +280,23 @@ def get_my_contracts(current_user):
         result.append({
             'id': c.id,
             'room': {
+                'id': c.room.id,
                 'name': c.room.name,
-                'branch_name': c.room.branch.name,
+                'room_type': c.room.room_type,
                 'price': c.room.price,
                 'deposit': c.room.deposit,
-                'room_type': c.room.room_type
+                'branch': {
+                    'name': c.room.branch.name if c.room.branch else '알 수 없음'
+                }
             },
             'start_date': c.start_date.isoformat(),
             'end_date': c.end_date.isoformat(),
-            'start_time': c.start_time,
-            'end_time': c.end_time,
             'price': c.price,
-            'status': c.status
+            'deposit': c.deposit,
+            'status': c.status,
+            'payment_day': c.payment_day,
+            'payment_method': c.payment_method,
+            'discount_details': json.loads(c.discount_details) if c.discount_details else None,
+            'coupon_name': c.coupon.name if c.coupon else None
         })
     return jsonify(result)

@@ -49,7 +49,7 @@ class Contract(db.Model):
                 'id': self.user.id,
                 'name': self.user.name,
                 'email': self.user.email,
-                'phone': None,  # User 모델에 phone이 없는 경우
+                'phone': self.user.phone,
                 'is_mapped': True
             }
         else:

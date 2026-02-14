@@ -101,7 +101,11 @@
                                                     x-text="contract.room?.name"></p>
                                             </div>
                                         </div>
-                                        <div class="flex items-center">
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-gray-400 bg-white text-gray-700 uppercase tracking-tight"
+                                                x-text="contract.payment_method === 'card' ? '카드 결제' : '무통장 입금'">
+                                            </span>
                                             <span :class="getStatusBadgeClass(contract.status)"
                                                 class="px-5 py-2 rounded-xl text-xs font-bold flex items-center shadow-sm"
                                                 x-text="translateStatus(contract.status)">
@@ -136,7 +140,7 @@
                                                             class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             월 임대료</p>
                                                         <p class="text-base font-extrabold text-primary">₩<span
-                                                                x-text="contract.room?.price?.toLocaleString()"></span>
+                                                                x-text="contract.price?.toLocaleString()"></span>
                                                         </p>
                                                     </div>
                                                     <div class="space-y-2 border-l-2 border-gray-100 pl-4">
@@ -144,7 +148,7 @@
                                                             class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             보증금</p>
                                                         <p class="text-base font-extrabold text-gray-800">₩<span
-                                                                x-text="contract.room?.deposit?.toLocaleString()"></span>
+                                                                x-text="contract.deposit?.toLocaleString()"></span>
                                                         </p>
                                                     </div>
                                                 </div>
@@ -186,6 +190,81 @@
                                                 </div>
                                             </template>
                                         </div>
+
+                                        <!-- Payment & Discount Details -->
+                                        <template x-if="contract.discount_details">
+                                            <div class="mt-8 bg-blue-50/30 rounded-2xl p-6 border border-blue-100/50">
+                                                <div class="flex items-center gap-2 mb-4">
+                                                    <i class="ri-creative-commons-nc-line text-blue-500"></i>
+                                                    <h4 class="text-sm font-bold text-gray-900">결제 및 할인 상세</h4>
+                                                </div>
+                                                <div class="space-y-3">
+                                                    <div class="flex justify-between items-center text-sm">
+                                                        <span class="text-gray-500">정상 임대료</span>
+                                                        <span class="font-bold text-gray-900"
+                                                            x-text="'₩' + contract.discount_details.base_price?.toLocaleString()"></span>
+                                                    </div>
+                                                    <template
+                                                        x-if="contract.discount_details.monthly_promo_discount > 0">
+                                                        <div class="flex justify-between items-center text-sm">
+                                                            <span class="text-gray-500">장기 계약 할인</span>
+                                                            <span class="font-bold text-green-600"
+                                                                x-text="'- ₩' + contract.discount_details.monthly_promo_discount?.toLocaleString()"></span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="contract.discount_details.coupon_discount > 0">
+                                                        <div class="flex justify-between items-center text-sm">
+                                                            <span class="text-gray-500 flex items-center gap-1">
+                                                                쿠폰 할인
+                                                                <span
+                                                                    class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded"
+                                                                    x-text="contract.coupon_name"></span>
+                                                            </span>
+                                                            <span class="font-bold text-green-600"
+                                                                x-text="'- ₩' + contract.discount_details.coupon_discount?.toLocaleString()"></span>
+                                                        </div>
+                                                    </template>
+                                                    <template
+                                                        x-if="contract.discount_details.proration_adjustment && contract.discount_details.proration_adjustment !== 0">
+                                                        <div class="flex justify-between items-center text-sm">
+                                                            <span class="text-gray-500">일할 계산 (입주 기산일 조정)</span>
+                                                            <span class="font-bold"
+                                                                :class="contract.discount_details.proration_adjustment > 0 ? 'text-blue-600' : 'text-green-600'"
+                                                                x-text="(contract.discount_details.proration_adjustment > 0 ? '+ ₩' : '- ₩') + Math.abs(contract.discount_details.proration_adjustment).toLocaleString()"></span>
+                                                        </div>
+                                                    </template>
+                                                    <div class="pt-3 border-t border-blue-100 space-y-2">
+                                                        <!-- 첫 달 결제 금액 -->
+                                                        <div
+                                                            class="flex justify-between items-center bg-white/50 p-3 rounded-xl border border-blue-100/50">
+                                                            <div>
+                                                                <p class="text-sm font-black text-gray-900">첫 달 결제 금액
+                                                                    (총계)</p>
+                                                                <p
+                                                                    class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
+                                                                    보증금 임대료 포함</p>
+                                                            </div>
+                                                            <p class="text-xl font-black text-secondary"
+                                                                x-text="'₩' + ((contract.discount_details.first_month_total || (contract.price + contract.deposit)) - (contract.deposit || 0)).toLocaleString() + ((contract.deposit || 0) > 0 ? ' + ₩' + (contract.deposit || 0).toLocaleString() : '')">
+                                                            </p>
+                                                        </div>
+                                                        <!-- 이후 월 납부 금액 -->
+                                                        <div
+                                                            class="flex justify-between items-center bg-white/50 p-3 rounded-xl border border-blue-100/50">
+                                                            <div>
+                                                                <p class="text-sm font-black text-gray-900">이후 월 납부 금액
+                                                                </p>
+                                                                <p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5"
+                                                                    x-text="(contract.payment_method === 'card' ? '카드 결제' : '무통장 입금') + ' | 매월 ' + contract.payment_day + '일'">
+                                                                </p>
+                                                            </div>
+                                                            <p class="text-xl font-black text-primary"
+                                                                x-text="'₩' + contract.price?.toLocaleString()"></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
 
                                         <!-- Status-specific Alert / Actions -->
                                         <div class="mt-8">

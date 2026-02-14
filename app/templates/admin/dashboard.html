@@ -1128,7 +1128,13 @@
                                         기간</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        결제 정보</th>
+                                        결제 수단</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        납부일</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        임대료</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         상태</th>
@@ -1188,18 +1194,16 @@
                                             </template>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div class="flex flex-col gap-1">
-                                                <div class="flex items-center gap-1.5">
-                                                    <span class="text-xs font-bold text-gray-700"
-                                                        x-text="contract.payment_method === 'card' ? '카드' : '계좌'"></span>
-                                                    <span class="text-[10px] text-gray-400">|</span>
-                                                    <span class="text-xs text-gray-600"
-                                                        x-text="'매월 ' + contract.payment_day + '일'"></span>
-                                                </div>
-                                                <div class="text-xs font-bold text-blue-600">
-                                                    ₩<span x-text="contract.price.toLocaleString()"></span>
-                                                </div>
-                                            </div>
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[10px] font-bold border border-gray-200 bg-white text-gray-500 uppercase tracking-tight"
+                                                x-text="contract.payment_method === 'card' ? '카드 결제' : '무통장 입금'">
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold"
+                                            x-text="'매월 ' + contract.payment_day + '일'">
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                                            ₩<span x-text="contract.price.toLocaleString()"></span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex flex-col gap-1 items-start">
@@ -1224,7 +1228,7 @@
                                 </template>
                                 <template x-if="filteredContracts.length === 0">
                                     <tr>
-                                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
                                             데이터가 없습니다.
                                         </td>
                                     </tr>
@@ -1420,7 +1424,7 @@
                                                 class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
                                                 <i class="ri-user-line mr-2"></i> 신청자 정보
                                             </h4>
-                                            <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                            <div class="bg-blue-50/40 rounded-2xl p-5 border border-blue-100/50">
                                                 <p class="text-lg font-bold text-gray-900"
                                                     x-text="selectedContract?.user_name"></p>
                                                 <p class="text-sm text-gray-500 mt-1"
@@ -1433,63 +1437,137 @@
                                                 class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
                                                 <i class="ri-door-open-line mr-2"></i> 신청 방 정보
                                             </h4>
-                                            <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                            <div class="bg-blue-50/40 rounded-2xl p-5 border border-blue-100/50">
                                                 <p class="text-lg font-bold text-gray-900"
                                                     x-text="selectedContract?.room_name"></p>
                                                 <p class="text-sm text-gray-500 mt-1"
                                                     x-text="selectedContract?.branch_name"></p>
-                                                <p class="text-xs font-bold text-primary mt-2">
-                                                    <template x-if="selectedContract?.room_type !== 'time_based'">
-                                                        <span>
-                                                            보증금 <span
-                                                                x-text="formatPrice(selectedContract?.deposit)"></span>
-                                                            /
-                                                            월세 <span
-                                                                x-text="formatPrice(selectedContract?.price)"></span>
-                                                            (매월 <span x-text="selectedContract?.payment_day"></span>일)
-                                                        </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Payment & Discount Details -->
+                                    <div class="space-y-3">
+                                        <h4
+                                            class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
+                                            <i class="ri-price-tag-3-line mr-2"></i> 결제 및 할인 정보
+                                        </h4>
+                                        <div class="bg-blue-50/40 rounded-2xl p-5 border border-blue-100/50">
+                                            <!-- 상단 납부 정보 -->
+                                            <!-- 상단 납부 정보 -->
+                                            <div
+                                                class="flex justify-between items-center pb-4 mb-4 border-b border-blue-100/30">
+                                                <span class="text-[10px] text-gray-500 font-bold uppercase">납부 정보</span>
+                                                <div class="flex items-center gap-2">
+                                                    <span
+                                                        class="px-1.5 py-0.5 bg-white border border-blue-100 rounded text-blue-600 font-black text-[9px] uppercase"
+                                                        x-text="selectedContract?.payment_method === 'card' ? '카드결제' : '무통장입금'"></span>
+                                                    <span class="font-bold text-gray-900 text-sm"
+                                                        x-text="'매월 ' + selectedContract?.payment_day + '일'"></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- 상세 할인/정산 내역 -->
+                                            <template x-if="selectedContract?.discount_details">
+                                                <div class="space-y-2.5 px-0.5 mb-5">
+                                                    <div class="flex justify-between items-center text-xs">
+                                                        <span class="text-gray-500 font-medium">정상 월 임대료</span>
+                                                        <span class="font-bold text-gray-700"
+                                                            x-text="formatPrice(selectedContract.discount_details.base_price)"></span>
+                                                    </div>
+
+                                                    <template
+                                                        x-if="selectedContract.discount_details.monthly_promo_discount > 0">
+                                                        <div class="flex justify-between items-center text-xs">
+                                                            <span class="text-gray-500 font-medium">장기 계약 할인</span>
+                                                            <span class="font-bold text-green-600"
+                                                                x-text="'- ' + formatPrice(selectedContract.discount_details.monthly_promo_discount)"></span>
+                                                        </div>
                                                     </template>
-                                                    <template x-if="selectedContract?.room_type === 'time_based'">
-                                                        <span>
-                                                            이용 금액 <span
-                                                                x-text="formatPrice(selectedContract?.price)"></span>
-                                                        </span>
+
+                                                    <template
+                                                        x-if="selectedContract.discount_details.coupon_discount > 0">
+                                                        <div class="flex justify-between items-center text-xs">
+                                                            <span
+                                                                class="text-gray-500 font-medium flex items-center gap-1.5">
+                                                                쿠폰 할인
+                                                                <span
+                                                                    class="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black"
+                                                                    x-text="selectedContract.coupon_name"></span>
+                                                            </span>
+                                                            <span class="font-bold text-green-600"
+                                                                x-text="'- ' + formatPrice(selectedContract.discount_details.coupon_discount)"></span>
+                                                        </div>
                                                     </template>
-                                                </p>
+
+                                                    <template
+                                                        x-if="selectedContract.discount_details.proration_adjustment && selectedContract.discount_details.proration_adjustment !== 0">
+                                                        <div class="flex justify-between items-center text-xs">
+                                                            <span class="text-gray-500 font-medium">일할 계산 (입주 기산일
+                                                                조정)</span>
+                                                            <span class="font-bold"
+                                                                :class="selectedContract.discount_details.proration_adjustment > 0 ? 'text-blue-600' : 'text-green-600'"
+                                                                x-text="(selectedContract.discount_details.proration_adjustment > 0 ? '+ ' : '- ') + formatPrice(Math.abs(selectedContract.discount_details.proration_adjustment))"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+
+                                            <!-- 최종 가격 정보 (포커스) -->
+                                            <div class="space-y-2 mt-2">
+                                                <!-- 첫 달 총계가 위로 -->
+                                                <div
+                                                    class="flex justify-between items-center bg-white/60 p-3 rounded-xl border border-blue-100/20">
+                                                    <div>
+                                                        <p class="text-[11px] font-bold text-gray-700">첫 달 결제 금액 (총계)
+                                                        </p>
+                                                        <p class="text-[9px] text-primary/60 font-medium mt-0.5">보증금 임대료
+                                                            포함</p>
+                                                    </div>
+                                                    <span class="text-base font-black text-gray-900"
+                                                        x-text="formatPrice((selectedContract?.discount_details?.first_month_total || (selectedContract?.price + selectedContract?.deposit)) - (selectedContract?.deposit || 0)) + ((selectedContract?.deposit || 0) > 0 ? ' + ' + formatPrice(selectedContract?.deposit) : '')"></span>
+                                                </div>
+                                                <!-- 이후 월세가 아래로 -->
+                                                <div
+                                                    class="flex justify-between items-center bg-white/60 p-3 rounded-xl border border-blue-100/20">
+                                                    <span class="text-[11px] font-bold text-gray-700">이후 월 정기 임대료</span>
+                                                    <span class="text-base font-black text-gray-900"
+                                                        x-text="formatPrice(selectedContract?.price)"></span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- Date Range Section -->
-                                    <div class="space-y-4">
+                                    <div class="space-y-3">
                                         <h4
                                             class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
                                             <i class="ri-calendar-event-line mr-2"></i>
                                             <span
                                                 x-text="selectedContract?.room_type === 'time_based' ? '예약 일시' : '계약 기간'"></span>
                                         </h4>
-                                        <div class="bg-primary/5 rounded-3xl p-8 border border-primary/10">
+                                        <div class="bg-gray-50/50 rounded-2xl p-6 border border-gray-100/50">
 
                                             <!-- Monthly Contract Display -->
                                             <template x-if="selectedContract?.room_type !== 'time_based'">
-                                                <div class="flex items-center justify-center gap-12">
-                                                    <div class="text-center">
-                                                        <p
-                                                            class="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">
-                                                            시작일</p>
-                                                        <p class="text-2xl font-black text-primary"
+                                                <div class="flex items-center justify-between px-4">
+                                                    <div class="space-y-1">
+                                                        <p class="text-[10px] font-bold text-gray-400 uppercase">시작일</p>
+                                                        <p class="text-base font-black text-gray-900"
                                                             x-text="selectedContract?.start_date"></p>
                                                     </div>
-                                                    <div class="h-px bg-primary/20 flex-1 relative">
+                                                    <div class="flex-1 px-8 flex flex-col items-center">
                                                         <div
-                                                            class="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full border border-primary/10 text-[10px] font-black text-primary uppercase">
-                                                            Term</div>
+                                                            class="h-0.5 w-full bg-gray-200/60 relative rounded-full overflow-hidden">
+                                                            <div class="absolute inset-0 bg-primary/20 animate-pulse">
+                                                            </div>
+                                                        </div>
+                                                        <span
+                                                            class="text-[9px] font-black text-primary uppercase mt-1.5 tracking-tighter">Term</span>
                                                     </div>
-                                                    <div class="text-center">
-                                                        <p
-                                                            class="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">
-                                                            종료일</p>
-                                                        <p class="text-2xl font-black text-primary"
+                                                    <div class="text-right space-y-1">
+                                                        <p class="text-[10px] font-bold text-gray-400 uppercase">종료일</p>
+                                                        <p class="text-base font-black text-primary"
                                                             x-text="selectedContract?.end_date"></p>
                                                     </div>
                                                 </div>
@@ -1497,27 +1575,28 @@
 
                                             <!-- Time-based Reservation Display -->
                                             <template x-if="selectedContract?.room_type === 'time_based'">
-                                                <div class="flex items-center justify-center gap-12">
-                                                    <div class="text-center">
-                                                        <p
-                                                            class="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">
-                                                            예약 날짜</p>
-                                                        <p class="text-2xl font-black text-primary"
+                                                <div class="flex items-center justify-between px-4">
+                                                    <div class="space-y-1">
+                                                        <p class="text-[10px] font-bold text-gray-400 uppercase">예약 날짜
+                                                        </p>
+                                                        <p class="text-base font-black text-gray-900"
                                                             x-text="selectedContract?.start_date"></p>
                                                     </div>
-                                                    <div class="h-px bg-primary/20 flex-1 relative">
+                                                    <div class="flex-1 px-8 flex flex-col items-center">
                                                         <div
-                                                            class="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full border border-primary/10 text-[10px] font-black text-primary uppercase">
-                                                            Time</div>
+                                                            class="h-0.5 w-full bg-gray-200/60 relative rounded-full overflow-hidden">
+                                                            <div class="absolute inset-0 bg-primary/20 animate-pulse">
+                                                            </div>
+                                                        </div>
+                                                        <span
+                                                            class="text-[9px] font-black text-primary uppercase mt-1.5 tracking-tighter">Time</span>
                                                     </div>
-                                                    <div class="text-center">
-                                                        <p
-                                                            class="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">
-                                                            예약 시간</p>
-                                                        <p class="text-2xl font-black text-primary">
-                                                            <span x-text="selectedContract?.start_time"></span>
-                                                            ~
-                                                            <span x-text="selectedContract?.end_time"></span>
+                                                    <div class="text-right space-y-1">
+                                                        <p class="text-[10px] font-bold text-gray-400 uppercase">예약 시간
+                                                        </p>
+                                                        <p class="text-base font-black text-primary">
+                                                            <span x-text="selectedContract?.start_time"></span> - <span
+                                                                x-text="selectedContract?.end_time"></span>
                                                         </p>
                                                     </div>
                                                 </div>
