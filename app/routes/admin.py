@@ -38,17 +38,19 @@ def get_stats(current_user):
     
     # Calculate total monthly revenue from active contracts
     active_contracts_list = Contract.query.filter_by(status='active').all()
-    total_monthly_revenue = sum(c.room.price for c in active_contracts_list if c.room and c.room.price)
+    # Calculate total monthly revenue from active contracts (Use contract price, fallback to room price)
+    total_monthly_revenue = sum((c.price if c.price is not None else (c.room.price if c.room else 0)) for c in active_contracts_list)
     
-    # Calculate total deposit from active contracts
-    total_deposit = sum(c.room.deposit or 0 for c in active_contracts_list if c.room)
+    # Calculate total deposit from active contracts (Use contract deposit, fallback to room deposit)
+    total_deposit = sum((c.deposit if c.deposit is not None else (c.room.deposit if c.room else 0)) for c in active_contracts_list)
     
     # Get all room IDs with active contracts
     occupied_room_ids = set(c.room_id for c in active_contracts_list if c.room_id)
     
     # Calculate expiring contracts (ending within 1 month)
     one_month_from_now = (datetime.utcnow() + timedelta(days=30)).date()
-    expiring_contracts = [c for c in active_contracts_list if c.end_date and c.end_date <= one_month_from_now]
+    # Expiring soon: active, not indefinite, end_date within 30 days
+    expiring_contracts = [c for c in active_contracts_list if not c.is_indefinite and c.end_date and c.end_date <= one_month_from_now]
     expiring_count = len(expiring_contracts)
 
     
@@ -61,8 +63,8 @@ def get_stats(current_user):
         branch_contracts = [c for c in active_contracts_list if c.room and c.room.branch_id == branch.id]
         
         # Calculate revenue and deposit for this branch
-        branch_monthly_revenue = sum(c.room.price for c in branch_contracts if c.room and c.room.price)
-        branch_deposit = sum(c.room.deposit or 0 for c in branch_contracts if c.room)
+        branch_monthly_revenue = sum((c.price if c.price is not None else (c.room.price if c.room else 0)) for c in branch_contracts)
+        branch_deposit = sum((c.deposit if c.deposit is not None else (c.room.deposit if c.room else 0)) for c in branch_contracts)
         
         # Get room status for this branch (월계약 방만 공실 계산)
         branch_room_ids = [r.id for r in branch.rooms]
@@ -164,6 +166,7 @@ def get_contracts(current_user):
             'status': c.status,
             'discount_details': json.loads(c.discount_details) if c.discount_details else None,
             'coupon_name': c.coupon.name if c.coupon else None,
+            'is_indefinite': c.is_indefinite,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
         }
         result.append(contract_data)
@@ -202,6 +205,7 @@ def get_contract_detail(current_user, id):
         'status': c.status,
         'discount_details': json.loads(c.discount_details) if c.discount_details else None,
         'coupon_name': c.coupon.name if c.coupon else None,
+        'is_indefinite': c.is_indefinite,
         'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
     }
     
@@ -213,21 +217,27 @@ def create_contract(current_user):
     """수동 계약 생성"""
     data = request.get_json()
     
+    is_indefinite = data.get('is_indefinite', False)
+    
     # Validation
-    if not data.get('room_id') or not data.get('start_date') or not data.get('end_date'):
-        return jsonify({'error': '방, 시작일, 종료일은 필수입니다.'}), 400
+    if not data.get('room_id') or not data.get('start_date') or (not is_indefinite and not data.get('end_date')):
+        return jsonify({'error': '방, 시작일, 종료일(또는 무기한)은 필수입니다.'}), 400
         
     room = Room.query.get(data['room_id'])
     if not room:
         return jsonify({'error': '방을 찾을 수 없습니다.'}), 404
         
     start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-    end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
     
-    # Calculate months roughly
-    delta = end_date - start_date
-    months = round(delta.days / 30)
-    if months < 1: months = 1
+    if is_indefinite:
+        end_date = date(2099, 12, 31)
+        months = 0 # Or 1? Usually irrelevant for indefinite
+    else:
+        end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+        # Calculate months roughly
+        delta = end_date - start_date
+        months = round(delta.days / 30)
+        if months < 1: months = 1
     
     contract = Contract(
         user_id=data.get('user_id'), # Optional
@@ -239,6 +249,7 @@ def create_contract(current_user):
         months=months,
         payment_day=data.get('payment_day', 1), # Default to 1st
         status='active', # Default to active for manual creation
+        is_indefinite=is_indefinite,
         created_at=datetime.now()
     )
     
@@ -278,9 +289,15 @@ def update_contract(current_user, id):
             if contract.status == 'active':
                 room.status = 'occupied'
     
+    if 'is_indefinite' in data:
+        contract.is_indefinite = data['is_indefinite']
+        
     if 'start_date' in data:
         contract.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-    if 'end_date' in data:
+        
+    if contract.is_indefinite:
+        contract.end_date = date(2099, 12, 31)
+    elif 'end_date' in data and data['end_date']:
         contract.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
         
     if 'price' in data:

@@ -226,7 +226,7 @@
                 <!-- Dashboard Tab -->
                 <div x-show="activeTab === 'dashboard'" x-data="dashboardTab" class="space-y-6 animate-fade-in">
                     <!-- Stats Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
                         <template x-for="(stat, key) in [
                             { 
                                 label: '총 방 개수', 
@@ -258,18 +258,27 @@
                             },
                             { 
                                 label: '월세 합계', 
-                                value: '₩' + stats.monthlyRevenue.toLocaleString(), 
-                                icon: 'ri-money-won-circle-line', 
+                                value: '₩' + (stats.monthlyRevenue || 0).toLocaleString(), 
+                                icon: 'ri-wallet-3-line', 
                                 color: 'bg-purple-500',
-                                tooltip: `보증금 합계: ₩${stats.totalDeposit.toLocaleString()}\n\n현재 활성 계약 기준`
+                                tooltip: `현재 활성 계약의 총 월세 수입 예측`
+                            },
+                            { 
+                                label: '보증금 합계', 
+                                value: '₩' + (stats.totalDeposit || 0).toLocaleString(), 
+                                icon: 'ri-safe-2-line', 
+                                color: 'bg-indigo-500',
+                                tooltip: `현재 활성 계약의 총 보증금 합계`
                             }
                         ]">
                             <div
                                 class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-gray-500" x-text="stat.label"></p>
-                                        <h3 class="text-2xl font-bold text-gray-900 mt-1" x-text="stat.value"></h3>
+                                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1"
+                                            x-text="stat.label"></p>
+                                        <h3 class="text-lg font-black text-gray-900 tracking-tight" x-text="stat.value">
+                                        </h3>
                                     </div>
                                     <div :class="stat.color"
                                         class="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -1128,7 +1137,10 @@
                                         사용자</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        방 정보</th>
+                                        지점</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        호실</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         기간</th>
@@ -1140,7 +1152,10 @@
                                         납부일</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        임대료</th>
+                                        월세</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        보증금</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         상태</th>
@@ -1166,18 +1181,16 @@
                                                 </div>
                                             </div>
                                         </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold"
+                                            x-text="contract.branch_name"></td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex flex-col">
-                                                <div class="flex items-center gap-1.5">
-                                                    <div class="text-sm text-gray-900 font-bold"
-                                                        x-text="contract.room_name"></div>
-                                                    <template x-if="contract.room_type === 'time_based'">
-                                                        <span
-                                                            class="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black rounded border border-purple-100 uppercase tracking-tighter">시간제</span>
-                                                    </template>
-                                                </div>
-                                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest"
-                                                    x-text="contract.branch_name"></div>
+                                            <div class="flex items-center gap-1.5">
+                                                <div class="text-sm text-gray-900 font-bold"
+                                                    x-text="contract.room_name"></div>
+                                                <template x-if="contract.room_type === 'time_based'">
+                                                    <span
+                                                        class="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black rounded border border-purple-100 uppercase tracking-tighter">시간제</span>
+                                                </template>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1185,7 +1198,14 @@
                                                 <div class="flex items-center gap-1">
                                                     <span x-text="contract.start_date"></span>
                                                     <span class="text-gray-300">~</span>
-                                                    <span x-text="contract.end_date"></span>
+                                                    <template x-if="contract.is_indefinite">
+                                                        <span
+                                                            class="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-bold">한달
+                                                            전 통보</span>
+                                                    </template>
+                                                    <template x-if="!contract.is_indefinite">
+                                                        <span x-text="contract.end_date"></span>
+                                                    </template>
                                                 </div>
                                             </template>
                                             <template x-if="contract.room_type === 'time_based'">
@@ -1211,6 +1231,9 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
                                             ₩<span x-text="contract.price.toLocaleString()"></span>
                                         </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">
+                                            ₩<span x-text="(contract.deposit || 0).toLocaleString()"></span>
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex flex-col gap-1 items-start">
                                                 <span
@@ -1234,7 +1257,7 @@
                                 </template>
                                 <template x-if="filteredContracts.length === 0">
                                     <tr>
-                                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                                        <td colspan="11" class="px-6 py-12 text-center text-gray-500">
                                             데이터가 없습니다.
                                         </td>
                                     </tr>
@@ -1341,10 +1364,23 @@
                                                     class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                                             </div>
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700">종료일 <span
-                                                        class="text-red-500">*</span></label>
+                                                <div class="flex justify-between items-center mb-1">
+                                                    <label class="block text-sm font-medium text-gray-700">종료일 <span
+                                                            class="text-red-500"
+                                                            x-show="!newContract.is_indefinite">*</span></label>
+                                                    <div class="flex items-center">
+                                                        <input type="checkbox" id="indefinite"
+                                                            x-model="newContract.is_indefinite"
+                                                            class="mr-1.5 w-3.5 h-3.5 text-primary border-gray-300 rounded focus:ring-primary">
+                                                        <label for="indefinite"
+                                                            class="text-xs text-gray-500 cursor-pointer select-none">한달
+                                                            전 통보</label>
+                                                    </div>
+                                                </div>
                                                 <input type="date" x-model="newContract.end_date"
-                                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                                    :disabled="newContract.is_indefinite"
+                                                    :class="{'bg-gray-100 text-gray-400': newContract.is_indefinite}"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-colors">
                                             </div>
                                         </div>
 
@@ -1573,8 +1609,15 @@
                                                     </div>
                                                     <div class="text-right space-y-1">
                                                         <p class="text-[10px] font-bold text-gray-400 uppercase">종료일</p>
-                                                        <p class="text-base font-black text-primary"
-                                                            x-text="selectedContract?.end_date"></p>
+                                                        <template x-if="selectedContract?.is_indefinite">
+                                                            <p
+                                                                class="text-sm font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-lg inline-block">
+                                                                한달 전 통보</p>
+                                                        </template>
+                                                        <template x-if="!selectedContract?.is_indefinite">
+                                                            <p class="text-base font-black text-primary"
+                                                                x-text="selectedContract?.end_date"></p>
+                                                        </template>
                                                     </div>
                                                 </div>
                                             </template>
@@ -1627,6 +1670,19 @@
                                             class="px-10 py-3 bg-secondary text-white text-sm font-black rounded-xl shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center">
                                             <template x-if="!submittingUpdate">
                                                 <span>계약 최종 승인</span>
+                                            </template>
+                                            <i x-show="submittingUpdate"
+                                                class="ri-loader-4-line animate-spin text-lg"></i>
+                                        </button>
+                                    </template>
+
+                                    <template
+                                        x-if="selectedContract?.status === 'active' && selectedContract?.is_indefinite">
+                                        <button @click="applyTerminationNotice(selectedContract)"
+                                            :disabled="submittingUpdate"
+                                            class="px-6 py-3 bg-amber-500 text-white text-sm font-black rounded-xl shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center whitespace-nowrap">
+                                            <template x-if="!submittingUpdate">
+                                                <span>퇴실 통보 접수</span>
                                             </template>
                                             <i x-show="submittingUpdate"
                                                 class="ri-loader-4-line animate-spin text-lg"></i>
@@ -1743,11 +1799,24 @@
                                                     class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold">
                                             </div>
                                             <div>
-                                                <label
-                                                    class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1"
-                                                    x-text="editingContract.room_type === 'time_based' ? ' ' : '종료일'"></label>
+                                                <div class="flex justify-between items-center mb-1">
+                                                    <label
+                                                        class="block text-xs font-black text-gray-400 uppercase tracking-widest"
+                                                        x-text="editingContract.room_type === 'time_based' ? ' ' : '종료일'"></label>
+                                                    <div class="flex items-center"
+                                                        x-show="editingContract.room_type !== 'time_based'">
+                                                        <input type="checkbox" id="edit_indefinite"
+                                                            x-model="editingContract.is_indefinite"
+                                                            class="mr-1.5 w-3.5 h-3.5 text-primary border-gray-300 rounded focus:ring-primary">
+                                                        <label for="edit_indefinite"
+                                                            class="text-[10px] text-gray-500 cursor-pointer select-none font-bold">한달
+                                                            전 통보</label>
+                                                    </div>
+                                                </div>
                                                 <input type="date" x-model="editingContract.end_date"
                                                     class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold"
+                                                    :disabled="editingContract.is_indefinite"
+                                                    :class="{'bg-gray-100 text-gray-400': editingContract.is_indefinite}"
                                                     x-show="editingContract.room_type !== 'time_based'">
                                             </div>
                                         </div>

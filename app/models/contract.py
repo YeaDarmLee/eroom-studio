@@ -30,6 +30,8 @@ class Contract(db.Model):
     coupon = db.relationship('Coupon', backref='contracts')
     discount_details = db.Column(db.Text, nullable=True) # JSON stored as Text for SQLite compatibility
     
+    is_indefinite = db.Column(db.Boolean, default=False) # True: "한달 전 통보" (No fixed end date)
+    
     status = db.Column(db.String(20), default='requested')
     # requested, approved, active, extend_requested, terminate_requested, terminated, cancelled
     

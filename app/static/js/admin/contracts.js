@@ -28,7 +28,8 @@ document.addEventListener('alpine:init', () => {
             end_date: '',
             deposit: '',
             price: '',
-            payment_day: 1
+            payment_day: 1,
+            is_indefinite: false
         },
         searchUserQuery: '',
 
@@ -130,15 +131,16 @@ document.addEventListener('alpine:init', () => {
                 end_date: '',
                 deposit: '',
                 price: '',
-                payment_day: 1
+                payment_day: 1,
+                is_indefinite: false
             };
             this.createModalOpen = true;
         },
 
 
         async createContract() {
-            if (!this.newContract.room_id || !this.newContract.start_date || !this.newContract.end_date) {
-                window.showAlert?.('입력 오류', '방, 시작일, 종료일은 필수입니다.', 'warning');
+            if (!this.newContract.room_id || !this.newContract.start_date || (!this.newContract.is_indefinite && !this.newContract.end_date)) {
+                window.showAlert?.('입력 오류', '방, 시작일, 종료일(또는 무기한)은 필수입니다.', 'warning');
                 return;
             }
 
@@ -178,6 +180,29 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (response.ok) {
                     this.contracts = await response.json();
+
+                    // Sort by Branch Name then Room Name (Numeric)
+                    this.contracts.sort((a, b) => {
+                        // 1. Branch Name
+                        if (a.branch_name < b.branch_name) return -1;
+                        if (a.branch_name > b.branch_name) return 1;
+
+                        // 2. Room Name (Natural Sort)
+                        const roomA = String(a.room_name);
+                        const roomB = String(b.room_name);
+
+                        // Check if both are numeric-ish
+                        const numA = parseInt(roomA.replace(/[^0-9]/g, ''));
+                        const numB = parseInt(roomB.replace(/[^0-9]/g, ''));
+
+                        // If both have numbers, sort by number
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            if (numA !== numB) return numA - numB;
+                        }
+
+                        // Fallback/Tie-breaker: String comparison
+                        return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
+                    });
                 }
             } catch (error) {
                 console.error('Error loading contracts:', error);
@@ -201,6 +226,7 @@ document.addEventListener('alpine:init', () => {
 
         isExpiringSoon(contract) {
             if (contract.status !== 'active') return false;
+            if (contract.is_indefinite) return false; // 무기한 계약은 만료 예정 없음
             if (!contract.end_date) return false;
 
             const end = new Date(contract.end_date);
@@ -254,7 +280,8 @@ document.addEventListener('alpine:init', () => {
                 end_time: contract.end_time || '',
                 price: contract.price,
                 deposit: contract.deposit,
-                payment_day: contract.payment_day || 1
+                payment_day: contract.payment_day || 1,
+                is_indefinite: contract.is_indefinite || false
             };
 
             this.editModalOpen = true;
@@ -262,8 +289,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         async updateContract() {
-            if (!this.editingContract.room_id || !this.editingContract.start_date || !this.editingContract.end_date) {
-                window.showAlert?.('입력 오류', '방, 시작일, 종료일은 필수입니다.', 'warning');
+            if (!this.editingContract.room_id || !this.editingContract.start_date || (!this.editingContract.is_indefinite && !this.editingContract.end_date)) {
+                window.showAlert?.('입력 오류', '방, 시작일, 종료일(또는 무기한)은 필수입니다.', 'warning');
                 return;
             }
 
@@ -288,6 +315,46 @@ document.addEventListener('alpine:init', () => {
                     window.showAlert?.('실패', data.error || '수정 실패', 'error');
                 }
             } catch (error) {
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.submittingUpdate = false;
+            }
+        },
+
+        async applyTerminationNotice(contract) {
+            if (!confirm('이 계약에 대해 한 달 후 퇴실 통보를 접수하시겠습니까? 종료일이 오늘로부터 30일 후로 설정됩니다.')) return;
+
+            this.submittingUpdate = true;
+            const token = localStorage.getItem('token');
+
+            // Calculate 30 days later
+            const today = new Date();
+            today.setDate(today.getDate() + 30);
+            const targetDate = today.toISOString().split('T')[0];
+
+            try {
+                const response = await fetch(`/admin/api/contracts/${contract.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        is_indefinite: false,
+                        end_date: targetDate
+                    })
+                });
+
+                if (response.ok) {
+                    await this.loadContracts();
+                    this.detailModalOpen = false;
+                    window.showAlert?.('성공', '퇴실 통보가 접수되었습니다. 종료일이 설정되었습니다.', 'success');
+                } else {
+                    const data = await response.json();
+                    window.showAlert?.('실패', data.error || '접수 실패', 'error');
+                }
+            } catch (error) {
+                console.error(error);
                 window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             } finally {
                 this.submittingUpdate = false;

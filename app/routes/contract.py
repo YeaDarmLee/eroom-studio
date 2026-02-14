@@ -148,6 +148,14 @@ def create_contract(current_user):
     # Calculate end date
     if room.room_type == 'time_based':
         end_date = start_date
+    # Calculate end date
+    is_indefinite = data.get('is_indefinite', False)
+    
+    if room.room_type == 'time_based':
+        end_date = start_date
+    elif is_indefinite:
+        # "한달 전 통보" (Indefinite) -> Set to far future (e.g., 2099-12-31)
+        end_date = datetime.date(2099, 12, 31)
     else:
         # Simple month add (logic existed previously but imported calendar inside? Simplification here)
         try:
@@ -257,7 +265,8 @@ def create_contract(current_user):
         deposit=room.deposit if room.room_type != 'time_based' else 0,
         status='requested',
         coupon_id=breakdown['coupon_id'],
-        discount_details=json.dumps(breakdown)
+        discount_details=json.dumps(breakdown),
+        is_indefinite=is_indefinite
     )
     
     db.session.add(contract)
@@ -291,6 +300,7 @@ def get_my_contracts(current_user):
             },
             'start_date': c.start_date.isoformat(),
             'end_date': c.end_date.isoformat(),
+            'is_indefinite': c.is_indefinite,
             'price': c.price,
             'deposit': c.deposit,
             'status': c.status,

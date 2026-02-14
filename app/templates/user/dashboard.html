@@ -132,8 +132,15 @@
                                                         <p
                                                             class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             계약 종료일</p>
-                                                        <p class="text-base font-extrabold text-gray-800"
-                                                            x-text="formatDateShort(contract.end_date)"></p>
+                                                        <template x-if="contract.is_indefinite">
+                                                            <p
+                                                                class="text-sm font-black text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">
+                                                                한달 전 통보</p>
+                                                        </template>
+                                                        <template x-if="!contract.is_indefinite">
+                                                            <p class="text-base font-extrabold text-gray-800"
+                                                                x-text="formatDateShort(contract.end_date)"></p>
+                                                        </template>
                                                     </div>
                                                     <div class="space-y-2 border-l-2 border-gray-100 pl-4">
                                                         <p
@@ -316,6 +323,7 @@
                                                                 class="text-xs font-bold text-gray-700 group-hover:text-primary">비품/청소</span>
                                                         </button>
                                                         <button @click="openServiceModal('extension', contract.id)"
+                                                            x-show="!contract.is_indefinite"
                                                             class="flex items-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-primary hover:shadow-md transition-all group">
                                                             <div
                                                                 class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mr-3 group-hover:bg-primary/10 transition-colors">
