@@ -86,10 +86,14 @@
     .public-room-box.time-based {
         background-color: rgba(241, 196, 15, 0.25);
         border-color: #F1C40F;
+        cursor: not-allowed;
     }
 
     .public-room-box.time-based:hover {
-        background-color: rgba(241, 196, 15, 0.4);
+        background-color: rgba(241, 196, 15, 0.25);
+        transform: none;
+        box-shadow: none;
+        z-index: 1;
     }
 
     .public-room-box.manager {
@@ -283,10 +287,10 @@
                         <div class="w-4 h-4 rounded bg-[#27AE60]"></div>
                         <span class="text-sm font-medium text-gray-700">월간 계약 가능</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <!-- <div class="flex items-center gap-2">
                         <div class="w-4 h-4 rounded bg-[#F1C40F]"></div>
                         <span class="text-sm font-medium text-gray-700">시간제 예약 가능</span>
-                    </div>
+                    </div> -->
                     <div class="flex items-center gap-2">
                         <div class="w-4 h-4 rounded bg-[#9B59B6]"></div>
                         <span class="text-sm font-medium text-gray-700">총무방</span>
@@ -353,7 +357,7 @@
                                     room.room_type === 'manager' ? 'manager' : ''
                                 ]"
                                 :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
-                                @click="(room.status !== 'occupied' && room.room_type !== 'manager') ? viewRoomDetail(room.id) : null">
+                                @click="(room.status !== 'occupied' && room.room_type !== 'manager' && room.room_type !== 'time_based') ? viewRoomDetail(room.id) : null">
 
                                 <!-- Hover Tooltip (CSS 기반 - 간단한 방식) -->
                                 <div class="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap shadow-xl"
@@ -425,7 +429,7 @@
                             <ul class="list-disc list-inside space-y-1 text-xs">
                                 <li>방 박스를 <strong>클릭</strong>하면 상세 정보를 확인할 수 있습니다</li>
                                 <li><span class="text-green-600 font-semibold">초록색</span> 방은 월간 계약 가능 룸입니다</li>
-                                <li><span class="text-yellow-600 font-semibold">노란색</span> 방은 시간제 예약 가능한 룸입니다</li>
+                                <!-- <li><span class="text-yellow-600 font-semibold">노란색</span> 방은 시간제 예약 가능한 룸입니다</li> -->
                                 <li><span class="text-purple-600 font-semibold">보라색</span> 방은 총무가 머무는 방입니다</li>
                                 <li><span class="text-gray-600 font-semibold">회색</span> 방은 이미 계약된 방입니다</li>
                                 <li x-show="!floorPlans[selectedFloor]" class="text-blue-600">도면 이미지는 준비 중이며, 방 위치는

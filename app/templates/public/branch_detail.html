@@ -191,11 +191,11 @@
                         class="px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
                         <i class="ri-calendar-line"></i> 월간 이용
                     </button>
-                    <button @click="activeRoomTab = 'time_based'"
+                    <!-- <button @click="activeRoomTab = 'time_based'"
                         :class="activeRoomTab === 'time_based' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
                         class="px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
                         <i class="ri-time-line"></i> 시간제 예약
-                    </button>
+                    </button> -->
                 </div>
             </div>
 
@@ -267,7 +267,8 @@
             </div>
 
             <!-- Time-based Rooms -->
-            <div x-show="activeRoomTab === 'time_based'" x-transition:enter="transition ease-out duration-200"
+            <!-- Time-based Rooms -->
+            <!-- <div x-show="activeRoomTab === 'time_based'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
                 x-cloak>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -276,7 +277,7 @@
                     {% for room in time_rooms %}
                     <div class="bg-white rounded-lg border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
                         onclick="location.href='/rooms/{{ room.id }}'">
-                        <!-- Room Image -->
+                        
                         <div class="relative h-48 overflow-hidden bg-gray-100">
                             {% set room_images = room.images.all() if room.images else [] %}
                             {% if room_images|length > 0 %}
@@ -287,18 +288,18 @@
                                 <i class="ri-image-line text-4xl text-gray-400"></i>
                             </div>
                             {% endif %}
-                            <!-- Status Badge -->
+                            
                             <div class="absolute top-3 right-3">
                                 <span
                                     class="room-status-available px-3 py-1 rounded-full text-sm font-medium shadow-sm">예약가능</span>
                             </div>
                         </div>
-                        <!-- Room Info -->
+                        
                         <div class="p-5">
                             <h3 class="font-bold text-lg mb-1">{{ room.name }}</h3>
                             <p class="text-sm text-gray-500 mb-4">{{ room.description or '필요한 시간만큼 이용하는 예약형 룸' }}</p>
 
-                            <!-- Price Info -->
+                            
                             <div class="space-y-2 mb-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">시간당 가격</span>
@@ -310,7 +311,7 @@
                                 </div>
                             </div>
 
-                            <!-- Additional Info -->
+                            
                             <div
                                 class="pt-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
                                 <div class="flex items-center">
@@ -331,7 +332,7 @@
                     </div>
                     {% endfor %}
                 </div>
-            </div>
+            </div> -->
         </div>
 
         <!-- Floor Plan Section (Real Admin-Configured Data) -->

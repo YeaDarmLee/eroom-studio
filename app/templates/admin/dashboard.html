@@ -286,7 +286,7 @@
 
                     <!-- Reservations & Payments Section -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" x-data="{ 
-                            currentSubTab: 'time',
+                            currentSubTab: 'monthly',
                             monthlyPayments: { day1: [], day15: [], others: [] },
                             contractModalOpen: false,
                             selectedContract: null,
@@ -450,12 +450,14 @@
 
                         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <div class="flex items-center gap-6">
+                                {#
                                 <button
                                     @click="currentSubTab = 'time'; $nextTick(() => window.adminCalendar.updateSize())"
                                     class="pb-1 transition-all"
                                     :class="currentSubTab === 'time' ? 'text-lg font-black text-gray-900 border-b-2 border-primary' : 'text-lg font-bold text-gray-400 hover:text-gray-600'">
                                     시간제 예약 (달력)
                                 </button>
+                                #}
                                 <button @click="currentSubTab = 'monthly'; fetchMonthlyPayments()"
                                     class="pb-1 transition-all"
                                     :class="currentSubTab === 'monthly' ? 'text-lg font-black text-gray-900 border-b-2 border-primary' : 'text-lg font-bold text-gray-400 hover:text-gray-600'">
@@ -463,6 +465,7 @@
                                 </button>
                             </div>
 
+                            {#
                             <!-- Legends/Filter for Search Tab 1 (only show when 'time') -->
                             <div x-show="currentSubTab === 'time'" class="flex items-center gap-4 text-xs font-medium">
                                 <div class="flex items-center gap-2">
@@ -473,13 +476,16 @@
                                     </div>
                                 </div>
                             </div>
+                            #}
                         </div>
 
+                        {#
                         <!-- Tab 1: Calendar View -->
                         <div x-show="currentSubTab === 'time'" class="p-6">
                             <div id="calendar" class="fc-theme-standard font-sans text-sm" style="min-height: 700px;">
                             </div>
                         </div>
+                        #}
 
                         <!-- Tab 2: Monthly Payment Lists -->
                         <div x-show="currentSubTab === 'monthly'" x-transition class="p-8">
@@ -2968,7 +2974,7 @@
                                             <select x-model="roomFormData.room_type"
                                                 class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                                                 <option value="monthly">월계약</option>
-                                                <option value="time_based">시간제</option>
+                                                <!-- <option value="time_based">시간제</option> -->
                                                 <option value="manager">총무방</option>
                                             </select>
                                         </div>
@@ -2983,12 +2989,12 @@
                                             </select>
                                         </div>
                                         <!-- Pricing fields: different based on room type -->
-                                        <div x-show="roomFormData.room_type === 'time_based'">
+                                        <!-- <div x-show="roomFormData.room_type === 'time_based'">
                                             <label class="block text-sm font-medium text-gray-700">시간당
                                                 가격</label>
                                             <input type="number" x-model="roomFormData.price"
                                                 class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                        </div>
+                                        </div> -->
                                         <div x-show="roomFormData.room_type !== 'time_based'"
                                             class="grid grid-cols-2 gap-4">
                                             <div>
