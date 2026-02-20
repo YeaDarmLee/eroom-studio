@@ -1,6 +1,19 @@
 from app.extensions import db
 from datetime import datetime
 
+class TermsDocument(db.Model):
+    __tablename__ = 'terms_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.String(50), nullable=False, unique=True)
+    content = db.Column(db.Text, nullable=False)
+    content_hash = db.Column(db.String(64), nullable=False)
+    published_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def __repr__(self):
+        return f'<TermsDocument {self.version}>'
+
 class Contract(db.Model):
     __tablename__ = 'contracts'
 
@@ -37,7 +50,38 @@ class Contract(db.Model):
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # --- Evidence Fields ---
+    terms_document_id = db.Column(db.Integer, db.ForeignKey('terms_documents.id'), nullable=True)
+    terms_version = db.Column(db.String(50))
+    terms_snapshot_hash = db.Column(db.String(64))
+    consented_at = db.Column(db.DateTime)
+    consent_ip = db.Column(db.String(45))
+    consent_user_agent = db.Column(db.Text)
+    consent_method = db.Column(db.String(50))
+
+    # Pricing & Penalty
+    pricing_snapshot = db.Column(db.JSON)
+    penalty_formula_version = db.Column(db.String(50))
+    penalty_rule_text = db.Column(db.Text)
+
+    # Notice & PDF
+    contract_email_snapshot = db.Column(db.String(120))
+    contract_notice_sent_at = db.Column(db.DateTime)
+    notice_email_to = db.Column(db.String(120))
+    notice_email_attempts = db.Column(db.Integer, default=0)
+    notice_last_error = db.Column(db.Text)
+    contract_pdf_hash = db.Column(db.String(64))
+
+    # Termination
+    termination_requested_at = db.Column(db.DateTime)
+    termination_effective_date = db.Column(db.Date)
+    remaining_months_at_termination = db.Column(db.Integer)
+    penalty_amount_snapshot = db.Column(db.JSON)
+    termination_confirmation_checked = db.Column(db.Boolean, default=False)
+    termination_confirmation_text_snapshot = db.Column(db.Text)
+
     requests = db.relationship('Request', backref='contract', lazy='dynamic')
+    status_history = db.relationship('ContractStatusHistory', backref='contract', lazy='dynamic')
 
     @property
     def is_unmapped(self):
@@ -65,4 +109,22 @@ class Contract(db.Model):
 
     def __repr__(self):
         return f'<Contract {self.id} - {self.status}>'
+
+class ContractStatusHistory(db.Model):
+    __tablename__ = 'contract_status_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=False)
+    old_status = db.Column(db.String(20))
+    new_status = db.Column(db.String(20), nullable=False)
+    actor_id = db.Column(db.Integer)
+    actor_type = db.Column(db.String(10)) # 'admin', 'user', 'system'
+    actor_ip = db.Column(db.String(45))
+    actor_user_agent = db.Column(db.Text)
+    source = db.Column(db.String(20)) # 'admin_ui', 'public_api', 'batch'
+    changed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    reason = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<StatusHistory {self.contract_id}: {self.old_status} -> {self.new_status}>'
 

@@ -45,7 +45,14 @@ def onboarding():
 def new_request():
     return render_template('user/request_form.html')
 
+@main_bp.route('/terms')
+def terms():
+    return render_template('public/terms.html')
+
+@main_bp.route('/privacy')
+def privacy():
+    return render_template('public/privacy.html')
+
 @main_bp.route('/admin')
 def admin_dashboard():
-    # Auth will be handled by frontend JavaScript
     return render_template('admin/dashboard.html')

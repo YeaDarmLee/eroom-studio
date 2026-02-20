@@ -14,8 +14,17 @@ document.addEventListener('alpine:init', () => {
         submittingResponse: false,
 
         init() {
-            this.loadRequests();
-            this.loadBranches();
+            this.$watch('activeTab', (value) => {
+                if (value === 'requests') {
+                    if (this.allData.length === 0) this.loadRequests();
+                    if (this.branches.length === 0) this.loadBranches();
+                }
+            });
+
+            if (this.activeTab === 'requests') {
+                this.loadRequests();
+                this.loadBranches();
+            }
         },
 
         async loadRequests() {

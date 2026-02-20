@@ -20,7 +20,15 @@ document.addEventListener('alpine:init', () => {
         },
 
         init() {
-            this.loadCoupons();
+            this.$watch('activeTab', (value) => {
+                if (value === 'coupons' && this.coupons.length === 0) {
+                    this.loadCoupons();
+                }
+            });
+
+            if (this.activeTab === 'coupons') {
+                this.loadCoupons();
+            }
         },
 
         async loadCoupons() {

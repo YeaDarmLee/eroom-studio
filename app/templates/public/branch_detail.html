@@ -433,81 +433,9 @@
                 showSlide(currentSlide);
             }, 5000);
 
-            // Floor Plan Logic
-            const floorPlan = document.getElementById('floorPlan');
-            const floorTabs = document.querySelectorAll('.floor-tab');
-            const floorContents = document.querySelectorAll('.floor-content');
-            let scale = 1;
-            let isDragging = false;
-            let startPos = { x: 0, y: 0 };
-            let currentPos = { x: 0, y: 0 };
+            // Floor Plan Logic - Handled by Alpine.js component (public_floor_plan_component.html)
+            // Legacy code removed to prevent TypeError: Cannot read properties of null
 
-            // Mock Data for Floor Plan (Demo)
-            const roomData = {
-                '1A1': { name: '1A-1 연습실', type: '보컬 연습실', area: '15㎡', capacity: '2인', price: '₩600,000', date: '2025-10-01', status: 'available', image: 'https://readdy.ai/api/search-image?query=professional%20vocal%20practice%20room%20with%20acoustic%20treatment%2C%20modern%20design%2C%20clean%20and%20minimalist%20setup%2C%20high-end%20equipment&width=400&height=300&seq=14&orientation=landscape' },
-                '1A2': { name: '1A-2 연습실', type: '보컬 연습실', area: '15㎡', capacity: '2인', price: '₩600,000', date: '2025-11-01', status: 'pending', image: 'https://readdy.ai/api/search-image?query=professional%20vocal%20practice%20room%20with%20acoustic%20panels%2C%20modern%20lighting%2C%20clean%20design&width=400&height=300&seq=15&orientation=landscape' },
-                '1A3': { name: '1A-3 연습실', type: '보컬 연습실', area: '15㎡', capacity: '2인', price: '₩600,000', date: '2026-01-01', status: 'occupied', image: 'https://readdy.ai/api/search-image?query=professional%20vocal%20practice%20room%20with%20recording%20equipment%2C%20modern%20design&width=400&height=300&seq=16&orientation=landscape' },
-                '2B1': { name: '2B-1 연습실', type: '밴드 연습실', area: '30㎡', capacity: '4-5인', price: '₩1,200,000', date: '2025-10-01', status: 'available', image: 'https://readdy.ai/api/search-image?query=professional%20band%20practice%20room%20with%20drum%20set%2C%20amplifiers%2C%20modern%20design&width=400&height=300&seq=17&orientation=landscape' },
-                '2B2': { name: '2B-2 연습실', type: '밴드 연습실', area: '30㎡', capacity: '4-5인', price: '₩1,200,000', date: '2025-11-01', status: 'pending', image: 'https://readdy.ai/api/search-image?query=professional%20band%20practice%20room%20with%20instruments%2C%20modern%20lighting&width=400&height=300&seq=18&orientation=landscape' },
-                '3C1': { name: '3C-1 연습실', type: '녹음실', area: '40㎡', capacity: '6-8인', price: '₩1,500,000', date: '2026-01-01', status: 'occupied', image: 'https://readdy.ai/api/search-image?query=professional%20recording%20studio%20with%20mixing%20console%2C%20monitors%2C%20modern%20design&width=400&height=300&seq=19&orientation=landscape' },
-                '3C2': { name: '3C-2 연습실', type: '녹음실', area: '40㎡', capacity: '6-8인', price: '₩1,500,000', date: '2026-02-01', status: 'available', image: 'https://readdy.ai/api/search-image?query=professional%20recording%20studio%20with%20mixing%20console%2C%20monitors%2C%20modern%20design&width=400&height=300&seq=20&orientation=landscape' }
-            };
-
-            // Zoom Controls
-            document.getElementById('zoomIn').addEventListener('click', () => { scale = Math.min(scale * 1.2, 3); updateTransform(); });
-            document.getElementById('zoomOut').addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.5); updateTransform(); });
-            document.getElementById('resetZoom').addEventListener('click', () => { scale = 1; currentPos = { x: 0, y: 0 }; updateTransform(); });
-
-            // Pan Controls
-            floorPlan.addEventListener('mousedown', (e) => { isDragging = true; startPos = { x: e.clientX - currentPos.x, y: e.clientY - currentPos.y }; });
-            window.addEventListener('mousemove', (e) => { if (!isDragging) return; currentPos = { x: e.clientX - startPos.x, y: e.clientY - startPos.y }; updateTransform(); });
-            window.addEventListener('mouseup', () => { isDragging = false; });
-
-            function updateTransform() {
-                floorPlan.style.transform = `translate(${currentPos.x}px, ${currentPos.y}px) scale(${scale})`;
-            }
-
-            // Floor Tabs
-            floorTabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const floor = tab.dataset.floor;
-                    floorTabs.forEach(t => t.classList.remove('active', 'bg-white', 'text-gray-900', 'shadow-sm'));
-                    floorContents.forEach(c => c.classList.add('hidden'));
-                    tab.classList.add('active', 'bg-white', 'text-gray-900', 'shadow-sm');
-                    document.querySelector(`.floor-content[data-floor="${floor}"]`).classList.remove('hidden');
-                });
-            });
-
-            // Room Click
-            document.querySelectorAll('.room').forEach(room => {
-                room.addEventListener('click', () => {
-                    const roomId = room.dataset.room;
-                    const data = roomData[roomId];
-                    if (!data) return;
-
-                    document.getElementById('roomEmpty').style.display = 'none';
-                    document.getElementById('roomDetail').style.display = 'block';
-                    document.getElementById('roomImage').src = data.image;
-                    document.getElementById('roomArea').textContent = data.area;
-                    document.getElementById('roomCapacity').textContent = data.capacity;
-                    document.getElementById('roomPrice').textContent = data.price;
-                    document.getElementById('roomDate').textContent = data.date;
-
-                    const contractBtn = document.getElementById('contractBtn');
-                    const inquiryBtn = document.getElementById('inquiryBtn');
-
-                    if (data.status === 'available') {
-                        contractBtn.style.display = 'block';
-                        inquiryBtn.style.display = 'block';
-                    } else if (data.status === 'pending') {
-                        contractBtn.style.display = 'none';
-                        inquiryBtn.style.display = 'block';
-                    } else {
-                        contractBtn.style.display = 'none';
-                        inquiryBtn.style.display = 'none';
-                    }
-                });
-            });
 
             // Modals (Simplified for Demo)
             const modalHtml = `

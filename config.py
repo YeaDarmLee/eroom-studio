@@ -8,6 +8,11 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///eroom.db'
     
+    # Aligo SMS Configuration
+    ALIGO_API_KEY = os.environ.get('ALIGO_API_KEY')
+    ALIGO_USER_ID = os.environ.get('ALIGO_USER_ID')
+    ALIGO_SENDER = os.environ.get('ALIGO_SENDER')
+    
     # MySQL 연결 끊김 문제 해결을 위한 설정
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,          # 연결 사용 전 ping으로 상태 확인

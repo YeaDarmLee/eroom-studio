@@ -1,0 +1,42 @@
+<!-- Alert Modal (Global) -->
+<div style="display: none" x-data="{ alert: { show: false, title: '', message: '', type: 'success', onConfirm: null } }"
+    x-init="$el.style.display = ''; window.showAlert = (title, message, type = 'success', onConfirm = null) => { alert = { show: true, title, message, type, onConfirm }; }">
+    <div x-show="alert.show" class="fixed inset-0 z-[9999] overflow-y-auto"
+        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm" @click="alert.show = false">
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div class="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-3xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+
+                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 class="text-xl font-black text-gray-900" x-text="alert.title"></h3>
+                    <button @click="alert.show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="ri-close-line text-2xl"></i>
+                    </button>
+                </div>
+
+                <div class="px-8 py-8">
+                    <p class="text-gray-700 whitespace-pre-line" x-text="alert.message"></p>
+                </div>
+
+                <div class="px-8 py-6 bg-gray-50/50 flex justify-end items-center gap-3 rounded-b-3xl">
+                    <button @click="alert.show = false"
+                        class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">취소</button>
+                    <button @click="if (alert.onConfirm) alert.onConfirm(); alert.show = false"
+                        class="px-10 py-3 text-white text-sm font-black rounded-xl shadow-xl transition-all" :class="{
+                                'bg-green-500 hover:scale-[1.02] shadow-green-500/20': alert.type === 'success',
+                                'bg-red-500 hover:scale-[1.02] shadow-red-500/20': alert.type === 'error',
+                                'bg-yellow-500 hover:scale-[1.02] shadow-yellow-500/20': alert.type === 'warning'
+                            }">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

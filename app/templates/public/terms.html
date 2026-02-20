@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-8 md:p-12">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                        <i class="ri-file-list-3-line text-2xl text-primary"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">서비스 이용약관</h1>
+                        <p class="text-gray-500 mt-1">이룸 스튜디오 서비스 이용을 위한 규약입니다.</p>
+                    </div>
+                </div>
+
+                <div class="prose prose-sm max-w-none text-gray-600 space-y-8">
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">제 1 조 (목적)</h2>
+                        <p>본 약관은 이룸 스튜디오(이하 "회사")가 제공하는 연습실 대여 서비스 및 관련 제반 서비스의 이용과 관련하여 회사와 이용자 사이의 권리, 의무 및 책임사항, 기타
+                            필요한 사항을 규정함을 목적으로 합니다.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">제 2 조 (용어의 정의)</h2>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li>"서비스"라 함은 회사가 제공하는 연습실 대여 및 부가 서비스를 의미합니다.</li>
+                            <li>"이용자"라 함은 본 약관에 따라 회사가 제공하는 서비스를 이용하는 고객을 의미합니다.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">제 3 조 (이용계약의 성립)</h2>
+                        <p>이용계약은 이용자가 본 약관의 내용에 동의한 다음 회사가 제시하는 절차에 따라 신청을 하고, 회사가 이러한 신청에 대하여 승낙함으로써 체결됩니다.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">제 4 조 (이용자의 의무)</h2>
+                        <p>이용자는 다음 행위를 하여서는 안 됩니다.</p>
+                        <ul class="list-disc pl-5 space-y-2 mt-2">
+                            <li>타인의 정보도용</li>
+                            <li>회사가 정한 정보 이외의 정보(컴퓨터 프로그램 등)의 송신 또는 게시</li>
+                            <li>회사와 기타 제3자의 저작권 등 지적재산권에 대한 침해</li>
+                            <li>공공질서 및 미풍양속에 반하는 정보, 문장, 도형, 음성 등을 타인에게 유포하는 행위</li>
+                        </ul>
+                    </section>
+
+                    <section class="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p class="text-xs text-gray-400">시행일자: 2024년 1월 1일</p>
+                    </section>
+                </div>
+
+                <div class="mt-12 pt-8 border-t border-gray-100">
+                    <button onclick="window.close();"
+                        class="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

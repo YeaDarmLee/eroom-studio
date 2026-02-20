@@ -26,13 +26,18 @@ def create_app(config_name='default'):
     Swagger(app)
 
     # Initialize Scheduler
-    from .tasks import terminate_expired_contracts
+    from .tasks import terminate_expired_contracts, process_daily_sms_tasks
     scheduler.init_app(app)
     
-    # Add Job: Run every day at 00:00
+    # Task 1: Auto-terminate expired contracts at 00:00
     @scheduler.task('cron', id='terminate_expired', hour=0, minute=0)
     def scheduled_termination():
         terminate_expired_contracts(app)
+
+    # Task 2: Daily SMS Notifications at 09:00 KST
+    @scheduler.task('cron', id='daily_sms_tasks', hour=9, minute=0)
+    def scheduled_sms():
+        process_daily_sms_tasks(app)
         
     scheduler.start()
 

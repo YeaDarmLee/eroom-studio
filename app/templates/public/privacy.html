@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-8 md:p-12">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                        <i class="ri-shield-user-line text-2xl text-primary"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">개인정보 처리방침</h1>
+                        <p class="text-gray-500 mt-1">이룸 스튜디오는 이용자의 소중한 정보를 철저히 보호합니다.</p>
+                    </div>
+                </div>
+
+                <div class="prose prose-sm max-w-none text-gray-600 space-y-8">
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">1. 수집하는 개인정보 항목</h2>
+                        <p>회사는 서비스 제공을 위해 아래와 같은 개인정보를 수집하고 있습니다.</p>
+                        <ul class="list-disc pl-5 space-y-2 mt-2">
+                            <li>필수항목: 성명, 휴대전화번호, 이메일 주소, 접속 IP 정보, 서비스 이용 기록</li>
+                            <li>선택항목: 성별, 생년월일</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">2. 개인정보의 수집 및 이용 목적</h2>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li>이용자 식별 및 본인확인</li>
+                            <li>거짓 계약 신청 방지 및 계약 이행을 위한 연락</li>
+                            <li>서비스 이용에 따른 민원 사항 처리</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-bold text-gray-900 mb-4">3. 개인정보의 보유 및 이용 기간</h2>
+                        <p>회사는 개인정보 수집 및 이용목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다. 단, 관계법령의 규정에 의하여 보존할 필요가 있는 경우 명시한 기간 동안
+                            보존합니다.</p>
+                        <ul class="list-disc pl-5 space-y-2 mt-2">
+                            <li>계약 또는 청약철회 등에 관한 기록: 5년</li>
+                            <li>대금결제 및 재화 등의 공급에 관한 기록: 5년</li>
+                            <li>소비자의 불만 또는 분쟁처리에 관한 기록: 3년</li>
+                        </ul>
+                    </section>
+
+                    <section class="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                        <p class="text-xs text-gray-400">공고일자: 2024년 1월 1일<br>시행일자: 2024년 1월 1일</p>
+                    </section>
+                </div>
+
+                <div class="mt-12 pt-8 border-t border-gray-100">
+                    <button onclick="window.close();"
+                        class="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

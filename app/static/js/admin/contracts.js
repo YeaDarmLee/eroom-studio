@@ -34,8 +34,20 @@ document.addEventListener('alpine:init', () => {
         searchUserQuery: '',
 
         init() {
-            this.loadContracts();
-            this.loadBranches(); // Load branches for filtering
+            // Lazy load when tab is active
+            this.$watch('activeTab', (value) => {
+                if (value === 'contracts') {
+                    if (this.contracts.length === 0) this.loadContracts();
+                    if (this.branches.length === 0) this.loadBranches();
+                }
+            });
+
+            // If loaded directly via hash, load immediately
+            if (this.activeTab === 'contracts') {
+                this.loadContracts();
+                this.loadBranches();
+            }
+
             this.$watch('createModalOpen', value => {
                 if (value) {
                     this.loadBranches();

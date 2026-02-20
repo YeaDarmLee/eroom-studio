@@ -1,0 +1,343 @@
+<!-- SMS Management Tab -->
+<div x-show="activeTab === 'sms'" x-data="smsTab" class="space-y-6">
+    <!-- Sub Tabs Navigation -->
+    <div class="flex justify-between items-center">
+        <div class="flex space-x-1 bg-gray-100 p-1 rounded-xl w-fit">
+            <button @click="activeSmsSubTab = 'templates'"
+                :class="activeSmsSubTab === 'templates' ? 'bg-white shadow-sm text-primary font-bold' : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2 rounded-lg text-sm transition-all focus:outline-none">
+                메시지 템플릿 관리
+            </button>
+            <button @click="activeSmsSubTab = 'logs'"
+                :class="activeSmsSubTab === 'logs' ? 'bg-white shadow-sm text-primary font-bold' : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-2 rounded-lg text-sm transition-all focus:outline-none">
+                발송 로그 히스토리
+            </button>
+        </div>
+        <button @click="openManualModal()"
+            class="px-5 py-2.5 rounded-xl text-sm bg-primary text-white font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center gap-2 hover:scale-105 active:scale-95">
+            <i class="ri-send-plane-fill"></i> 문자 수동 발송
+        </button>
+    </div>
+
+    <!-- 1. Templates Section -->
+    <div x-show="activeSmsSubTab === 'templates'" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <template x-for="template in templates" :key="template.id">
+                <div
+                    class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                    <div class="p-5 border-b border-gray-50 flex justify-between items-start bg-gray-50/30">
+                        <div>
+                            <span
+                                class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded border border-blue-100 uppercase tracking-tighter"
+                                x-text="template.type"></span>
+                            <h3 class="text-sm font-bold text-gray-900 mt-2" x-text="template.title"></h3>
+                        </div>
+                        <div class="flex flex-col items-end gap-1.5">
+                            <span
+                                :class="template.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'"
+                                class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                x-text="template.is_active ? '활성' : '비활성'"></span>
+                            <div class="flex items-center gap-1"
+                                x-show="template.schedule_offset !== 0 || ['PAYMENT_REMINDER', 'AUTO_RENEW_NOTICE', 'PAYMENT_OVERDUE_STAGE1', 'PAYMENT_OVERDUE_STAGE2', 'MOVEOUT_DAY'].includes(template.type)">
+                                <span class="text-[9px] text-gray-400 font-bold">발송시점:</span>
+                                <span
+                                    class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded font-bold border border-gray-100 uppercase tracking-tight"
+                                    x-text="getScheduleLabel(template.schedule_offset)"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-5 flex-1 min-h-[100px]">
+                        <p class="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap" x-text="template.content">
+                        </p>
+                    </div>
+                    <div class="px-5 py-4 bg-gray-50/50 border-t border-gray-50 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-400" x-text="'최종 수정: ' + template.updated_at"></span>
+                        <button @click="openEditModal(template)"
+                            class="text-xs font-bold text-primary hover:underline">편집하기</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- 2. Logs Section -->
+    <div x-show="activeSmsSubTab === 'logs'"
+        class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest">최근 발송 내역 (100건)</h3>
+            <button @click="loadLogs()" class="text-gray-400 hover:text-primary transition-colors">
+                <i class="ri-refresh-line text-lg"></i>
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider">시간
+                        </th>
+                        <th class="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider">유형
+                        </th>
+                        <th class="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                            수신자</th>
+                        <th class="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider">내용
+                        </th>
+                        <th class="px-6 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider">상태
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    <template x-for="log in logs" :key="log.id">
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500" x-text="log.sent_at"></td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span
+                                    class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[9px] font-bold border border-gray-200"
+                                    x-text="log.type"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-900"
+                                x-text="log.user_name"></td>
+                            <td class="px-6 py-4 text-xs text-gray-600 max-w-md whitespace-pre-wrap leading-relaxed"
+                                x-text="log.content"></td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span :class="getStatusBadgeClass(log.status)"
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                                    x-text="log.status"></span>
+                            </td>
+                        </tr>
+                    </template>
+                    <template x-if="logs.length === 0">
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-400 text-sm">발송 내역이 없습니다.</td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit/Preview Modal -->
+    <div x-show="editModalOpen" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4 py-12">
+            <div class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
+                @click="editModalOpen = false"></div>
+
+            <template x-if="editingTemplate">
+                <div
+                    class="relative bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+                    <!-- Form Area -->
+                    <div class="flex-1 p-8 border-r border-gray-100">
+                        <h3 class="text-xl font-black text-gray-900 mb-6" x-text="editingTemplate.title + ' 편집'"></h3>
+
+                        <div class="space-y-6">
+                            <div>
+                                <label
+                                    class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">메시지
+                                    제목</label>
+                                <input type="text" x-model="editingTemplate.title"
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-2 px-1">
+                                    <label
+                                        class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">메시지
+                                        본문</label>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] text-gray-400 font-bold">치환 변수 가이드:</span>
+                                        <template x-for="v in editingTemplate.allowed_variables">
+                                            <code
+                                                class="text-[9px] bg-primary/5 text-primary px-1.5 py-0.5 rounded font-black"
+                                                x-text="'{{' + v + '}}'"></code>
+                                        </template>
+                                    </div>
+                                </div>
+                                <textarea x-model="previewContent" @input="updatePreview()" rows="8"
+                                    class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-primary focus:border-primary text-sm font-medium leading-relaxed font-mono"></textarea>
+                            </div>
+
+                            <div x-show="['PAYMENT_REMINDER', 'AUTO_RENEW_NOTICE', 'PAYMENT_OVERDUE_STAGE1', 'PAYMENT_OVERDUE_STAGE2', 'MOVEOUT_DAY'].includes(editingTemplate.type)"
+                                class="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-6">
+                                <label
+                                    class="block text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 px-1">
+                                    발송 시점 설정 (기준일 D-Day)
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-bold text-gray-500">기준일로부터</span>
+                                    <input type="number" x-model.number="editingTemplate.schedule_offset"
+                                        class="w-20 px-3 py-2 bg-white border border-blue-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-center font-bold text-lg text-blue-600">
+                                    <span class="text-xs font-bold text-gray-500">일 차이 (음수: 이전, 양수: 이후)</span>
+                                </div>
+                                <p class="text-[9px] text-blue-400 mt-2 ml-1">
+                                    예: -3 (3일 전), 0 (당일), +1 (1일 후)
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-2 px-1">
+                                <input type="checkbox" id="sms_is_active" x-model="editingTemplate.is_active"
+                                    class="w-4 h-4 text-primary rounded ring-offset-2">
+                                <label for="sms_is_active" class="text-sm font-bold text-gray-700">템플릿 활성화</label>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 flex gap-3">
+                            <button @click="saveTemplate()" :disabled="submittingTemplate"
+                                class="flex-1 py-4 bg-primary text-white text-sm font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                <span x-show="!submittingTemplate">변경사항 저장하기</span>
+                                <i x-show="submittingTemplate" class="ri-loader-4-line animate-spin text-lg"></i>
+                            </button>
+                            <button @click="editModalOpen = false"
+                                class="px-8 py-4 bg-gray-100 text-gray-600 text-sm font-black rounded-2xl hover:bg-gray-200 transition-colors">취소</button>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview Area -->
+                    <div class="w-full md:w-[320px] bg-gray-50/50 p-8 flex flex-col">
+                        <h4
+                            class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 px-1 flex items-center gap-2">
+                            <i class="ri-smartphone-line text-lg"></i> 실시간 미리보기
+                        </h4>
+
+                        <!-- Mobile Mockup -->
+                        <div
+                            class="flex-1 flex flex-col bg-white rounded-[40px] border-[8px] border-gray-900 shadow-2xl relative overflow-hidden">
+                            <div class="bg-gray-100 p-4 border-b border-gray-200 text-center">
+                                <span class="text-[10px] font-bold text-gray-500">이룸 스튜디오</span>
+                            </div>
+                            <div class="p-4 flex-1">
+                                <div
+                                    class="bg-blue-500 text-white p-4 rounded-2xl rounded-tl-none text-xs leading-relaxed shadow-sm relative animate-in fade-in slide-in-from-bottom-2">
+                                    <p class="whitespace-pre-wrap font-medium" x-text="previewResult"></p>
+                                </div>
+                            </div>
+                            <div class="h-12 bg-gray-50 border-t border-gray-100 flex items-center px-4 gap-2">
+                                <div class="flex-1 h-3 bg-gray-200 rounded-full"></div>
+                                <div class="w-6 h-6 bg-blue-500 rounded-full"></div>
+                            </div>
+                        </div>
+
+                        <!-- Validation Warnings -->
+                        <div class="mt-6 space-y-2" x-show="previewMissing.length > 0">
+                            <p class="text-[10px] font-black text-red-500 uppercase flex items-center gap-1">
+                                <i class="ri-error-warning-line"></i> 치환 실패 변수 감지
+                            </p>
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="v in previewMissing">
+                                    <span
+                                        class="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-black border border-red-100"
+                                        x-text="'{{' + v + '}}'"></span>
+                                </template>
+                            </div>
+                            <p class="text-[9px] text-gray-400 mt-1 leading-tight">위 변수들은 실제 발송 시 데이터가 없어 치환되지 않을 수
+                                있습니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Manual Send Modal -->
+    <div x-show="manualModalOpen" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4 py-12">
+            <div class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
+                @click="manualModalOpen = false"></div>
+
+            <div
+                class="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col min-h-[500px]">
+                <div class="p-8 pb-4">
+                    <h3 class="text-xl font-black text-gray-900 mb-1">문자 수동 발송</h3>
+                    <p class="text-sm text-gray-500">특정 계약자에게 즉시 문자를 발송합니다.</p>
+                </div>
+
+                <div class="flex-1 px-8 py-4 space-y-6 overflow-y-auto">
+                    <!-- 1. Recipient Search -->
+                    <div class="relative">
+                        <label
+                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">수신자
+                            검색</label>
+                        <div class="flex gap-2">
+                            <input type="text" x-model="recipientSearchQuery" @keyup.enter="searchRecipient()"
+                                placeholder="이름 또는 전화번호 입력"
+                                class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold placeholder-gray-400">
+                            <button @click="searchRecipient()"
+                                class="px-4 bg-gray-100 rounded-xl text-gray-600 hover:bg-gray-200 transition-colors">
+                                <i class="ri-search-line"></i>
+                            </button>
+                        </div>
+
+                        <!-- Search Results -->
+                        <div x-show="recipientSearchResults.length > 0" @click.outside="recipientSearchResults = []"
+                            class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 z-10 max-h-[200px] overflow-y-auto">
+                            <template x-for="r in recipientSearchResults" :key="r.id">
+                                <div @click="selectRecipient(r)"
+                                    class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 flex justify-between items-center group transition-colors">
+                                    <div>
+                                        <div class="text-sm font-bold text-gray-900"
+                                            x-text="r.user_name + ' (' + r.user_phone + ')'"></div>
+                                        <div class="text-xs text-gray-500" x-text="r.branch_name + ' ' + r.room_name">
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="text-xs text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                                        선택</div>
+                                </div>
+                            </template>
+                        </div>
+                        <p x-show="recipientSearchQuery.length > 0 && recipientSearchResults.length === 0 && searchPerformed"
+                            class="text-xs text-gray-400 mt-2 px-1">검색 결과가 없습니다.</p>
+                    </div>
+
+                    <!-- Selected Recipient -->
+                    <div x-show="manualSelectedRecipient"
+                        class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+                        <div>
+                            <div class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">받는 사람</div>
+                            <div class="text-sm font-bold text-gray-900"
+                                x-text="manualSelectedRecipient?.user_name + ' (' + manualSelectedRecipient?.user_phone + ')'">
+                            </div>
+                            <div class="text-xs text-gray-500"
+                                x-text="manualSelectedRecipient?.branch_name + ' ' + manualSelectedRecipient?.room_name">
+                            </div>
+                        </div>
+                        <button @click="manualSelectedRecipient = null" class="text-blue-400 hover:text-blue-600 p-1">
+                            <i class="ri-close-circle-fill text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- 2. Template / Content -->
+                    <div x-show="manualSelectedRecipient" class="animate-in fade-in slide-in-from-top-4 duration-500">
+                        <label
+                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">메시지
+                            내용</label>
+                        <select x-model="manualMsgType" @change="updateManualTemplate()"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold mb-3">
+                            <option value="MANUAL">직접 입력 (템플릿 미사용)</option>
+                            <template x-for="t in templates" :key="t.type">
+                                <option :value="t.type" x-text="t.title"></option>
+                            </template>
+                        </select>
+                        <textarea x-model="manualContent" rows="6"
+                            class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-primary focus:border-primary text-sm font-medium leading-relaxed font-mono resize-none"
+                            placeholder="내용을 입력하세요..."></textarea>
+                        <p class="text-[10px] text-gray-400 mt-2 px-1">
+                            * 템플릿 선택 시 해당 계약 정보로 자동 치환된 내용이 입력됩니다. 내용을 자유롭게 수정하여 전송할 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-8 border-t border-gray-100 flex gap-3 bg-gray-50/50">
+                    <button @click="sendManualSms()"
+                        :disabled="!manualSelectedRecipient || !manualContent || sendingManual"
+                        class="flex-1 py-4 bg-primary text-white text-sm font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale disabled:hover:scale-100">
+                        <span x-show="!sendingManual">발송하기</span>
+                        <i x-show="sendingManual" class="ri-loader-4-line animate-spin text-lg"></i>
+                    </button>
+                    <button @click="manualModalOpen = false"
+                        class="px-8 py-4 bg-gray-100 text-gray-600 text-sm font-black rounded-2xl hover:bg-gray-200 transition-colors">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -9,7 +9,16 @@ function registerBranchesPage() {
             // DEBUG LOG
             init() {
                 console.log('🎯 branchesPage init() called');
-                this.loadBranches();
+
+                this.$watch('activeTab', (value) => {
+                    if (value === 'branches' && this.branches.length === 0) {
+                        this.loadBranches();
+                    }
+                });
+
+                if (this.activeTab === 'branches') {
+                    this.loadBranches();
+                }
             },
             // ==================== State Variables ====================
 
@@ -38,6 +47,7 @@ function registerBranchesPage() {
             existingBranchImages: [], // Array of {id: number, url: string}
             isDraggingBranchImage: false,
             loadingData: false, // Global loading state for async actions
+            loading: false, // Initial loading state for branch list
 
             // Room Management
             showRoomModal: false,
@@ -83,6 +93,7 @@ function registerBranchesPage() {
             // ==================== Branch Management Methods ====================
 
             async loadBranches() {
+                this.loading = true
                 const token = localStorage.getItem('token')
                 try {
                     const response = await fetch('/admin/api/branches', {
@@ -93,6 +104,8 @@ function registerBranchesPage() {
                     }
                 } catch (error) {
                     console.error('Error loading branches:', error)
+                } finally {
+                    this.loading = false
                 }
             },
 

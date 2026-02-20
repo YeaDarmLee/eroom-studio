@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
-from app.models.contract import Contract
+from app.models.contract import Contract, TermsDocument
 from app.models.branch import Room
 from app.models.coupon import Coupon
 from app.extensions import db
 from app.routes.auth import token_required
+from app.utils.evidence import log_contract_status_change, get_server_side_terms, generate_content_hash
 import datetime
 import json
 from sqlalchemy import func
@@ -251,6 +252,16 @@ def create_contract(current_user):
     breakdown['first_month_rent'] = final_price # 일할 계산 + VAT 적용된 첫 달 임대료 부분
     breakdown['first_month_total'] = final_price + (room.deposit if room.room_type != 'time_based' else 0)
 
+    # --- Evidence Capture (New) ---
+    terms_version = data.get('terms_version')
+    terms_doc = None
+    if terms_version:
+        terms_doc = get_server_side_terms(terms_version)
+    
+    # Capture env info
+    consent_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    consent_user_agent = request.headers.get('User-Agent')
+
     contract = Contract(
         user_id=current_user.id,
         room_id=room.id,
@@ -266,12 +277,52 @@ def create_contract(current_user):
         status='requested',
         coupon_id=breakdown['coupon_id'],
         discount_details=json.dumps(breakdown),
-        is_indefinite=is_indefinite
+        is_indefinite=is_indefinite,
+        
+        # Evidence Fields
+        terms_document_id=terms_doc.id if terms_doc else None,
+        terms_version=terms_version,
+        terms_snapshot_hash=terms_doc.content_hash if terms_doc else None,
+        consented_at=datetime.datetime.utcnow(),
+        consent_ip=consent_ip,
+        consent_user_agent=consent_user_agent,
+        consent_method=data.get('consent_method', 'checkbox_v1'),
+        
+        pricing_snapshot=breakdown, # Dict saved as JSON
+        contract_email_snapshot=current_user.email
     )
     
     db.session.add(contract)
+    db.session.flush() # Get ID for history
+    
+    # Audit History
+    log_contract_status_change(
+        contract=contract,
+        old_status=None,
+        new_status='requested',
+        actor_id=current_user.id,
+        actor_type='user',
+        source='public_api'
+    )
+    
     db.session.commit()
     
+    # --- SMS Trigger (New) ---
+    try:
+        from app.utils.sms_service import sms_service
+        user_info = contract.get_user_info()
+        context = {
+            'user_name': user_info['name'],
+            'branch_name': room.branch.name if room.branch else '이룸 스튜디오',
+            'room_name': room.name,
+            'amount': format(final_price, ','),
+            'user_phone': user_info['phone']
+        }
+        sms_service.send_sms(contract.id, 'CONTRACT_APPLIED', context)
+    except Exception as e:
+        # Don't block contract creation if SMS fails, but log it
+        print(f"SMS trigger error: {e}")
+
     return jsonify({
         'id': contract.id,
         'status': contract.status,

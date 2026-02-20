@@ -24,8 +24,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         init() {
-            this.loadUsers();
-            this.loadBranches();
+            this.$watch('activeTab', (value) => {
+                if (value === 'users') {
+                    if (this.users.length === 0) this.loadUsers();
+                    if (this.branches.length === 0) this.loadBranches();
+                }
+            });
+
+            if (this.activeTab === 'users') {
+                this.loadUsers();
+                this.loadBranches();
+            }
         },
 
         openCreateModal() {

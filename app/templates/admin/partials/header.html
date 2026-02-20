@@ -1,0 +1,29 @@
+<!-- Header -->
+<header class="bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-gray-200 px-6 py-4 shadow-sm">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <button @click="sidebarOpen = !sidebarOpen"
+                class="text-gray-500 hover:text-gray-700 focus:outline-none lg:hidden">
+                <i class="ri-menu-line text-2xl"></i>
+            </button>
+            <a href="/" class="lg:hidden">
+                <img src="{{ url_for('static', filename='logo/eroom_studio_x.jpg') }}" alt="Eroom Studio"
+                    class="h-12 w-auto">
+            </a>
+            <h2 class="text-2xl font-bold text-gray-900 capitalize" x-text="{
+                    'dashboard': '대시보드',
+                    'users': '회원 관리',
+                    'contracts': '계약 관리',
+                    'coupons': '쿠폰 관리',
+                    'requests': '요청 관리',
+                    'inquiries': '문의 관리',
+                    'sms': '문자메세지',
+                    'branches': '지점 관리'
+                }[activeTab]">
+            </h2>
+        </div>
+        <div class="flex items-center space-x-4">
+            <a href="/" class="text-sm font-medium text-gray-500 hover:text-primary transition-colors">메인으로</a>
+        </div>
+    </div>
+</header>

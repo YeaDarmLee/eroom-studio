@@ -1,8 +1,12 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
 from app.extensions import db
+from app.models.contract import Contract, TermsDocument
 from app.models.user import User
 from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchImage
-from app.models.contract import Contract
+from app.models.sms import SmsTemplate, SmsLog
+from app.utils.evidence import log_contract_status_change, ensure_private_dir
+from app.utils.sms_service import sms_service, SMS_VARIABLE_SCHEMA
+from app.utils.sms_context import build_sms_context
 from app.models.coupon import Coupon
 from app.models.request import Request
 from app.routes.auth import admin_required
@@ -17,6 +21,8 @@ import math
 from functools import wraps
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
+from sqlalchemy import func, case
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -30,105 +36,177 @@ def dashboard(current_user):
 @admin_required
 @db_retry(max_retries=3, delay=1)
 def get_stats(current_user):
-    """Get dashboard stats"""
+    """Get dashboard stats (Optimized)"""
+    
+    # 1. Basic Counts
     total_users = User.query.count()
-    active_contracts = Contract.query.filter_by(status='active').count()
+    active_contracts_count = Contract.query.filter_by(status='active').count()
     pending_contracts = Contract.query.filter_by(status='requested').count()
     pending_requests = Request.query.filter_by(status='submitted').count() + pending_contracts
     
-    # Calculate total monthly revenue from active contracts
-    active_contracts_list = Contract.query.filter_by(status='active').all()
-    # Calculate total monthly revenue from active contracts (Use contract price, fallback to room price)
-    total_monthly_revenue = sum((c.price if c.price is not None else (c.room.price if c.room else 0)) for c in active_contracts_list)
+    # 2. Revenue & Deposit (Active Contracts)
+    # Use SQL aggregation for performance
+    # Price: if c.price is not null use it, else if c.room.price use it, else 0
+    # SQLite/MySQL compatible 'coalesce' logic
     
-    # Calculate total deposit from active contracts (Use contract deposit, fallback to room deposit)
-    total_deposit = sum((c.deposit if c.deposit is not None else (c.room.deposit if c.room else 0)) for c in active_contracts_list)
+    revenue_query = db.session.query(
+        func.sum(
+            case(
+                (Contract.price != None, Contract.price),
+                else_=Room.price
+            )
+        ).label('total_revenue'),
+        func.sum(
+            case(
+                (Contract.deposit != None, Contract.deposit),
+                else_=Room.deposit
+            )
+        ).label('total_deposit')
+    ).select_from(Contract).join(Room).filter(Contract.status == 'active')
     
-    # Get all room IDs with active contracts
-    occupied_room_ids = set(c.room_id for c in active_contracts_list if c.room_id)
-    
-    # Calculate expiring contracts (ending within 1 month)
-    one_month_from_now = (datetime.utcnow() + timedelta(days=30)).date()
-    # Expiring soon: active, not indefinite, end_date within 30 days
-    expiring_contracts = [c for c in active_contracts_list if not c.is_indefinite and c.end_date and c.end_date <= one_month_from_now]
-    expiring_count = len(expiring_contracts)
+    revenue_result = revenue_query.first()
+    total_monthly_revenue = revenue_result.total_revenue or 0
+    total_deposit = revenue_result.total_deposit or 0
 
+    # 3. Expiring Contracts (Active, Not Indefinite, End Date <= 30 days)
+    one_month_from_now = (datetime.utcnow() + timedelta(days=30)).date()
+    expiring_count = Contract.query.filter(
+        Contract.status == 'active',
+        Contract.is_indefinite == False,
+        Contract.end_date != None,
+        Contract.end_date <= one_month_from_now
+    ).count()
+
+    # 4. Room Stats (Occupied/Available) by Branch
+    # We need to list branches with their stats.
     
-    # Get all branches with their revenue and room status
+    # Get all branches with active contracts in one query
+    # We want: Branch ID, Name, Revenue, Deposit, Contract Count, Expiring Count
+    
+    # Subquery for branch stats from contracts
+    contract_stats = db.session.query(
+        Room.branch_id,
+        func.sum(
+            case((Contract.price != None, Contract.price), else_=Room.price)
+        ).label('revenue'),
+        func.sum(
+            case((Contract.deposit != None, Contract.deposit), else_=Room.deposit)
+        ).label('deposit'),
+        func.sum(
+            case((
+                (Contract.is_indefinite == False) & 
+                (Contract.end_date != None) & 
+                (Contract.end_date <= one_month_from_now), 1
+            ), else_=0)
+        ).label('expiring')
+    ).select_from(Contract).join(Room).filter(Contract.status == 'active').group_by(Room.branch_id).all()
+    
+    branch_stats_map = {r.branch_id: r for r in contract_stats}
+    
+    # Get all rooms to calculate occupancy per branch
+    # Group by branch_id and room_type (active/monthly/etc) isn't direct on Room
+    # easier to fetch all rooms (lighter than contracts) or aggregate rooms
+    
+    # Count total rooms per branch
+    total_rooms_per_branch = db.session.query(
+        Room.branch_id, 
+        func.count(Room.id).label('total')
+    ).group_by(Room.branch_id).all()
+    
+    # Count occupied rooms per branch (based on active contracts)
+    occupied_rooms_per_branch = db.session.query(
+        Room.branch_id,
+        func.count(Room.id).label('occupied')
+    ).join(Contract, (Contract.room_id == Room.id) & (Contract.status == 'active')).group_by(Room.branch_id).all()
+
+    # Count monthly rooms per branch
+    monthly_rooms_per_branch = db.session.query(
+        Room.branch_id,
+        func.count(Room.id).label('monthly_total')
+    ).filter(Room.room_type == 'monthly').group_by(Room.branch_id).all()
+    
+    # Count occupied monthly rooms per branch
+    occupied_monthly_rooms_per_branch = db.session.query(
+        Room.branch_id,
+        func.count(Room.id).label('monthly_occupied')
+    ).join(Contract, (Contract.room_id == Room.id) & (Contract.status == 'active')).filter(Room.room_type == 'monthly').group_by(Room.branch_id).all()
+    
+    # Detailed counts by type
+    manager_rooms_per_branch = db.session.query(Room.branch_id, func.count(Room.id)).filter(Room.room_type == 'manager').group_by(Room.branch_id).all()
+    time_rooms_per_branch = db.session.query(Room.branch_id, func.count(Room.id)).filter(Room.room_type == 'time_based').group_by(Room.branch_id).all()
+
+    # Maps for easy lookup
+    total_rooms_map = {r.branch_id: r.total for r in total_rooms_per_branch}
+    occupied_rooms_map = {r.branch_id: r.occupied for r in occupied_rooms_per_branch}
+    monthly_rooms_map = {r.branch_id: r.monthly_total for r in monthly_rooms_per_branch}
+    occupied_monthly_rooms_map = {r.branch_id: r.monthly_occupied for r in occupied_monthly_rooms_per_branch}
+    manager_rooms_map = {r.branch_id: r[1] for r in manager_rooms_per_branch}
+    time_rooms_map = {r.branch_id: r[1] for r in time_rooms_per_branch}
+
     branches = Branch.query.all()
     branch_data = []
     
+    total_monthly_rooms_all = 0
+    occupied_monthly_rooms_all = 0
+    occupied_rooms_all = 0
+    total_rooms_all = 0
+
     for branch in branches:
-        # Get active contracts for this branch
-        branch_contracts = [c for c in active_contracts_list if c.room and c.room.branch_id == branch.id]
+        bid = branch.id
+        stats = branch_stats_map.get(bid)
         
-        # Calculate revenue and deposit for this branch
-        branch_monthly_revenue = sum((c.price if c.price is not None else (c.room.price if c.room else 0)) for c in branch_contracts)
-        branch_deposit = sum((c.deposit if c.deposit is not None else (c.room.deposit if c.room else 0)) for c in branch_contracts)
+        b_revenue = stats.revenue if stats and stats.revenue else 0
+        b_deposit = stats.deposit if stats and stats.deposit else 0
+        b_expiring = stats.expiring if stats and stats.expiring else 0
         
-        # Get room status for this branch (월계약 방만 공실 계산)
-        branch_room_ids = [r.id for r in branch.rooms]
-        total_rooms = len(branch_room_ids)
+        b_total_rooms = total_rooms_map.get(bid, 0)
+        b_occupied_rooms = occupied_rooms_map.get(bid, 0)
+        b_monthly_rooms = monthly_rooms_map.get(bid, 0)
+        b_occupied_monthly = occupied_monthly_rooms_map.get(bid, 0)
         
-        # 월계약 방만 카운트 (시간제, 총무방 제외)
-        monthly_room_ids = [r.id for r in branch.rooms if r.room_type == 'monthly']
-        occupied_monthly_rooms = sum(1 for room_id in monthly_room_ids if room_id in occupied_room_ids)
-        occupied_rooms = sum(1 for room_id in branch_room_ids if room_id in occupied_room_ids)
-        available_rooms = len(monthly_room_ids) - occupied_monthly_rooms
-        
-        # Calculate room type distribution for this branch
-        monthly_rooms = sum(1 for r in branch.rooms if r.room_type == 'monthly')
-        time_based_rooms = sum(1 for r in branch.rooms if r.room_type == 'time_based')
-        manager_rooms = sum(1 for r in branch.rooms if r.room_type == 'manager')
-        
-        # Calculate expiring contracts for this branch
-        branch_expiring = sum(1 for c in branch_contracts if c.end_date and c.end_date <= one_month_from_now)
+        b_available_rooms = b_monthly_rooms - b_occupied_monthly
         
         branch_data.append({
             'id': branch.id,
             'name': branch.name,
-            'monthly_revenue': branch_monthly_revenue,
-            'deposit': branch_deposit,
-            'total_rooms': total_rooms,
-            'occupied_rooms': occupied_rooms,
-            'available_rooms': available_rooms,
-            'expiring_contracts': branch_expiring,
-            'monthly_rooms': monthly_rooms,
-            'time_based_rooms': time_based_rooms,
-            'manager_rooms': manager_rooms,
-            'total_monthly_rooms': len(monthly_room_ids)
+            'monthly_revenue': b_revenue,
+            'deposit': b_deposit,
+            'total_rooms': b_total_rooms,
+            'occupied_rooms': b_occupied_rooms,
+            'available_rooms': b_available_rooms,
+            'expiring_contracts': b_expiring,
+            'monthly_rooms': b_monthly_rooms,
+            'time_based_rooms': time_rooms_map.get(bid, 0),
+            'manager_rooms': manager_rooms_map.get(bid, 0),
+            'total_monthly_rooms': b_monthly_rooms
         })
+        
+        total_monthly_rooms_all += b_monthly_rooms
+        occupied_monthly_rooms_all += b_occupied_monthly
+        occupied_rooms_all += b_occupied_rooms
+        total_rooms_all += b_total_rooms
     
-    # Overall room status (월계약 방만 공실 계산)
-    total_rooms = Room.query.count()
-    occupied_rooms = len(occupied_room_ids)
-    
-    # 월계약 방만 카운트 (시간제, 총무방 제외)
-    all_monthly_rooms = Room.query.filter_by(room_type='monthly').all()
-    monthly_room_ids = set(r.id for r in all_monthly_rooms)
-    occupied_monthly_rooms = len(monthly_room_ids & occupied_room_ids)
-    available_rooms = len(monthly_room_ids) - occupied_monthly_rooms
-    
-    # Overall room type distribution
-    monthly_rooms = Room.query.filter_by(room_type='monthly').count()
-    time_based_rooms = Room.query.filter_by(room_type='time_based').count()
-    manager_rooms = Room.query.filter_by(room_type='manager').count()
+    # Final global stats
+    # Fetch room types counts globally
+    global_monthly = Room.query.filter_by(room_type='monthly').count()
+    global_time = Room.query.filter_by(room_type='time_based').count()
+    global_manager = Room.query.filter_by(room_type='manager').count()
     
     return jsonify({
         'stats': {
             'totalUsers': total_users,
-            'activeContracts': active_contracts,
+            'activeContracts': active_contracts_count,
             'pendingRequests': pending_requests,
             'expiringContracts': expiring_count,
             'monthlyRevenue': total_monthly_revenue,
             'totalDeposit': total_deposit,
-            'totalRooms': total_rooms,
-            'occupiedRooms': occupied_rooms,
-            'availableRooms': available_rooms,
-            'monthlyRooms': monthly_rooms,
-            'timeBasedRooms': time_based_rooms,
-            'managerRooms': manager_rooms,
-            'totalMonthlyRooms': len(monthly_room_ids)
+            'totalRooms': total_rooms_all,
+            'occupiedRooms': occupied_rooms_all,
+            'availableRooms': global_monthly - occupied_monthly_rooms_all, # 공실은 월세방 기준
+            'monthlyRooms': global_monthly,
+            'timeBasedRooms': global_time,
+            'managerRooms': global_manager,
+            'totalMonthlyRooms': global_monthly
         },
         'branchData': branch_data
     })
@@ -138,7 +216,11 @@ def get_stats(current_user):
 @db_retry(max_retries=3, delay=1)
 def get_contracts(current_user):
     """Get all contracts with details (including unmapped contracts)"""
-    contracts = Contract.query.all()
+    contracts = Contract.query.options(
+        joinedload(Contract.user),
+        joinedload(Contract.room).joinedload(Room.branch),
+        joinedload(Contract.coupon)
+    ).all()
     result = []
     
     for c in contracts:
@@ -414,10 +496,49 @@ def update_contract_status(current_user, id):
     data = request.get_json()
     
     if 'status' in data:
+        old_status = contract.status
         new_status = data['status']
-        contract.status = new_status
         
-        # Sync room status with contract status
+        # 1. Update Status with History
+        contract.status = new_status
+        log_contract_status_change(
+            contract=contract,
+            old_status=old_status,
+            new_status=new_status,
+            actor_id=current_user.id,
+            actor_type='admin',
+            source='admin_ui',
+            reason=data.get('reason')
+        )
+        
+        # 2. Automated Evidence/Notice on Approval
+        if new_status == 'approved':
+            # Store initial notice info
+            contract.notice_email_to = contract.contract_email_snapshot or contract.get_user_info()['email']
+            
+            # TODO: PDF Generation (Stub)
+            # pdf_data = generate_summary_pdf(contract)
+            # save_contract_pdf(contract.id, pdf_data)
+            # contract.contract_pdf_hash = ...
+            
+            # TODO: Email Dispatch (Stub)
+            # contract.notice_email_attempts += 1
+            # contract.contract_notice_sent_at = datetime.now()
+            
+            # --- SMS Trigger (New) ---
+            try:
+                from app.utils.sms_service import sms_service
+                user_info = contract.get_user_info()
+                context = {
+                    'user_name': user_info['name'],
+                    'branch_name': contract.room.branch.name if contract.room and contract.room.branch else '이룸 스튜디오',
+                    'room_name': contract.room.name if contract.room else 'N/A'
+                }
+                sms_service.send_sms(contract.id, 'CONTRACT_APPROVED', context)
+            except Exception as e:
+                print(f"SMS trigger error (APPROVED): {e}")
+
+        # 3. Sync room status with contract status
         if contract.room:
             if new_status == 'active':
                 contract.room.status = 'occupied'
@@ -470,6 +591,22 @@ def update_request_status(current_user, id):
                     # Also update the request details to reflect it was processed
                     details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                     req.details = json.dumps(details_dict)
+            
+            # --- SMS Trigger (New) ---
+            if req.type == 'termination' and req.contract:
+                try:
+                    from app.utils.sms_service import sms_service
+                    user_info = req.contract.get_user_info()
+                    context = {
+                        'user_name': user_info['name'],
+                        'branch_name': req.contract.room.branch.name if req.contract.room and req.contract.room.branch else '이룸 스튜디오',
+                        'room_name': req.contract.room.name if req.contract.room else 'N/A',
+                        'moveout_date': req.contract.end_date.strftime('%Y-%m-%d'),
+                        'deposit_refund_date': (req.contract.end_date + timedelta(days=3)).strftime('%Y-%m-%d')
+                    }
+                    sms_service.send_sms(req.contract.id, 'MOVEOUT_APPROVED', context)
+                except Exception as e:
+                    print(f"SMS trigger error (MOVEOUT_APPROVED): {e}")
             
         db.session.commit()
         return jsonify({'message': 'Request status updated'})
@@ -1359,3 +1496,180 @@ def get_calendar_events(current_user):
 
 
 
+
+# --- SMS Management APIs ---
+
+@admin_bp.route('/api/sms/templates', methods=['GET'])
+@admin_required
+def get_sms_templates(current_user):
+    """GET all SMS templates"""
+    templates = SmsTemplate.query.all()
+    return jsonify([{
+        'id': t.id,
+        'type': t.type,
+        'title': t.title,
+        'content': t.content,
+        'is_active': t.is_active,
+        'schedule_offset': t.schedule_offset,
+        'allowed_variables': SMS_VARIABLE_SCHEMA.get(t.type, []),
+        'updated_at': t.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+    } for t in templates])
+
+@admin_bp.route('/api/sms/templates/<int:id>', methods=['PUT'])
+@admin_required
+def update_sms_template(current_user, id):
+    """Update SMS template"""
+    template = SmsTemplate.query.get_or_404(id)
+    data = request.get_json()
+    
+    if 'title' in data:
+        template.title = data['title']
+    if 'content' in data:
+        template.content = data['content']
+    if 'is_active' in data:
+        template.is_active = data['is_active']
+    if 'schedule_offset' in data:
+        template.schedule_offset = int(data['schedule_offset'])
+        
+    template.updated_by_admin_id = current_user.id
+    template.updated_reason = data.get('reason')
+    
+    db.session.commit()
+    return jsonify({'message': 'Template updated'})
+
+@admin_bp.route('/api/sms/logs', methods=['GET'])
+@admin_required
+def get_sms_logs(current_user):
+    """GET SMS logs with filtering"""
+    status_filter = request.args.get('status')
+    query = SmsLog.query
+    
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+        
+    logs = query.order_by(SmsLog.sent_at.desc()).limit(100).all()
+    
+    return jsonify([{
+        'id': l.id,
+        'contract_id': l.contract_id,
+        'user_name': l.contract.get_user_info()['name'] if l.contract else 'N/A',
+        'type': l.type,
+        'content': l.content_snapshot,
+        'status': l.status,
+        'sent_at': l.sent_at.strftime('%m-%d %H:%M'),
+        'error_message': l.error_message
+    } for l in logs])
+
+@admin_bp.route('/api/sms/preview', methods=['POST'])
+@admin_required
+def preview_sms(current_user):
+    """Preview SMS rendering with dummy data"""
+    data = request.get_json()
+    content = data.get('content', '')
+    msg_type = data.get('type', 'CONTRACT_APPLIED')
+    contract_id = data.get('contract_id')
+    
+    context = {}
+    if contract_id:
+        contract = Contract.query.get(contract_id)
+        if contract:
+            context = build_sms_context(contract, msg_type)
+            
+    if not context:
+        # Dummy context based on schema
+        context = {
+            'user_name': '홍길동',
+            'branch_name': '강남점',
+            'room_name': '101호',
+            'start_date': '2024-03-01',
+            'end_date': '2024-04-01',
+            'due_date': '2024-03-01',
+            'amount': '500,000',
+            'moveout_date': '2024-04-30',
+            'renew_deadline': '2024-03-02',
+            'deposit_refund_date': '2024-05-07',
+            'user_phone': '010-1234-5678'
+        }
+    
+    from app.utils.sms_service import sms_service
+    rendered, missing = sms_service.render_template(content, context)
+    
+    return jsonify({
+        'rendered': rendered,
+        'missing': missing
+    })
+
+@admin_bp.route('/api/sms/manual', methods=['POST'])
+@admin_required
+def send_manual_sms(current_user):
+    """Send manual SMS to a contract user"""
+    data = request.get_json()
+    contract_id = data.get('contract_id')
+    msg_type = data.get('type', 'MANUAL')
+    content = data.get('content') # Optional override or required for MANUAL
+
+    if not contract_id:
+        return jsonify({'error': 'Contract ID required'}), 400
+
+    contract = Contract.query.get_or_404(contract_id)
+    
+    # 1. Build Context
+    context = build_sms_context(contract, msg_type)
+    
+    # 2. Send SMS (Force Send = True)
+    success, message = sms_service.send_sms(
+        contract_id=contract.id,
+        msg_type=msg_type,
+        context=context,
+        content_override=content,
+        force_send=True
+    )
+    
+    if success:
+        return jsonify({'message': 'Sent successfully', 'log': message})
+    else:
+        return jsonify({'error': message}), 500
+
+@admin_bp.route('/api/contracts/search', methods=['GET'])
+@admin_required
+def search_contracts(current_user):
+    """Search contracts by user name or phone"""
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+
+    # Mapped contracts (Active Only for now, or all?)
+    # User might want to send SMS to 'terminated' users too (e.g. deposit refund).
+    # So let's include terminated.
+    mapped = Contract.query.join(User).filter(
+        (User.name.ilike(f'%{q}%')) | (User.phone.ilike(f'%{q}%'))
+    ).limit(20).all()
+
+    # Unmapped contracts
+    unmapped = Contract.query.filter(
+        Contract.user_id == None,
+        (Contract.temp_user_name.ilike(f'%{q}%')) | (Contract.temp_user_phone.ilike(f'%{q}%'))
+    ).limit(20).all()
+
+    results = []
+    # Deduplicate by ID just in case, though unlikely
+    seen_ids = set()
+    
+    for c in mapped + unmapped:
+        if c.id in seen_ids:
+            continue
+        seen_ids.add(c.id)
+        
+        user_info = c.get_user_info()
+        results.append({
+            'id': c.id,
+            'user_name': user_info['name'],
+            'user_phone': user_info['phone'],
+            'room_name': c.room.name if c.room else 'N/A',
+            'branch_name': c.room.branch.name if c.room and c.room.branch else 'N/A',
+            'status': c.status,
+            'start_date': c.start_date.strftime('%Y-%m-%d'),
+            'end_date': c.end_date.strftime('%Y-%m-%d')
+        })
+    
+    return jsonify(results[:20])
