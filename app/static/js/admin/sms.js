@@ -243,6 +243,34 @@ document.addEventListener('alpine:init', () => {
             if (offset === 0) return 'D-Day (당일)';
             if (offset < 0) return `D${offset} (${Math.abs(offset)}일 전)`;
             return `D+${offset} (${offset}일 후)`;
+        },
+
+        // Byte Calculation Helpers
+        calculateBytes(str) {
+            if (!str) return 0;
+            let byteLength = 0;
+            for (let i = 0; i < str.length; i++) {
+                const charCode = str.charCodeAt(i);
+                // ASCII (0-127) is 1 byte, others (Korean, Emoji, etc.) are 2 bytes (EUC-KR standard roughly)
+                // Note: UTF-8 usually takes 3 bytes for Korean, but SMS gateways often use EUC-KR (2 bytes)
+                // The user specifically asked for "Korean=2bytes" logic.
+                if (charCode <= 127) {
+                    byteLength += 1;
+                } else {
+                    byteLength += 2;
+                }
+            }
+            return byteLength;
+        },
+
+        getMessageType(content) {
+            return this.calculateBytes(content) > 90 ? 'LMS' : 'SMS';
+        },
+
+        getTypeBadgeClass(content) {
+            const type = this.getMessageType(content);
+            if (type === 'SMS') return 'bg-yellow-50 text-yellow-700 border-yellow-200'; // SMS (Yellow/Orange)
+            return 'bg-purple-50 text-purple-700 border-purple-200'; // LMS (Purple)
         }
     }));
 });

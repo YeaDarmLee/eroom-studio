@@ -889,6 +889,8 @@
                     'requested': '승인 대기 중',
                     'active': '이용 중',
                     'completed': '계약 종료',
+                    'terminated': '계약 종료',
+                    'terminate_requested': '해지 요청 중',
                     'cancelled': '취소됨'
                 };
                 return map[status] || status;
@@ -898,6 +900,9 @@
                 switch (status) {
                     case 'active': return 'bg-green-50 text-green-700 border border-green-100';
                     case 'requested': return 'bg-amber-50 text-amber-700 border border-amber-100';
+                    case 'terminate_requested': return 'bg-amber-50 text-amber-700 border border-amber-100';
+                    case 'terminated': return 'bg-gray-50 text-gray-500 border border-gray-100';
+                    case 'completed': return 'bg-gray-50 text-gray-500 border border-gray-100';
                     case 'cancelled': return 'bg-red-50 text-red-700 border border-red-100';
                     default: return 'bg-gray-50 text-gray-500 border border-gray-100';
                 }

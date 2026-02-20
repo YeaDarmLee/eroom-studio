@@ -6,7 +6,8 @@ from app.models.branch import Branch, Room, BranchFloor, RoomImage, BranchImage
 from app.models.sms import SmsTemplate, SmsLog
 from app.utils.evidence import log_contract_status_change, ensure_private_dir
 from app.utils.sms_service import sms_service, SMS_VARIABLE_SCHEMA
-from app.utils.sms_context import build_sms_context
+from app.utils.sms_service import sms_service, SMS_VARIABLE_SCHEMA
+from app.utils.sms_context import build_sms_context, get_dummy_context
 from app.models.coupon import Coupon
 from app.models.request import Request
 from app.routes.auth import admin_required
@@ -18,6 +19,7 @@ import json
 import os
 import uuid
 import math
+from app.utils.sms_context import build_sms_context
 from functools import wraps
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
@@ -512,7 +514,8 @@ def update_contract_status(current_user, id):
         )
         
         # 2. Automated Evidence/Notice on Approval
-        if new_status == 'approved':
+        # Only trigger when status changes to approved/active
+        if new_status in ['approved', 'active'] and old_status != new_status:
             # Store initial notice info
             contract.notice_email_to = contract.contract_email_snapshot or contract.get_user_info()['email']
             
@@ -529,13 +532,24 @@ def update_contract_status(current_user, id):
             try:
                 from app.utils.sms_service import sms_service
                 user_info = contract.get_user_info()
-                context = {
-                    'user_name': user_info['name'],
-                    'branch_name': contract.room.branch.name if contract.room and contract.room.branch else '이룸 스튜디오',
-                    'room_name': contract.room.name if contract.room else 'N/A'
-                }
-                sms_service.send_sms(contract.id, 'CONTRACT_APPROVED', context)
+                
+                # Debug Logging to File
+                with open('sms_debug.txt', 'a', encoding='utf-8') as f:
+                    f.write(f"\n[{datetime.now()}] Triggering for Contract {contract.id}\n")
+                    f.write(f"Old Status: {old_status}, New Status: {new_status}\n")
+                    f.write(f"User Phone: {user_info.get('phone')}\n")
+                    f.write(f"Start Date: {contract.start_date}\n")
+                    f.write(f"Payment Day: {contract.payment_day}\n")
+
+                context = build_sms_context(contract, 'CONTRACT_APPROVED')
+                
+                success, msg = sms_service.send_sms(contract.id, 'CONTRACT_APPROVED', context)
+                
+                with open('sms_debug.txt', 'a', encoding='utf-8') as f:
+                    f.write(f"send_sms result: success={success}, msg={msg}\n")
             except Exception as e:
+                with open('sms_debug.txt', 'a', encoding='utf-8') as f:
+                    f.write(f"SMS trigger error (APPROVED): {str(e)}\n")
                 print(f"SMS trigger error (APPROVED): {e}")
 
         # 3. Sync room status with contract status
@@ -595,15 +609,7 @@ def update_request_status(current_user, id):
             # --- SMS Trigger (New) ---
             if req.type == 'termination' and req.contract:
                 try:
-                    from app.utils.sms_service import sms_service
-                    user_info = req.contract.get_user_info()
-                    context = {
-                        'user_name': user_info['name'],
-                        'branch_name': req.contract.room.branch.name if req.contract.room and req.contract.room.branch else '이룸 스튜디오',
-                        'room_name': req.contract.room.name if req.contract.room else 'N/A',
-                        'moveout_date': req.contract.end_date.strftime('%Y-%m-%d'),
-                        'deposit_refund_date': (req.contract.end_date + timedelta(days=3)).strftime('%Y-%m-%d')
-                    }
+                    context = build_sms_context(req.contract, 'MOVEOUT_APPROVED')
                     sms_service.send_sms(req.contract.id, 'MOVEOUT_APPROVED', context)
                 except Exception as e:
                     print(f"SMS trigger error (MOVEOUT_APPROVED): {e}")
@@ -1504,16 +1510,40 @@ def get_calendar_events(current_user):
 def get_sms_templates(current_user):
     """GET all SMS templates"""
     templates = SmsTemplate.query.all()
-    return jsonify([{
-        'id': t.id,
-        'type': t.type,
-        'title': t.title,
-        'content': t.content,
-        'is_active': t.is_active,
-        'schedule_offset': t.schedule_offset,
-        'allowed_variables': SMS_VARIABLE_SCHEMA.get(t.type, []),
-        'updated_at': t.updated_at.strftime('%Y-%m-%d %H:%M:%S')
-    } for t in templates])
+    
+    # Pre-calculate byte length using dummy data
+    dummy_context = get_dummy_context()
+    
+    results = []
+    for t in templates:
+        # Render with dummy data
+        rendered, _ = sms_service.render_template(t.content, dummy_context)
+        
+        # Calculate bytes (EUC-KR estimation: Korean=2, ASCII=1)
+        # Python len(encode('euc-kr')) is accurate for this.
+        try:
+            # Aligo uses EUC-KR. 
+            predicted_bytes = len(rendered.encode('euc-kr'))
+        except UnicodeEncodeError:
+            # Fallback for chars not in EUC-KR (e.g. some emojis) -> use utf-8 length or estimate
+            predicted_bytes = len(rendered.encode('utf-8'))
+            
+        predicted_type = 'LMS' if predicted_bytes > 90 else 'SMS'
+
+        results.append({
+            'id': t.id,
+            'type': t.type,
+            'title': t.title,
+            'content': t.content,
+            'is_active': t.is_active,
+            'schedule_offset': t.schedule_offset,
+            'allowed_variables': SMS_VARIABLE_SCHEMA.get(t.type, []),
+            'updated_at': t.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'predicted_bytes': predicted_bytes,
+            'predicted_type': predicted_type
+        })
+        
+    return jsonify(results)
 
 @admin_bp.route('/api/sms/templates/<int:id>', methods=['PUT'])
 @admin_required
@@ -1577,19 +1607,7 @@ def preview_sms(current_user):
             
     if not context:
         # Dummy context based on schema
-        context = {
-            'user_name': '홍길동',
-            'branch_name': '강남점',
-            'room_name': '101호',
-            'start_date': '2024-03-01',
-            'end_date': '2024-04-01',
-            'due_date': '2024-03-01',
-            'amount': '500,000',
-            'moveout_date': '2024-04-30',
-            'renew_deadline': '2024-03-02',
-            'deposit_refund_date': '2024-05-07',
-            'user_phone': '010-1234-5678'
-        }
+        context = get_dummy_context()
     
     from app.utils.sms_service import sms_service
     rendered, missing = sms_service.render_template(content, context)

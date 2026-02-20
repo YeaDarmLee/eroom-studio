@@ -310,14 +310,8 @@ def create_contract(current_user):
     # --- SMS Trigger (New) ---
     try:
         from app.utils.sms_service import sms_service
-        user_info = contract.get_user_info()
-        context = {
-            'user_name': user_info['name'],
-            'branch_name': room.branch.name if room.branch else '이룸 스튜디오',
-            'room_name': room.name,
-            'amount': format(final_price, ','),
-            'user_phone': user_info['phone']
-        }
+        from app.utils.sms_context import build_sms_context
+        context = build_sms_context(contract, 'CONTRACT_APPLIED', amount=format(final_price, ','))
         sms_service.send_sms(contract.id, 'CONTRACT_APPLIED', context)
     except Exception as e:
         # Don't block contract creation if SMS fails, but log it

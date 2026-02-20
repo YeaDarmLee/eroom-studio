@@ -79,13 +79,8 @@ def create_request(current_user):
     if req_type == 'termination' and contract:
         try:
             from app.utils.sms_service import sms_service
-            user_info = contract.get_user_info()
-            context = {
-                'user_name': user_info['name'],
-                'branch_name': contract.room.branch.name if contract.room and contract.room.branch else '이룸 스튜디오',
-                'room_name': contract.room.name if contract.room else 'N/A',
-                'moveout_date': contract.end_date.strftime('%Y-%m-%d') # 종료일이 곧 퇴실일
-            }
+            from app.utils.sms_context import build_sms_context
+            context = build_sms_context(contract, 'MOVEOUT_APPLIED')
             sms_service.send_sms(contract.id, 'MOVEOUT_APPLIED', context)
         except Exception as e:
             print(f"SMS trigger error (MOVEOUT_APPLIED): {e}")

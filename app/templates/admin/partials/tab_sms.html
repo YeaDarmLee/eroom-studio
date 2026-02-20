@@ -28,10 +28,16 @@
                     class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
                     <div class="p-5 border-b border-gray-50 flex justify-between items-start bg-gray-50/30">
                         <div>
-                            <span
-                                class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded border border-blue-100 uppercase tracking-tighter"
-                                x-text="template.type"></span>
-                            <h3 class="text-sm font-bold text-gray-900 mt-2" x-text="template.title"></h3>
+                            <div class="flex items-center gap-1.5 mb-2">
+                                <span
+                                    class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded border border-blue-100 uppercase tracking-tighter"
+                                    x-text="template.type"></span>
+                                <span
+                                    class="px-2 py-0.5 text-[10px] font-black rounded border uppercase tracking-tighter"
+                                    :class="template.predicted_type === 'SMS' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-purple-50 text-purple-700 border-purple-200'"
+                                    x-text="template.predicted_type"></span>
+                            </div>
+                            <h3 class="text-sm font-bold text-gray-900" x-text="template.title"></h3>
                         </div>
                         <div class="flex flex-col items-end gap-1.5">
                             <span
@@ -52,7 +58,11 @@
                         </p>
                     </div>
                     <div class="px-5 py-4 bg-gray-50/50 border-t border-gray-50 flex justify-between items-center">
-                        <span class="text-[10px] text-gray-400" x-text="'최종 수정: ' + template.updated_at"></span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-400" x-text="'최종 수정: ' + template.updated_at"></span>
+                            <span class="text-[10px] font-mono font-bold text-gray-500"
+                                x-text="template.predicted_bytes + ' / 90 byte'"></span>
+                        </div>
                         <button @click="openEditModal(template)"
                             class="text-xs font-bold text-primary hover:underline">편집하기</button>
                     </div>
@@ -154,6 +164,15 @@
                                 </div>
                                 <textarea x-model="previewContent" @input="updatePreview()" rows="8"
                                     class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-primary focus:border-primary text-sm font-medium leading-relaxed font-mono"></textarea>
+                                <div class="flex justify-end mt-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-black px-2 py-0.5 rounded border"
+                                            :class="getTypeBadgeClass(previewResult)"
+                                            x-text="getMessageType(previewResult)"></span>
+                                        <span class="text-xs font-mono font-bold text-gray-500"
+                                            x-text="calculateBytes(previewResult) + ' / 90 byte'"></span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div x-show="['PAYMENT_REMINDER', 'AUTO_RENEW_NOTICE', 'PAYMENT_OVERDUE_STAGE1', 'PAYMENT_OVERDUE_STAGE2', 'MOVEOUT_DAY'].includes(editingTemplate.type)"
@@ -321,6 +340,15 @@
                         <textarea x-model="manualContent" rows="6"
                             class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-primary focus:border-primary text-sm font-medium leading-relaxed font-mono resize-none"
                             placeholder="내용을 입력하세요..."></textarea>
+                        <div class="flex justify-end mt-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black px-2 py-0.5 rounded border"
+                                    :class="getTypeBadgeClass(manualContent)"
+                                    x-text="getMessageType(manualContent)"></span>
+                                <span class="text-xs font-mono font-bold text-gray-500"
+                                    x-text="calculateBytes(manualContent) + ' / 90 byte'"></span>
+                            </div>
+                        </div>
                         <p class="text-[10px] text-gray-400 mt-2 px-1">
                             * 템플릿 선택 시 해당 계약 정보로 자동 치환된 내용이 입력됩니다. 내용을 자유롭게 수정하여 전송할 수 있습니다.
                         </p>

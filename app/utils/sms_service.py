@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # --- Source of Truth: 타입별 허용 변수 목록 ---
 SMS_VARIABLE_SCHEMA = {
     'CONTRACT_APPLIED': ['user_name', 'branch_name', 'room_name'],
-    'CONTRACT_APPROVED': ['user_name', 'branch_name', 'room_name', 'start_date'],
+    'CONTRACT_APPROVED': ['user_name', 'branch_name', 'room_name', 'start_date', 'due_date'],
     'PAYMENT_REMINDER': ['user_name', 'branch_name', 'room_name', 'due_date', 'amount'],
     'AUTO_RENEW_NOTICE': ['user_name', 'branch_name', 'room_name', 'end_date', 'renew_deadline'],
     'MOVEOUT_APPLIED': ['user_name', 'branch_name', 'room_name', 'moveout_date'],
@@ -140,7 +140,7 @@ class SmsService:
             return False, "Receiver phone number missing"
 
         # 5. 렌더링 및 검증 (Decision 5 & 6)
-        # 5. 렌더링 및 검증 (Decision 5 & 6)
+        logger.info(f"[SMS Debug] Sending {msg_type} to {target_number}. Context keys: {list(context.keys())}")
         content, missing = self.render_template(content_template, context)
         
         if missing:
