@@ -1,37 +1,32 @@
 <!-- Coupons Tab -->
 <div x-show="activeTab === 'coupons'" x-data="couponsTab" class="space-y-6">
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 flex flex-col gap-4 bg-gray-50/50">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-900">쿠폰 관리</h3>
-                <div class="flex items-center space-x-2">
-                    <button @click="openCreateModal()"
-                        class="flex items-center space-x-1 px-3 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
-                        <i class="ri-add-line"></i>
-                        <span>쿠폰 생성</span>
-                    </button>
-                    <button @click="loadCoupons()" class="text-gray-400 hover:text-primary transition-colors">
-                        <i class="ri-refresh-line text-xl" :class="{'animate-spin': loading}"></i>
-                    </button>
-                </div>
-            </div>
+        <div class="px-4 md:px-6 pt-4 pb-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <h3 class="text-base md:text-lg font-bold text-gray-900">쿠폰 관리</h3>
+            <button @click="openCreateModal()"
+                class="flex items-center gap-1 px-3 py-1.5 bg-primary text-white text-xs md:text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
+                <i class="ri-add-line"></i>
+                <span>쿠폰 생성</span>
+            </button>
         </div>
-        <div class="overflow-x-auto">
+
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            코드</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            할인 혜택</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            유효 기간</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            사용/제한</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            상태</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            관리</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">코드
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">할인 혜택
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">유효 기간
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용/제한
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">관리
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -80,20 +75,61 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Card List -->
+        <div class="block md:hidden divide-y divide-gray-100">
+            <template x-for="coupon in coupons" :key="coupon.id">
+                <div class="px-4 py-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <!-- Code + Status -->
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="font-mono font-bold text-primary text-sm" x-text="coupon.code"></span>
+                                <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full"
+                                    :class="coupon.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                    x-text="coupon.is_active ? '활성' : '비활성'"></span>
+                            </div>
+                            <!-- Discount info -->
+                            <div class="text-xs font-medium text-gray-800" x-text="getDiscountLabel(coupon)"></div>
+                            <div class="text-[11px] text-gray-400 mt-0.5"
+                                x-text="coupon.stack_policy === 'EXCLUSIVE' ? '중복 불가 (단독 사용)' : '월 프로모션 중복 가능'"></div>
+                            <!-- Dates + Usage -->
+                            <div class="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+                                <span x-text="coupon.valid_from + ' ~ ' + coupon.valid_until"></span>
+                                <span class="text-gray-300">·</span>
+                                <span>
+                                    <span class="text-gray-700 font-bold" x-text="coupon.used_count"></span>
+                                    <span x-text="' / ' + (coupon.usage_limit || '무제한')"></span>
+                                </span>
+                            </div>
+                        </div>
+                        <button @click="deleteCoupon(coupon.id)"
+                            class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 hover:bg-red-100 transition-colors shrink-0">
+                            <i class="ri-delete-bin-line text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="coupons.length === 0">
+                <div class="py-16 text-center text-gray-400">
+                    <i class="ri-coupon-3-line text-4xl block mb-2 opacity-20"></i>
+                    등록된 쿠폰이 없습니다.
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- Create Coupon Modal -->
     <div x-show="createModalOpen" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="flex items-center justify-center min-h-screen px-4 py-10 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="createModalOpen = false">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
             <div
-                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                class="inline-block align-middle bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all w-full sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">쿠폰 생성
-                    </h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">쿠폰 생성</h3>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">쿠폰 코드
@@ -108,8 +144,7 @@
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">할인
-                                    유형</label>
+                                <label class="block text-sm font-medium text-gray-700">할인 유형</label>
                                 <select x-model="newCoupon.discount_type"
                                     class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                                     <option value="fixed">정액 할인 (원)</option>
@@ -124,8 +159,7 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">할인
-                                주기</label>
+                            <label class="block text-sm font-medium text-gray-700">할인 주기</label>
                             <select x-model="newCoupon.discount_cycle"
                                 class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                                 <option value="once">1회 (첫 달만 적용)</option>
@@ -133,42 +167,37 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">중복 적용
-                                정책</label>
+                            <label class="block text-sm font-medium text-gray-700">중복 적용 정책</label>
                             <select x-model="newCoupon.stack_policy"
                                 class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                                <option value="STACK_WITH_MONTHLY_PROMO">월 프로모션(개월수 할인)과
-                                    중복 가능
-                                </option>
+                                <option value="STACK_WITH_MONTHLY_PROMO">월 프로모션(개월수 할인)과 중복 가능</option>
                                 <option value="EXCLUSIVE">중복 불가 (단독 사용)</option>
                             </select>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">유효기간
-                                    시작</label>
-                                <input type="date" x-model="newCoupon.valid_from"
-                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                <label class="block text-sm font-medium text-gray-700">유효기간 시작</label>
+                                <input type="text" x-model="newCoupon.valid_from" id="admin-coupon-valid-from" readonly
+                                    x-init="window.initFlatpickr($el)"
+                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary bg-white cursor-pointer"
+                                    placeholder="날짜 선택">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">유효기간
-                                    종료</label>
-                                <input type="date" x-model="newCoupon.valid_until"
-                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                <label class="block text-sm font-medium text-gray-700">유효기간 종료</label>
+                                <input type="text" x-model="newCoupon.valid_until" id="admin-coupon-valid-until"
+                                    readonly x-init="window.initFlatpickr($el)"
+                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary bg-white cursor-pointer"
+                                    placeholder="날짜 선택">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">최소
-                                    계약
-                                    월수</label>
+                                <label class="block text-sm font-medium text-gray-700">최소 계약 월수</label>
                                 <input type="number" x-model="newCoupon.min_months" placeholder="선택 사항"
                                     class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">발급
-                                    제한
-                                    수량</label>
+                                <label class="block text-sm font-medium text-gray-700">발급 제한 수량</label>
                                 <input type="number" x-model="newCoupon.usage_limit" placeholder="선택 사항"
                                     class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                             </div>

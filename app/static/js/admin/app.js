@@ -2,7 +2,7 @@
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('adminApp', () => ({
-        sidebarOpen: true,
+        sidebarOpen: window.innerWidth >= 1024,
         activeTab: 'dashboard',
         user: {
             name: '관리자',

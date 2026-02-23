@@ -1,55 +1,53 @@
 <!-- Contracts Tab -->
 <div x-show="activeTab === 'contracts'" x-data="contractsTab" class="space-y-6">
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 flex flex-col gap-4 bg-gray-50/50">
-            <!-- Status Filter -->
-            <div class="flex justify-between items-center">
-                <div class="flex space-x-2">
-                    <template x-for="status in ['all', 'active', 'requested', 'terminated', 'expiring_soon']">
+        <div class="px-4 md:px-6 pt-4 pb-5 border-b border-gray-100 flex flex-col gap-4 bg-gray-50/50">
+            <!-- Status Filter + Actions -->
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar flex-1 pb-1">
+                    <template
+                        x-for="status in ['all', 'active', 'requested', 'terminate_requested', 'terminated', 'expiring_soon']">
                         <button @click="filterStatus = status"
                             :class="{'bg-white shadow text-primary ring-1 ring-black/5': filterStatus === status, 'text-gray-500 hover:text-gray-700': filterStatus !== status}"
-                            class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all capitalize flex items-center gap-2">
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize flex items-center gap-1.5 shrink-0">
                             <span
                                 x-text="status === 'all' ? '전체' : (status === 'expiring_soon' ? '만료예정' : getStatusLabel(status))"></span>
                             <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-gray-100/80 text-gray-500"
-                                :class="{'bg-red-50 text-red-500 font-bold': status === 'expiring_soon' && getContractCount('expiring_soon') > 0, 'bg-primary/10 text-primary': filterStatus === status && status !== 'expiring_soon'}"
+                                :class="{'bg-red-50 text-red-500 font-bold': status === 'expiring_soon' && getContractCount('expiring_soon') > 0, 'bg-primary/10 text-primary': filterStatus === status && status !== 'expiring_soon', 'bg-amber-100 text-amber-600 font-bold': status === 'terminate_requested' && getContractCount('terminate_requested') > 0}"
                                 x-text="getContractCount(status)"></span>
                         </button>
                     </template>
                 </div>
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center gap-2 shrink-0">
                     <button @click="openCreateModal()"
-                        class="flex items-center space-x-1 px-3 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
+                        class="flex items-center gap-1 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
                         <i class="ri-file-add-line"></i>
-                        <span>계약 등록</span>
-                    </button>
-                    <button @click="loadContracts(); loadBranches();"
-                        class="text-gray-400 hover:text-primary transition-colors">
-                        <i class="ri-refresh-line text-xl" :class="{'animate-spin': loading}"></i>
+                        <span class="hidden sm:inline">계약 등록</span>
                     </button>
                 </div>
             </div>
             <!-- Branch Filter -->
-            <div class="flex items-center gap-4">
-                <span class="text-xs font-black text-gray-400 uppercase tracking-widest">지점
-                    필터</span>
-                <div class="flex flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">지점 필터</span>
+                <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
                     <button @click="filterBranchId = 'all'"
                         :class="{'bg-primary text-white shadow-md': filterBranchId === 'all', 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-100': filterBranchId !== 'all'}"
-                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0">
                         전체 지점
                     </button>
                     <template x-for="branch in branches" :key="branch.id">
                         <button @click="filterBranchId = branch.id"
                             :class="{'bg-primary text-white shadow-md': filterBranchId == branch.id, 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-100': filterBranchId != branch.id}"
-                            class="px-3 py-1 rounded-full text-xs font-bold transition-all" x-text="branch.name">
+                            class="px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0"
+                            x-text="branch.name">
                         </button>
                     </template>
                 </div>
             </div>
         </div>
     </div>
-    <div class="overflow-x-auto">
+    <!-- Desktop Table -->
+    <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -172,7 +170,21 @@
                                             전 통보</span>
                                     </template>
                                     <template x-if="!contract.is_indefinite">
-                                        <span x-text="contract.end_date"></span>
+                                        <div>
+                                            <template
+                                                x-if="contract.status === 'terminate_requested' && contract.termination_effective_date">
+                                                <span class="flex flex-col">
+                                                    <span class="text-xs text-gray-400 line-through"
+                                                        x-text="contract.end_date"></span>
+                                                    <span class="text-red-600 font-bold"
+                                                        x-text="'해지: ' + contract.termination_effective_date"></span>
+                                                </span>
+                                            </template>
+                                            <template
+                                                x-if="contract.status !== 'terminate_requested' || !contract.termination_effective_date">
+                                                <span x-text="contract.end_date"></span>
+                                            </template>
+                                        </div>
                                     </template>
                                 </div>
                             </template>
@@ -231,6 +243,71 @@
                 </template>
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile Card List -->
+    <div class="block md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <!-- Skeleton -->
+        <template x-if="loading">
+            <div class="divide-y divide-gray-100">
+                <template x-for="i in 5">
+                    <div class="flex items-center gap-3 px-4 py-3 animate-pulse">
+                        <div class="w-9 h-9 rounded-full bg-gray-200 shrink-0"></div>
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-3.5 w-24 bg-gray-200 rounded"></div>
+                            <div class="h-3 w-32 bg-gray-200 rounded"></div>
+                        </div>
+                        <div class="h-5 w-12 bg-gray-200 rounded-lg"></div>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <!-- Data cards -->
+        <div class="divide-y divide-gray-100" x-show="!loading">
+            <template x-for="contract in filteredContracts" :key="contract.id">
+                <div @click="openDetailModal(contract)"
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors cursor-pointer active:bg-gray-100">
+                    <!-- Avatar -->
+                    <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-sm shrink-0"
+                        x-text="contract.user_name.charAt(0)"></div>
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-sm font-bold text-gray-900" x-text="contract.user_name"></span>
+                            <span class="text-[10px] text-gray-400" x-text="'#' + contract.id"></span>
+                            <template x-if="isExpiringSoon(contract)">
+                                <span
+                                    class="px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-black rounded-full border border-red-200 animate-pulse">만료예정</span>
+                            </template>
+                        </div>
+                        <div class="text-[11px] text-gray-500 truncate">
+                            <span x-text="contract.branch_name"></span>
+                            <span class="text-gray-300 mx-1">·</span>
+                            <span x-text="contract.room_name"></span>
+                            <template x-if="contract.room_type === 'time_based'">
+                                <span
+                                    class="ml-1 px-1 py-0.5 bg-purple-50 text-purple-600 text-[8px] font-bold rounded">시간제</span>
+                            </template>
+                        </div>
+                        <div class="text-[11px] text-blue-600 font-bold mt-0.5"
+                            x-text="'₩' + contract.price.toLocaleString()"></div>
+                    </div>
+                    <!-- Status + Arrow -->
+                    <div class="flex flex-col items-end gap-1 shrink-0">
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg border"
+                            :class="getStatusBadgeClass(contract.status)"
+                            x-text="getStatusLabel(contract.status)"></span>
+                        <i class="ri-arrow-right-s-line text-gray-300 text-lg"></i>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!loading && filteredContracts.length === 0">
+                <div class="py-16 text-center text-gray-400">
+                    <i class="ri-file-list-line text-4xl block mb-2 opacity-20"></i>
+                    데이터가 없습니다.
+                </div>
+            </template>
+        </div>
     </div>
 
     <!-- Create Contract Modal -->
@@ -320,8 +397,10 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">시작일 <span
                                         class="text-red-500">*</span></label>
-                                <input type="date" x-model="newContract.start_date"
-                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                                <input type="text" x-model="newContract.start_date" id="admin-create-start-date"
+                                    readonly x-init="window.initFlatpickr($el)"
+                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary bg-white cursor-pointer"
+                                    placeholder="날짜 선택">
                             </div>
                             <div>
                                 <div class="flex justify-between items-center mb-1">
@@ -335,9 +414,11 @@
                                             전 통보</label>
                                     </div>
                                 </div>
-                                <input type="date" x-model="newContract.end_date" :disabled="newContract.is_indefinite"
-                                    :class="{'bg-gray-100 text-gray-400': newContract.is_indefinite}"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-colors">
+                                <input type="text" x-model="newContract.end_date" id="admin-create-end-date"
+                                    :disabled="newContract.is_indefinite" readonly x-init="window.initFlatpickr($el)"
+                                    :class="{'bg-gray-100 text-gray-400': newContract.is_indefinite, 'bg-white cursor-pointer': !newContract.is_indefinite}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-colors"
+                                    placeholder="날짜 선택">
                             </div>
                         </div>
 
@@ -395,7 +476,8 @@
                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
 
                 <!-- Modal Header -->
-                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div
+                    class="px-5 md:px-8 py-4 md:py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
                         <div class="flex items-center gap-3">
                             <h3 class="text-xl font-black text-gray-900">계약 상세 정보</h3>
@@ -411,17 +493,19 @@
                     </button>
                 </div>
 
-                <div class="px-8 py-8 space-y-8">
+                <div class="px-5 md:px-8 py-5 md:py-8 space-y-5 md:space-y-8">
                     <!-- User & Room Section -->
-                    <div class="grid grid-cols-2 gap-8">
+                    <div class="grid grid-cols-2 gap-3 md:gap-8">
                         <div class="space-y-4">
                             <h4
                                 class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
                                 <i class="ri-user-line mr-2"></i> 신청자 정보
                             </h4>
-                            <div class="bg-blue-50/40 rounded-2xl p-5 border border-blue-100/50">
-                                <p class="text-lg font-bold text-gray-900" x-text="selectedContract?.user_name"></p>
-                                <p class="text-sm text-gray-500 mt-1" x-text="selectedContract?.user_email">
+                            <div class="bg-blue-50/40 rounded-2xl p-3 md:p-5 border border-blue-100/50">
+                                <p class="text-sm md:text-lg font-bold text-gray-900"
+                                    x-text="selectedContract?.user_name"></p>
+                                <p class="text-xs md:text-sm text-gray-500 mt-0.5 truncate"
+                                    x-text="selectedContract?.user_email">
                                 </p>
                             </div>
                         </div>
@@ -430,9 +514,11 @@
                                 class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
                                 <i class="ri-door-open-line mr-2"></i> 신청 방 정보
                             </h4>
-                            <div class="bg-blue-50/40 rounded-2xl p-5 border border-blue-100/50">
-                                <p class="text-lg font-bold text-gray-900" x-text="selectedContract?.room_name"></p>
-                                <p class="text-sm text-gray-500 mt-1" x-text="selectedContract?.branch_name"></p>
+                            <div class="bg-blue-50/40 rounded-2xl p-3 md:p-5 border border-blue-100/50">
+                                <p class="text-sm md:text-lg font-bold text-gray-900"
+                                    x-text="selectedContract?.room_name"></p>
+                                <p class="text-xs md:text-sm text-gray-500 mt-0.5"
+                                    x-text="selectedContract?.branch_name"></p>
                             </div>
                         </div>
                     </div>
@@ -500,16 +586,14 @@
 
                             <!-- 최종 가격 정보 (포커스) -->
                             <div class="space-y-2 mt-2">
-                                <!-- 첫 달 총계가 위로 -->
                                 <div
-                                    class="flex justify-between items-center bg-white/60 p-3 rounded-xl border border-blue-100/20">
-                                    <div>
-                                        <p class="text-[11px] font-bold text-gray-700">첫 달 결제 금액 (총계)
+                                    class="flex justify-between items-start gap-3 bg-white/60 p-3 rounded-xl border border-blue-100/20">
+                                    <div class="shrink-0">
+                                        <p class="text-[11px] font-bold text-gray-700 whitespace-nowrap">첫 달 결제 금액 (총계)
                                         </p>
-                                        <p class="text-[9px] text-primary/60 font-medium mt-0.5">보증금 임대료
-                                            포함</p>
+                                        <p class="text-[9px] text-primary/60 font-medium mt-0.5">보증금 임대료 포함</p>
                                     </div>
-                                    <span class="text-base font-black text-gray-900"
+                                    <span class="text-sm font-black text-gray-900 text-right whitespace-nowrap"
                                         x-text="formatPrice((selectedContract?.discount_details?.first_month_total || (selectedContract?.price + selectedContract?.deposit)) - (selectedContract?.deposit || 0)) + ((selectedContract?.deposit || 0) > 0 ? ' + ' + formatPrice(selectedContract?.deposit) : '')"></span>
                                 </div>
                                 <!-- 이후 월세가 아래로 -->
@@ -533,13 +617,13 @@
 
                             <!-- Monthly Contract Display -->
                             <template x-if="selectedContract?.room_type !== 'time_based'">
-                                <div class="flex items-center justify-between px-4">
-                                    <div class="space-y-1">
+                                <div class="flex items-center justify-between px-2 md:px-4 gap-2">
+                                    <div class="space-y-1 shrink-0">
                                         <p class="text-[10px] font-bold text-gray-400 uppercase">시작일</p>
-                                        <p class="text-base font-black text-gray-900"
+                                        <p class="text-sm font-black text-gray-900 whitespace-nowrap"
                                             x-text="selectedContract?.start_date"></p>
                                     </div>
-                                    <div class="flex-1 px-8 flex flex-col items-center">
+                                    <div class="flex-1 px-3 flex flex-col items-center">
                                         <div class="h-0.5 w-full bg-gray-200/60 relative rounded-full overflow-hidden">
                                             <div class="absolute inset-0 bg-primary/20 animate-pulse">
                                             </div>
@@ -547,16 +631,34 @@
                                         <span
                                             class="text-[9px] font-black text-primary uppercase mt-1.5 tracking-tighter">Term</span>
                                     </div>
-                                    <div class="text-right space-y-1">
-                                        <p class="text-[10px] font-bold text-gray-400 uppercase">종료일</p>
+                                    <div class="text-right space-y-1 shrink-0">
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase"
+                                            x-text="selectedContract?.status === 'terminate_requested' ? '해지 예정일' : '종료일'">
+                                        </p>
                                         <template x-if="selectedContract?.is_indefinite">
                                             <p
-                                                class="text-sm font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-lg inline-block">
+                                                class="text-sm font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-lg inline-block whitespace-nowrap">
                                                 한달 전 통보</p>
                                         </template>
                                         <template x-if="!selectedContract?.is_indefinite">
-                                            <p class="text-base font-black text-primary"
-                                                x-text="selectedContract?.end_date"></p>
+                                            <div>
+                                                <template
+                                                    x-if="selectedContract?.status === 'terminate_requested' && selectedContract?.termination_effective_date">
+                                                    <div class="flex flex-col items-end">
+                                                        <span
+                                                            class="text-xs text-gray-400 line-through whitespace-nowrap"
+                                                            x-text="selectedContract.end_date"></span>
+                                                        <span
+                                                            class="text-base font-black text-red-600 whitespace-nowrap"
+                                                            x-text="selectedContract.termination_effective_date"></span>
+                                                    </div>
+                                                </template>
+                                                <template
+                                                    x-if="selectedContract?.status !== 'terminate_requested' || !selectedContract?.termination_effective_date">
+                                                    <p class="text-sm font-black text-primary whitespace-nowrap"
+                                                        x-text="selectedContract?.end_date"></p>
+                                                </template>
+                                            </div>
                                         </template>
                                     </div>
                                 </div>
@@ -564,7 +666,7 @@
 
                             <!-- Time-based Reservation Display -->
                             <template x-if="selectedContract?.room_type === 'time_based'">
-                                <div class="flex items-center justify-between px-4">
+                                <div class="flex items-center justify-between px-2 md:px-4 gap-3">
                                     <div class="space-y-1">
                                         <p class="text-[10px] font-bold text-gray-400 uppercase">예약 날짜
                                         </p>
@@ -594,44 +696,66 @@
                 </div>
 
                 <!-- Action Footer -->
-                <div class="px-8 py-6 bg-gray-50/50 flex justify-end items-center gap-3 rounded-b-3xl">
-                    <button @click="detailModalOpen = false"
-                        class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">닫기</button>
-
-                    <button @click="openEditModal(selectedContract)"
-                        class="px-6 py-3 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center">
-                        <i class="ri-edit-line mr-2"></i>수정하기
-                    </button>
-
-                    <template x-if="selectedContract?.status === 'requested'">
-                        <button @click="updateStatus(selectedContract.id, 'active')" :disabled="submittingUpdate"
-                            class="px-10 py-3 bg-secondary text-white text-sm font-black rounded-xl shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center">
-                            <template x-if="!submittingUpdate">
-                                <span>계약 최종 승인</span>
-                            </template>
-                            <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                <div class="px-4 md:px-8 py-4 md:py-6 bg-gray-50/50 border-t border-gray-100 rounded-b-3xl">
+                    <!-- Top row: close + edit -->
+                    <div class="flex items-center justify-between mb-3">
+                        <button @click="detailModalOpen = false"
+                            class="px-4 py-2.5 text-sm font-bold text-gray-400 hover:text-gray-700 transition-colors">닫기</button>
+                        <button @click="openEditModal(selectedContract)"
+                            class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center">
+                            <i class="ri-edit-line mr-1.5"></i>수정하기
                         </button>
-                    </template>
+                    </div>
+                    <!-- Bottom row: action buttons (full-width on mobile) -->
+                    <div class="flex flex-col sm:flex-row sm:justify-end gap-2">
+                        <template x-if="selectedContract?.status === 'requested'">
+                            <button @click="updateStatus(selectedContract.id, 'active')" :disabled="submittingUpdate"
+                                class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-secondary text-white text-sm font-black rounded-xl shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                <template x-if="!submittingUpdate">
+                                    <span>계약 최종 승인</span>
+                                </template>
+                                <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                            </button>
+                        </template>
 
-                    <template x-if="selectedContract?.status === 'active' && selectedContract?.is_indefinite">
-                        <button @click="applyTerminationNotice(selectedContract)" :disabled="submittingUpdate"
-                            class="px-6 py-3 bg-amber-500 text-white text-sm font-black rounded-xl shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center whitespace-nowrap">
-                            <template x-if="!submittingUpdate">
-                                <span>퇴실 통보 접수</span>
-                            </template>
-                            <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
-                        </button>
-                    </template>
+                        <template x-if="selectedContract?.status === 'active' && selectedContract?.is_indefinite">
+                            <button @click="applyTerminationNotice(selectedContract)" :disabled="submittingUpdate"
+                                class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-amber-500 text-white text-sm font-black rounded-xl shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                <template x-if="!submittingUpdate">
+                                    <span>퇴실 통보 접수</span>
+                                </template>
+                                <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                            </button>
+                        </template>
 
-                    <template x-if="selectedContract?.status === 'active'">
-                        <button @click="updateStatus(selectedContract.id, 'terminated')" :disabled="submittingUpdate"
-                            class="px-10 py-3 bg-red-500 text-white text-sm font-black rounded-xl shadow-xl shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center">
-                            <template x-if="!submittingUpdate">
-                                <span>계약 강제 종료</span>
-                            </template>
-                            <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
-                        </button>
-                    </template>
+                        <template x-if="selectedContract?.status === 'active'">
+                            <button @click="updateStatus(selectedContract.id, 'terminated')"
+                                :disabled="submittingUpdate"
+                                class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-red-500 text-white text-sm font-black rounded-xl shadow-xl shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                <template x-if="!submittingUpdate">
+                                    <span>계약 강제 종료</span>
+                                </template>
+                                <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                            </button>
+                        </template>
+
+                        <template x-if="selectedContract?.status === 'terminate_requested'">
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <button @click="rejectTermination(selectedContract.id)" :disabled="submittingUpdate"
+                                    class="w-full sm:w-auto flex justify-center items-center px-5 py-3 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all">
+                                    해지 거절
+                                </button>
+                                <button @click="updateStatus(selectedContract.id, 'terminated')"
+                                    :disabled="submittingUpdate"
+                                    class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-red-600 text-white text-sm font-black rounded-xl shadow-xl shadow-red-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                    <template x-if="!submittingUpdate">
+                                        <span>해지 승인 및 종료</span>
+                                    </template>
+                                    <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -722,8 +846,10 @@
                             <div>
                                 <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1"
                                     x-text="editingContract.room_type === 'time_based' ? '예약 날짜' : '시작일'"></label>
-                                <input type="date" x-model="editingContract.start_date"
-                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold">
+                                <input type="text" x-model="editingContract.start_date" id="admin-edit-start-date"
+                                    readonly x-init="window.initFlatpickr($el)"
+                                    class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold cursor-pointer"
+                                    placeholder="날짜 선택">
                             </div>
                             <div>
                                 <div class="flex justify-between items-center mb-1">
@@ -738,11 +864,12 @@
                                             전 통보</label>
                                     </div>
                                 </div>
-                                <input type="date" x-model="editingContract.end_date"
-                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold"
+                                <input type="text" x-model="editingContract.end_date" id="admin-edit-end-date" readonly
+                                    x-init="window.initFlatpickr($el)"
+                                    class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold cursor-pointer"
                                     :disabled="editingContract.is_indefinite"
                                     :class="{'bg-gray-100 text-gray-400': editingContract.is_indefinite}"
-                                    x-show="editingContract.room_type !== 'time_based'">
+                                    x-show="editingContract.room_type !== 'time_based'" placeholder="날짜 선택">
                             </div>
                         </div>
 

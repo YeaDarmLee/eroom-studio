@@ -44,6 +44,9 @@
     <link rel="stylesheet" as="style" crossorigin
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
     <style>
         :where([class^="ri-"])::before {
             content: "\f3c2";
@@ -74,6 +77,53 @@
 
         [x-cloak] {
             display: none !important;
+        }
+
+        /* Flatpickr Customization (Orange Theme) */
+        .flatpickr-calendar {
+            border-radius: 16px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+            border: 1px solid #f3f4f6 !important;
+            box-sizing: content-box !important;
+            width: 307.875px !important;
+            /* Flatpickr standard width */
+            z-index: 9999 !important;
+        }
+
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange,
+        .flatpickr-day.selected.inRange,
+        .flatpickr-day.startRange.inRange,
+        .flatpickr-day.endRange.inRange,
+        .flatpickr-day.selected:focus,
+        .flatpickr-day.startRange:focus,
+        .flatpickr-day.endRange:focus,
+        .flatpickr-day.selected:hover,
+        .flatpickr-day.startRange:hover,
+        .flatpickr-day.endRange:hover,
+        .flatpickr-day.selected.prevMonthDay,
+        .flatpickr-day.startRange.prevMonthDay,
+        .flatpickr-day.endRange.prevMonthDay,
+        .flatpickr-day.selected.nextMonthDay,
+        .flatpickr-day.startRange.nextMonthDay,
+        .flatpickr-day.endRange.nextMonthDay {
+            background: #F39C12 !important;
+            border-color: #F39C12 !important;
+        }
+
+        .flatpickr-months .flatpickr-month {
+            color: #1A202C !important;
+            fill: #1A202C !important;
+        }
+
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            font-weight: 800 !important;
+        }
+
+        .flatpickr-weekday {
+            color: #A0AEC0 !important;
+            font-weight: 700 !important;
         }
     </style>
     <script>
@@ -115,7 +165,7 @@
             <div class="flex justify-between items-center h-20">
                 <a href="/" class="transition-transform hover:scale-105">
                     <img src="{{ url_for('static', filename='logo/eroom_studio_x.jpg') }}" alt="Eroom Studio"
-                        class="h-16 w-auto">
+                        class="h-16 w-auto mix-blend-multiply">
                 </a>
 
                 <!-- Desktop Nav -->

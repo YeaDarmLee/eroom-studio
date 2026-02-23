@@ -2,19 +2,19 @@
 
 {% block content %}
 <div class="bg-gray-50/50 min-h-screen pb-20" x-data="dashboardData()" x-init="init()">
-    <div class="max-w-6xl mx-auto pt-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto pt-6 md:pt-10 px-4 sm:px-6 lg:px-8">
         <!-- Dashboard Header -->
-        <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-10 gap-4">
             <div>
-                <nav class="flex mb-4" aria-label="Breadcrumb">
+                <nav class="flex mb-2 md:mb-4" aria-label="Breadcrumb">
                     <ol class="flex items-center space-x-2 text-xs text-gray-400 font-medium">
                         <li><a href="/" class="hover:text-primary transition-colors">홈</a></li>
                         <li><i class="ri-arrow-right-s-line"></i></li>
                         <li class="text-gray-600">마이페이지</li>
                     </ol>
                 </nav>
-                <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">마이페이지</h1>
-                <p class="mt-2 text-gray-500">환영합니다, <span class="text-gray-900 font-semibold"
+                <h1 class="text-2xl md:text-4xl font-extrabold text-gray-900 tracking-tight">마이페이지</h1>
+                <p class="mt-1 text-sm text-gray-500">환영합니다, <span class="text-gray-900 font-semibold"
                         x-text="userName || '사용자'"></span>님!</p>
             </div>
         </div>
@@ -28,48 +28,48 @@
         </div>
 
         <div x-show="!loading" x-cloak class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-            <!-- Sidebar Navigation -->
-            <div class="lg:col-span-1 space-y-2 sticky top-24">
-                <button @click="activeTab = 'dashboard'"
-                    :class="activeTab === 'dashboard' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
-                    class="w-full text-left px-5 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-between group">
-                    <span class="flex items-center">
-                        <i class="ri-dashboard-3-line mr-3 text-lg"
-                            :class="activeTab === 'dashboard' ? 'text-white' : 'text-gray-400 group-hover:text-primary'"></i>
-                        내 계약 현황
-                    </span>
-                    <i x-show="activeTab === 'dashboard'" class="ri-arrow-right-s-line"></i>
-                </button>
-                <button @click="activeTab = 'requests'"
-                    :class="activeTab === 'requests' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
-                    class="w-full text-left px-5 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-between group">
-                    <span class="flex items-center">
-                        <i class="ri-tools-line mr-3 text-lg"
-                            :class="activeTab === 'requests' ? 'text-white' : 'text-gray-400 group-hover:text-primary'"></i>
-                        서비스 요청
-                    </span>
-                    <i x-show="activeTab === 'requests'" class="ri-arrow-right-s-line"></i>
-                </button>
-                <button @click="activeTab = 'inquiries'"
-                    :class="activeTab === 'inquiries' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
-                    class="w-full text-left px-5 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-between group">
-                    <span class="flex items-center">
-                        <i class="ri-chat-1-line mr-3 text-lg"
-                            :class="activeTab === 'inquiries' ? 'text-white' : 'text-gray-400 group-hover:text-primary'"></i>
-                        문의 내역
-                    </span>
-                    <i x-show="activeTab === 'inquiries'" class="ri-arrow-right-s-line"></i>
-                </button>
-                <div class="pt-4 mt-4 border-t border-gray-100">
+            <!-- Sidebar Navigation: horizontal scrollable on mobile, vertical on lg -->
+            <div class="lg:col-span-1 lg:sticky lg:top-24">
+                <div class="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:space-y-2 lg:overflow-visible">
+                    <button @click="activeTab = 'dashboard'"
+                        :class="activeTab === 'dashboard' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
+                        class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
+                        <span class="flex items-center">
+                            <i class="ri-dashboard-3-line text-lg"
+                                :class="activeTab === 'dashboard' ? 'text-white' : 'text-gray-400'"></i>
+                            <span class="ml-2 whitespace-nowrap">내 계약 현황</span>
+                        </span>
+                        <i x-show="activeTab === 'dashboard'" class="ri-arrow-right-s-line hidden lg:block"></i>
+                    </button>
+                    <button @click="activeTab = 'requests'"
+                        :class="activeTab === 'requests' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
+                        class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
+                        <span class="flex items-center">
+                            <i class="ri-tools-line text-lg"
+                                :class="activeTab === 'requests' ? 'text-white' : 'text-gray-400'"></i>
+                            <span class="ml-2 whitespace-nowrap">서비스 요청</span>
+                        </span>
+                        <i x-show="activeTab === 'requests'" class="ri-arrow-right-s-line hidden lg:block"></i>
+                    </button>
+                    <button @click="activeTab = 'inquiries'"
+                        :class="activeTab === 'inquiries' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
+                        class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
+                        <span class="flex items-center">
+                            <i class="ri-chat-1-line text-lg"
+                                :class="activeTab === 'inquiries' ? 'text-white' : 'text-gray-400'"></i>
+                            <span class="ml-2 whitespace-nowrap">문의 내역</span>
+                        </span>
+                        <i x-show="activeTab === 'inquiries'" class="ri-arrow-right-s-line hidden lg:block"></i>
+                    </button>
                     <button @click="activeTab = 'profile'"
                         :class="activeTab === 'profile' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
-                        class="w-full text-left px-5 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-between group">
+                        class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
                         <span class="flex items-center">
-                            <i class="ri-user-settings-line mr-3 text-lg"
-                                :class="activeTab === 'profile' ? 'text-white' : 'text-gray-400 group-hover:text-primary'"></i>
-                            내 정보 관리
+                            <i class="ri-user-settings-line text-lg"
+                                :class="activeTab === 'profile' ? 'text-white' : 'text-gray-400'"></i>
+                            <span class="ml-2 whitespace-nowrap">내 정보 관리</span>
                         </span>
-                        <i x-show="activeTab === 'profile'" class="ri-arrow-right-s-line"></i>
+                        <i x-show="activeTab === 'profile'" class="ri-arrow-right-s-line hidden lg:block"></i>
                     </button>
                 </div>
             </div>
@@ -88,7 +88,7 @@
                                     class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
                                     <!-- Card Header -->
                                     <div
-                                        class="px-8 py-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        class="px-4 md:px-8 py-4 md:py-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div class="flex items-center bg-gray-50 rounded-2xl px-4 py-2 w-fit">
                                             <div
                                                 class="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center mr-4 shadow-md shadow-primary/20">
@@ -114,48 +114,52 @@
                                     </div>
 
                                     <!-- Card Body Content -->
-                                    <div class="p-8">
+                                    <div class="p-4 md:p-8">
                                         <!-- Main Details Grid -->
                                         <div class="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 mb-10">
                                             <!-- Monthly/Default Contract -->
                                             <template x-if="contract.room?.room_type !== 'time_based'">
                                                 <div
-                                                    class="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 col-span-2 md:col-span-4">
-                                                    <div class="space-y-2 border-l-2 border-gray-100 pl-4">
+                                                    class="col-span-2 md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-2 md:gap-x-4">
+                                                    <div
+                                                        class="space-y-1 md:space-y-2 border-l-2 border-gray-100 pl-3 md:pl-4">
                                                         <p
-                                                            class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            class="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             계약 시작일</p>
-                                                        <p class="text-base font-extrabold text-gray-800"
+                                                        <p class="text-sm md:text-base font-extrabold text-gray-800"
                                                             x-text="formatDateShort(contract.start_date)"></p>
                                                     </div>
-                                                    <div class="space-y-2 border-l-2 border-gray-100 pl-4">
+                                                    <div
+                                                        class="space-y-1 md:space-y-2 border-l-2 border-gray-100 pl-3 md:pl-4">
                                                         <p
-                                                            class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            class="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             계약 종료일</p>
                                                         <template x-if="contract.is_indefinite">
                                                             <p
-                                                                class="text-sm font-black text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">
+                                                                class="text-xs md:text-sm font-black text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">
                                                                 한달 전 통보</p>
                                                         </template>
                                                         <template x-if="!contract.is_indefinite">
-                                                            <p class="text-base font-extrabold text-gray-800"
+                                                            <p class="text-sm md:text-base font-extrabold text-gray-800"
                                                                 x-text="formatDateShort(contract.end_date)"></p>
                                                         </template>
                                                     </div>
-                                                    <div class="space-y-2 border-l-2 border-gray-100 pl-4">
+                                                    <div
+                                                        class="space-y-1 md:space-y-2 border-l-2 border-gray-100 pl-3 md:pl-4">
                                                         <p
-                                                            class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            class="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             월 임대료</p>
-                                                        <p class="text-base font-extrabold text-primary">₩<span
-                                                                x-text="contract.price?.toLocaleString()"></span>
+                                                        <p class="text-sm md:text-base font-extrabold text-primary">
+                                                            ₩<span x-text="contract.price?.toLocaleString()"></span>
                                                         </p>
                                                     </div>
-                                                    <div class="space-y-2 border-l-2 border-gray-100 pl-4">
+                                                    <div
+                                                        class="space-y-1 md:space-y-2 border-l-2 border-gray-100 pl-3 md:pl-4">
                                                         <p
-                                                            class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            class="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                             보증금</p>
-                                                        <p class="text-base font-extrabold text-gray-800">₩<span
-                                                                x-text="contract.deposit?.toLocaleString()"></span>
+                                                        <p class="text-sm md:text-base font-extrabold text-gray-800">
+                                                            ₩<span x-text="contract.deposit?.toLocaleString()"></span>
                                                         </p>
                                                     </div>
                                                 </div>
@@ -243,29 +247,29 @@
                                                     <div class="pt-3 border-t border-blue-100 space-y-2">
                                                         <!-- 첫 달 결제 금액 -->
                                                         <div
-                                                            class="flex justify-between items-center bg-white/50 p-3 rounded-xl border border-blue-100/50">
-                                                            <div>
+                                                            class="flex justify-between items-start bg-white/50 p-3 rounded-xl border border-blue-100/50 gap-3">
+                                                            <div class="shrink-0">
                                                                 <p class="text-sm font-black text-gray-900">첫 달 결제 금액
                                                                     (총계)</p>
                                                                 <p
                                                                     class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
                                                                     보증금 임대료 포함</p>
                                                             </div>
-                                                            <p class="text-xl font-black text-secondary"
+                                                            <p class="text-xl font-black text-secondary text-right break-words min-w-0"
                                                                 x-text="'₩' + ((contract.discount_details.first_month_total || (contract.price + contract.deposit)) - (contract.deposit || 0)).toLocaleString() + ((contract.deposit || 0) > 0 ? ' + ₩' + (contract.deposit || 0).toLocaleString() : '')">
                                                             </p>
                                                         </div>
                                                         <!-- 이후 월 납부 금액 -->
                                                         <div
-                                                            class="flex justify-between items-center bg-white/50 p-3 rounded-xl border border-blue-100/50">
-                                                            <div>
+                                                            class="flex justify-between items-start bg-white/50 p-3 rounded-xl border border-blue-100/50 gap-3">
+                                                            <div class="shrink-0">
                                                                 <p class="text-sm font-black text-gray-900">이후 월 납부 금액
                                                                 </p>
                                                                 <p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5"
                                                                     x-text="(contract.payment_method === 'card' ? '카드 결제' : '무통장 입금') + ' | 매월 ' + contract.payment_day + '일'">
                                                                 </p>
                                                             </div>
-                                                            <p class="text-xl font-black text-primary"
+                                                            <p class="text-xl font-black text-primary text-right break-words min-w-0"
                                                                 x-text="'₩' + contract.price?.toLocaleString()"></p>
                                                         </div>
                                                     </div>
@@ -291,9 +295,28 @@
                                                 </div>
                                             </template>
 
-                                            <!-- Active Status Quick Actions -->
-                                            <template x-if="contract.status === 'active'">
+                                            <!-- Active or Terminate Requested Status Quick Actions -->
+                                            <template
+                                                x-if="['active', 'terminate_requested'].includes(contract.status)">
                                                 <div class="space-y-5">
+                                                    <!-- Show pending alert if terminate_requested -->
+                                                    <template x-if="contract.status === 'terminate_requested'">
+                                                        <div
+                                                            class="bg-amber-50 rounded-2xl p-5 flex items-start border border-amber-100/50 mb-6">
+                                                            <div class="bg-white p-2 rounded-xl shadow-sm mr-3 mt-0.5">
+                                                                <i
+                                                                    class="ri-error-warning-line text-amber-500 text-lg"></i>
+                                                            </div>
+                                                            <div class="text-sm">
+                                                                <p class="font-extrabold text-amber-900 mb-1">해지 신청이
+                                                                    접수되었습니다</p>
+                                                                <p
+                                                                    class="text-amber-800/80 leading-relaxed font-medium">
+                                                                    관리자의 승인을 기다리는 중입니다. 승인이 완료되면 안내 문자가 발송됩니다.</p>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+
                                                     <div class="flex items-center justify-between">
                                                         <h4 class="text-sm font-bold text-gray-900 flex items-center">
                                                             <span
@@ -322,29 +345,38 @@
                                                             <span
                                                                 class="text-xs font-bold text-gray-700 group-hover:text-primary">비품/청소</span>
                                                         </button>
-                                                        <button @click="openServiceModal('extension', contract.id)"
-                                                            x-show="!contract.is_indefinite"
-                                                            class="flex items-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-primary hover:shadow-md transition-all group">
-                                                            <div
-                                                                class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mr-3 group-hover:bg-primary/10 transition-colors">
-                                                                <i
-                                                                    class="ri-calendar-event-line text-gray-400 group-hover:text-primary"></i>
-                                                            </div>
-                                                            <span
-                                                                class="text-xs font-bold text-gray-700 group-hover:text-primary">연장
-                                                                신청</span>
-                                                        </button>
-                                                        <button @click="openServiceModal('termination', contract.id)"
-                                                            class="flex items-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-md transition-all group">
-                                                            <div
-                                                                class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mr-3 group-hover:bg-red-50 transition-colors">
-                                                                <i
-                                                                    class="ri-logout-box-line text-gray-400 group-hover:text-red-500"></i>
-                                                            </div>
-                                                            <span
-                                                                class="text-xs font-bold text-gray-700 group-hover:text-red-500">중도
-                                                                해지</span>
-                                                        </button>
+
+                                                        <!-- Extension Button (Only for Active) -->
+                                                        <template
+                                                            x-if="contract.status === 'active' && !contract.is_indefinite">
+                                                            <button @click="openServiceModal('extension', contract.id)"
+                                                                class="flex items-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-primary hover:shadow-md transition-all group">
+                                                                <div
+                                                                    class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mr-3 group-hover:bg-primary/10 transition-colors">
+                                                                    <i
+                                                                        class="ri-calendar-event-line text-gray-400 group-hover:text-primary"></i>
+                                                                </div>
+                                                                <span
+                                                                    class="text-xs font-bold text-gray-700 group-hover:text-primary">연장
+                                                                    신청</span>
+                                                            </button>
+                                                        </template>
+
+                                                        <!-- Termination Button (Only for Active) -->
+                                                        <template x-if="contract.status === 'active'">
+                                                            <button
+                                                                @click="openServiceModal('termination', contract.id)"
+                                                                class="flex items-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-md transition-all group">
+                                                                <div
+                                                                    class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mr-3 group-hover:bg-red-50 transition-colors">
+                                                                    <i
+                                                                        class="ri-logout-box-line text-gray-400 group-hover:text-red-500"></i>
+                                                                </div>
+                                                                <span
+                                                                    class="text-xs font-bold text-gray-700 group-hover:text-red-500">중도
+                                                                    해지 신청</span>
+                                                            </button>
+                                                        </template>
                                                     </div>
                                                 </div>
                                             </template>
@@ -629,15 +661,79 @@
 
                 <!-- Modal Content -->
                 <div class="px-8 py-8 space-y-6">
-                    <div x-show="selectedServiceType !== 'extension'">
+                    <!-- Standard Request UI (Repair, Supplies) -->
+                    <div x-show="['repair', 'supplies'].includes(selectedServiceType)">
                         <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">
                             <span x-show="selectedServiceType === 'repair'">고장 내용 및 위치</span>
                             <span x-show="selectedServiceType === 'supplies'">요청 항목 (비품명, 청소 요청 등)</span>
-                            <span x-show="selectedServiceType === 'termination'">퇴실 예정일 및 사유</span>
                         </label>
                         <textarea x-model="serviceFormData.message" rows="4"
                             class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 font-medium placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all resize-none"
                             :placeholder="getServicePlaceholder()"></textarea>
+                    </div>
+
+                    <!-- Termination UI -->
+                    <div x-show="selectedServiceType === 'termination'" class="space-y-6">
+                        <!-- Step 1: Guidance -->
+                        <div x-show="terminationStep === 1" class="space-y-4">
+                            <div class="bg-red-50 rounded-2xl p-6 border border-red-100">
+                                <h4 class="text-red-900 font-black mb-2 flex items-center">
+                                    <i class="ri-error-warning-line mr-2"></i>
+                                    중도 해지 안내사항
+                                </h4>
+                                <div class="text-sm text-red-700 space-y-3 font-medium">
+                                    <template x-if="terminationContract && !terminationContract.is_indefinite">
+                                        <div class="space-y-2">
+                                            <p>• 고정 기간 계약은 중도 해지 시 위약금이 발생할 수 있습니다.</p>
+                                            <p>• 남은 계약 기간이 있는 경우, <strong>1개월분 임대료</strong>가 위약금으로 청구될 수 있습니다.</p>
+                                            <p>• 보증금 반환은 퇴실 확인 및 미납금 정산 후 진행됩니다.</p>
+                                        </div>
+                                    </template>
+                                    <template x-if="terminationContract?.is_indefinite">
+                                        <div class="space-y-2">
+                                            <p>• 무기한 계약은 최소 1개월 전 해지 의사를 밝혀야 합니다.</p>
+                                            <p>• 신청일 기준 <strong>다음 달 말일</strong>자로 해지 처리가 진행됩니다.</p>
+                                            <p>• 보증금 반환은 퇴실 확인 및 미납금 정산 후 진행됩니다.</p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3 px-2">
+                                <input type="checkbox" id="confirm_term"
+                                    class="mt-1 w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                <label for="confirm_term" class="text-sm text-gray-600 font-medium">위 안내사항을 확인했으며, 이에
+                                    동의합니다.</label>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Form -->
+                        <div x-show="terminationStep === 2" class="space-y-6">
+                            <div class="space-y-4">
+                                <label
+                                    class="block text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">퇴실
+                                    예정일</label>
+                                <template x-if="terminationContract && !terminationContract.is_indefinite">
+                                    <input type="date" x-model="serviceFormData.terminationDate"
+                                        class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all">
+                                </template>
+                                <template x-if="terminationContract?.is_indefinite">
+                                    <div
+                                        class="w-full px-5 py-4 bg-gray-100 border border-gray-200 rounded-2xl text-gray-500 font-bold flex justify-between items-center">
+                                        <span x-text="serviceFormData.terminationDate.replace(/-/g, '.')"></span>
+                                        <span class="text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-600">고정됨</span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="space-y-4">
+                                <label
+                                    class="block text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">해지
+                                    사유</label>
+                                <textarea x-model="serviceFormData.message" rows="3"
+                                    class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 font-medium placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all resize-none"
+                                    placeholder="해지 사유를 간단히 입력해주세요."></textarea>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Extension Structured UI -->
@@ -690,8 +786,23 @@
                 <div class="px-8 py-6 bg-gray-50/50 flex justify-end items-center gap-3">
                     <button @click="serviceModalOpen = false"
                         class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">취소</button>
-                    <button @click="submitServiceRequest()"
-                        :disabled="submittingService || (selectedServiceType !== 'extension' && !serviceFormData.message)"
+
+                    <!-- Termination Step 1 Button -->
+                    <button x-show="selectedServiceType === 'termination' && terminationStep === 1"
+                        @click="if(document.getElementById('confirm_term').checked) { terminationStep = 2 } else { window.showAlert?.('알림', '안내사항 확인 및 동의에 체크해주세요.', 'warning') }"
+                        class="px-10 py-3 bg-red-600 text-white text-sm font-black rounded-xl shadow-xl shadow-red-600/20 transition-all hover:bg-red-700">
+                        다음으로
+                    </button>
+
+                    <!-- Termination Back Button -->
+                    <button x-show="selectedServiceType === 'termination' && terminationStep === 2"
+                        @click="terminationStep = 1"
+                        class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">이전으로</button>
+
+                    <!-- Submit Button -->
+                    <button x-show="selectedServiceType !== 'termination' || terminationStep === 2"
+                        @click="submitServiceRequest()"
+                        :disabled="submittingService || (selectedServiceType !== 'extension' && !serviceFormData.message) || (selectedServiceType === 'termination' && !serviceFormData.terminationDate)"
                         class="px-10 py-3 text-white text-sm font-black rounded-xl shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                         :class="{
                             'bg-blue-600 shadow-blue-600/20': selectedServiceType === 'repair',
@@ -700,7 +811,7 @@
                             'bg-red-600 shadow-red-600/20': selectedServiceType === 'termination'
                         }">
                         <template x-if="!submittingService">
-                            <span>요청 보내기</span>
+                            <span x-text="selectedServiceType === 'termination' ? '해지 신청하기' : '요청 보내기'"></span>
                         </template>
                         <i x-show="submittingService" class="ri-loader-4-line animate-spin text-lg"></i>
                     </button>
@@ -727,9 +838,13 @@
             submittingService: false,
             serviceFormData: {
                 message: '',
-                extensionMonths: '1'
+                extensionMonths: '1',
+                terminationDate: ''
             },
+
             selectedContractEndDate: '',
+            terminationStep: 1,
+            terminationContract: null,
 
             get newEndDate() {
                 if (this.selectedServiceType !== 'extension' || !this.selectedContractId) return '';
@@ -738,6 +853,13 @@
 
                 const d = new Date(contract.end_date);
                 d.setMonth(d.getMonth() + parseInt(this.serviceFormData.extensionMonths));
+                return this.formatDateShort(d);
+            },
+
+            getIndefiniteTerminationDate() {
+                // End of next month
+                const now = new Date();
+                const d = new Date(now.getFullYear(), now.getMonth() + 2, 0); // Day 0 of month+2 is last day of month+1
                 return this.formatDateShort(d);
             },
 
@@ -823,13 +945,19 @@
                 this.selectedContractId = contractId;
                 this.serviceFormData.message = '';
                 this.serviceFormData.extensionMonths = '1';
+                this.serviceFormData.terminationDate = '';
+                this.terminationStep = 1;
+
+                const contract = this.contracts.find(c => c.id === contractId);
+                this.terminationContract = contract || null;
 
                 // Find contract info for extension
-                if (type === 'extension') {
-                    const contract = this.contracts.find(c => c.id === contractId);
-                    if (contract) {
-                        this.selectedContractEndDate = this.formatDateShort(contract.end_date);
-                    }
+                if (type === 'extension' && contract) {
+                    this.selectedContractEndDate = this.formatDateShort(contract.end_date);
+                }
+
+                if (type === 'termination' && contract && contract.is_indefinite) {
+                    this.serviceFormData.terminationDate = this.getIndefiniteTerminationDate().replace(/\./g, '-');
                 }
 
                 this.serviceModalOpen = true;
@@ -863,7 +991,8 @@
                             contract_id: this.selectedContractId,
                             details: {
                                 message: this.serviceFormData.message,
-                                extension_months: this.selectedServiceType === 'extension' ? parseInt(this.serviceFormData.extensionMonths) : null
+                                extension_months: this.selectedServiceType === 'extension' ? parseInt(this.serviceFormData.extensionMonths) : null,
+                                termination_date: this.selectedServiceType === 'termination' ? this.serviceFormData.terminationDate : null
                             }
                         })
                     });

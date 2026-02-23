@@ -1,81 +1,71 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-6 sm:px-6 lg:px-8" x-data="loginPage()">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 class="mt-4 text-center text-3xl font-extrabold text-gray-900">
-            로그인
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-            이룸 스튜디오에 오신 것을 환영합니다
-        </p>
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8"
+    x-data="loginPage()">
+
+    <!-- Title -->
+    <div class="w-full max-w-md mb-6 text-center">
+        <h2 class="text-3xl font-extrabold text-gray-900">로그인</h2>
+        <p class="mt-2 text-sm text-gray-600">이룸 스튜디오에 오신 것을 환영합니다</p>
     </div>
 
-    <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
-        <div class="bg-white py-8 px-4 shadow-lg sm:rounded-xl sm:px-10">
-            <!-- Email Login Form -->
+    <!-- Form Card -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg px-6 py-8 sm:px-10">
+        <!-- Error -->
+        <div x-show="errorMessage" x-transition class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-sm text-red-600" x-text="errorMessage"></p>
+        </div>
+
+        <form @submit.prevent="handleEmailLogin()" class="space-y-5">
+            <!-- Email -->
             <div>
-
-                <form @submit.prevent="handleEmailLogin()" class="space-y-4">
-                    <!-- Error Message -->
-                    <div x-show="errorMessage" x-transition class="p-3 bg-red-50 border border-red-200 rounded-md">
-                        <p class="text-sm text-red-600" x-text="errorMessage"></p>
-                    </div>
-
-                    <!-- Email Input -->
-                    <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
-                        <input type="email" id="email" x-model="email" required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 sm:text-sm"
-                            placeholder="your@email.com">
-                    </div>
-
-                    <!-- Password Input -->
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-                        <input type="password" id="password" x-model="password" required
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 sm:text-sm"
-                            placeholder="••••••••">
-                    </div>
-
-                    <!-- Submit Button -->
-                    <div>
-                        <button type="submit" :disabled="loading"
-                            class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span x-show="!loading">로그인</span>
-                            <span x-show="loading" class="flex items-center">
-                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                        stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                    </path>
-                                </svg>
-                                로그인 중...
-                            </span>
-                        </button>
-                    </div>
-                </form>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                <input type="email" id="email" x-model="email" required
+                    class="block w-full px-3 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm"
+                    placeholder="your@email.com">
             </div>
 
-            <!-- Signup Link -->
-            <div class="mt-6">
-                <div class="relative">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-white text-gray-500">
-                            계정이 없으신가요?
-                        </span>
-                    </div>
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                <input type="password" id="password" x-model="password" required
+                    class="block w-full px-3 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm"
+                    placeholder="••••••••">
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" :disabled="loading"
+                class="w-full flex justify-center items-center py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                <span x-show="!loading">로그인</span>
+                <span x-show="loading" class="flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                    로그인 중...
+                </span>
+            </button>
+        </form>
+
+        <!-- Signup link -->
+        <div class="mt-6">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-200"></div>
                 </div>
-                <div class="mt-6 text-center">
-                    <a href="/register" class="font-medium text-primary hover:text-primary/80">
-                        회원가입하기
-                    </a>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-3 bg-white text-gray-500">계정이 없으신가요?</span>
                 </div>
+            </div>
+            <div class="mt-4 text-center">
+                <a href="/register" class="text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+                    회원가입하기
+                </a>
             </div>
         </div>
     </div>

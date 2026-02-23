@@ -54,6 +54,14 @@ def create_request(current_user):
         # Update Contract Status to 'terminate_requested'
         old_status = contract.status
         contract.status = 'terminate_requested'
+        # Save termination date if provided
+        termination_date_str = details.get('termination_date')
+        if termination_date_str:
+            try:
+                contract.termination_effective_date = datetime.strptime(termination_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+
         log_contract_status_change(
             contract=contract,
             old_status=old_status,
@@ -80,7 +88,11 @@ def create_request(current_user):
         try:
             from app.utils.sms_service import sms_service
             from app.utils.sms_context import build_sms_context
-            context = build_sms_context(contract, 'MOVEOUT_APPLIED')
+            
+            # Use the requested termination date for the message if available
+            m_date = details.get('termination_date')
+            context = build_sms_context(contract, 'MOVEOUT_APPLIED', moveout_date=m_date)
+            
             sms_service.send_sms(contract.id, 'MOVEOUT_APPLIED', context)
         except Exception as e:
             print(f"SMS trigger error (MOVEOUT_APPLIED): {e}")

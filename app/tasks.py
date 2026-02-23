@@ -12,9 +12,9 @@ def terminate_expired_contracts(app):
     with app.app_context():
         # KST 기준으로 오늘 날짜 계산
         today = get_kst_now().date()
-        # Find expired contracts
+        # Find expired contracts (Active or Termination requested)
         expired_contracts = Contract.query.filter(
-            Contract.status == 'active',
+            Contract.status.in_(['active', 'terminate_requested']),
             Contract.end_date < today
         ).all()
         
@@ -68,31 +68,31 @@ def process_daily_sms_tasks(app):
             context = build_sms_context(contract, 'AUTO_RENEW_NOTICE', renew_deadline=today.strftime('%Y-%m-%d'))
             sms_service.send_sms(contract.id, 'AUTO_RENEW_NOTICE', context, related_date=contract.end_date)
             
-        # 3. PAYMENT_OVERDUE_STAGE1
-        template = sms_service.get_template('PAYMENT_OVERDUE_STAGE1')
-        offset = template.schedule_offset if template else 1
-        target_overdue1_date = today - timedelta(days=offset)
+        # 3. PAYMENT_OVERDUE_STAGE1 (Disabled: Manual sending only)
+        # template = sms_service.get_template('PAYMENT_OVERDUE_STAGE1')
+        # offset = template.schedule_offset if template else 1
+        # target_overdue1_date = today - timedelta(days=offset)
+        # 
+        # overdue1_contracts = Contract.query.filter(
+        #     Contract.status == 'active',
+        #     Contract.payment_day == target_overdue1_date.day
+        # ).all()
+        # for contract in overdue1_contracts:
+        #     context = build_sms_context(contract, 'PAYMENT_OVERDUE_STAGE1', due_date=target_overdue1_date.strftime('%Y-%m-%d'))
+        #     sms_service.send_sms(contract.id, 'PAYMENT_OVERDUE_STAGE1', context, related_date=target_overdue1_date)
  
-        overdue1_contracts = Contract.query.filter(
-            Contract.status == 'active',
-            Contract.payment_day == target_overdue1_date.day
-        ).all()
-        for contract in overdue1_contracts:
-            context = build_sms_context(contract, 'PAYMENT_OVERDUE_STAGE1', due_date=target_overdue1_date.strftime('%Y-%m-%d'))
-            sms_service.send_sms(contract.id, 'PAYMENT_OVERDUE_STAGE1', context, related_date=target_overdue1_date)
- 
-        # 4. PAYMENT_OVERDUE_STAGE2
-        template = sms_service.get_template('PAYMENT_OVERDUE_STAGE2')
-        offset = template.schedule_offset if template else 5
-        target_overdue2_date = today - timedelta(days=offset)
- 
-        overdue2_contracts = Contract.query.filter(
-            Contract.status == 'active',
-            Contract.payment_day == target_overdue2_date.day
-        ).all()
-        for contract in overdue2_contracts:
-            context = build_sms_context(contract, 'PAYMENT_OVERDUE_STAGE2', due_date=target_overdue2_date.strftime('%Y-%m-%d'))
-            sms_service.send_sms(contract.id, 'PAYMENT_OVERDUE_STAGE2', context, related_date=target_overdue2_date)
+        # 4. PAYMENT_OVERDUE_STAGE2 (Disabled: Manual sending only)
+        # template = sms_service.get_template('PAYMENT_OVERDUE_STAGE2')
+        # offset = template.schedule_offset if template else 5
+        # target_overdue2_date = today - timedelta(days=offset)
+        # 
+        # overdue2_contracts = Contract.query.filter(
+        #     Contract.status == 'active',
+        #     Contract.payment_day == target_overdue2_date.day
+        # ).all()
+        # for contract in overdue2_contracts:
+        #     context = build_sms_context(contract, 'PAYMENT_OVERDUE_STAGE2', due_date=target_overdue2_date.strftime('%Y-%m-%d'))
+        #     sms_service.send_sms(contract.id, 'PAYMENT_OVERDUE_STAGE2', context, related_date=target_overdue2_date)
  
         # 5. MOVEOUT_DAY
         template = sms_service.get_template('MOVEOUT_DAY')
@@ -108,4 +108,4 @@ def process_daily_sms_tasks(app):
             context = build_sms_context(contract, 'MOVEOUT_DAY')
             sms_service.send_sms(contract.id, 'MOVEOUT_DAY', context, related_date=target_moveout_date)
 
-        print(f"[{now_kst}] Processed daily SMS tasks: Reminder({len(reminder_contracts)}), Expiry({len(expiry_contracts)}), Overdue1({len(overdue1_contracts)}), Overdue2({len(overdue2_contracts)}), MoveoutDay({len(moveout_contracts)})")
+        print(f"[{now_kst}] Processed daily SMS tasks: Reminder({len(reminder_contracts)}), Expiry({len(expiry_contracts)}), MoveoutDay({len(moveout_contracts)})")

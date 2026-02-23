@@ -251,6 +251,7 @@ def get_contracts(current_user):
             'discount_details': json.loads(c.discount_details) if c.discount_details else None,
             'coupon_name': c.coupon.name if c.coupon else None,
             'is_indefinite': c.is_indefinite,
+            'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
         }
         result.append(contract_data)
@@ -290,6 +291,7 @@ def get_contract_detail(current_user, id):
         'discount_details': json.loads(c.discount_details) if c.discount_details else None,
         'coupon_name': c.coupon.name if c.coupon else None,
         'is_indefinite': c.is_indefinite,
+        'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
         'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
     }
     
@@ -438,7 +440,8 @@ def get_monthly_payments(current_user):
             'room_name': c.room.name if c.room else '알 수 없음',
             'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
             'price': c.price if c.price is not None else (c.room.price if c.room else 0),
-            'payment_day': c.payment_day
+            'payment_day': c.payment_day,
+            'user_phone': user_info.get('phone') or ''
         }
         
         if c.payment_day == 1:
@@ -501,12 +504,26 @@ def update_contract_status(current_user, id):
         old_status = contract.status
         new_status = data['status']
         
+        # --- Future Termination Logic (New) ---
+        today = datetime.utcnow().date()
+        effective_status = new_status
+        
+        # If admin is "terminating" or "approving termination", check the date
+        if new_status == 'terminated':
+            target_date = contract.termination_effective_date or (contract.end_date if not contract.is_indefinite else None)
+            if target_date and target_date > today:
+                # Future termination: Keep as terminate_requested
+                effective_status = 'terminate_requested'
+                # Sync end_date if needed
+                if contract.termination_effective_date:
+                    contract.end_date = contract.termination_effective_date
+        
         # 1. Update Status with History
-        contract.status = new_status
+        contract.status = effective_status
         log_contract_status_change(
             contract=contract,
             old_status=old_status,
-            new_status=new_status,
+            new_status=effective_status,
             actor_id=current_user.id,
             actor_type='admin',
             source='admin_ui',
@@ -515,7 +532,7 @@ def update_contract_status(current_user, id):
         
         # 2. Automated Evidence/Notice on Approval
         # Only trigger when status changes to approved/active
-        if new_status in ['approved', 'active'] and old_status != new_status:
+        if effective_status in ['approved', 'active'] and old_status != effective_status:
             # Store initial notice info
             contract.notice_email_to = contract.contract_email_snapshot or contract.get_user_info()['email']
             
@@ -536,7 +553,7 @@ def update_contract_status(current_user, id):
                 # Debug Logging to File
                 with open('sms_debug.txt', 'a', encoding='utf-8') as f:
                     f.write(f"\n[{datetime.now()}] Triggering for Contract {contract.id}\n")
-                    f.write(f"Old Status: {old_status}, New Status: {new_status}\n")
+                    f.write(f"Old Status: {old_status}, New Status: {effective_status}\n")
                     f.write(f"User Phone: {user_info.get('phone')}\n")
                     f.write(f"Start Date: {contract.start_date}\n")
                     f.write(f"Payment Day: {contract.payment_day}\n")
@@ -552,21 +569,66 @@ def update_contract_status(current_user, id):
                     f.write(f"SMS trigger error (APPROVED): {str(e)}\n")
                 print(f"SMS trigger error (APPROVED): {e}")
 
+        # --- SMS Trigger (New: Termination Approval) ---
+        if new_status == 'terminated' or (effective_status == 'terminate_requested' and old_status != effective_status):
+             # Also send if it's a termination request being processed
+             # We check if there's a pending termination request to avoid double-sending
+             # (though force_send=True is used, it's safer to check context)
+             termination_req = next((r for r in contract.requests if r.type == 'termination' and r.status != 'done'), None)
+             if termination_req or (new_status == 'terminated' and old_status != 'terminated'):
+                try:
+                    from app.utils.sms_service import sms_service
+                    from app.utils.sms_context import build_sms_context
+                    context = build_sms_context(contract, 'MOVEOUT_APPROVED')
+                    sms_service.send_sms(contract.id, 'MOVEOUT_APPROVED', context)
+                except Exception as e:
+                    print(f"SMS trigger error (MOVEOUT_APPROVED): {e}")
+
         # 3. Sync room status with contract status
         if contract.room:
-            if new_status == 'active':
+            if effective_status == 'active':
                 contract.room.status = 'occupied'
-            elif new_status in ['terminated', 'cancelled']:
+            elif effective_status in ['terminated', 'cancelled']:
                 # Set back to available when contract ends or is cancelled
                 contract.room.status = 'available'
-            elif new_status == 'approved':
-                # Optional: mark as reserved when approved but not yet active
+            elif effective_status == 'terminate_requested':
+                # Ensure it stays occupied if it's a future termination
+                contract.room.status = 'occupied'
+            elif effective_status == 'approved':
                 contract.room.status = 'reserved'
-            elif new_status == 'requested' and contract.room.status == 'available':
-                # Optional: mark as reserved when requested? 
-                # Keeping it available for now unless we want to lock it immediately
-                pass
-                
+
+        # 4. Sync Request Status (Termination)
+        if effective_status in ['terminated', 'terminate_requested']:
+            # Mark any pending termination request as 'done'
+            termination_reqs = Request.query.filter_by(
+                contract_id=id, 
+                type='termination'
+            ).filter(Request.status != 'done').all()
+            for r in termination_reqs:
+                r.status = 'done'
+            
+            # --- SMS Trigger (New) ---
+            try:
+                from app.utils.sms_service import sms_service
+                from app.utils.sms_context import build_sms_context
+                context = build_sms_context(contract, 'MOVEOUT_APPROVED')
+                sms_service.send_sms(contract.id, 'MOVEOUT_APPROVED', context)
+            except Exception as e:
+                print(f"SMS trigger error (MOVEOUT_APPROVED): {e}")
+        
+        elif new_status == 'active' and old_status == 'terminate_requested':
+            # Mark any pending termination request as 'cancelled' (Rejected case)
+            termination_reqs = Request.query.filter_by(
+                contract_id=id, 
+                type='termination'
+            ).filter(Request.status != 'done').all()
+            for r in termination_reqs:
+                r.status = 'cancelled'
+            
+            # --- SMS Trigger (New) ---
+            # NOTE: If we have a MOVEOUT_REJECTED template, we would trigger it here.
+            # For now, it just resets the contract to active.
+
         db.session.commit()
         return jsonify({'message': 'Contract status and room status updated'})
     return jsonify({'error': 'Status is required'}), 400
@@ -596,7 +658,7 @@ def update_request_status(current_user, id):
             req.details = json.dumps(details_dict)
             
         # Handle automatic actions for specific request types (Approval)
-        if data['status'] == 'done':
+        if data.get('status') == 'done':
             if req.type == 'extension' and req.contract:
                 months = details_dict.get('extension_months')
                 if months:
@@ -606,13 +668,44 @@ def update_request_status(current_user, id):
                     details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                     req.details = json.dumps(details_dict)
             
-            # --- SMS Trigger (New) ---
-            if req.type == 'termination' and req.contract:
+            elif req.type == 'termination' and req.contract:
+                # Update end_date to requested termination date if available
+                if req.contract.termination_effective_date:
+                    req.contract.end_date = req.contract.termination_effective_date
+                
+                # --- SMS Trigger (New) ---
                 try:
+                    from app.utils.sms_service import sms_service
+                    from app.utils.sms_context import build_sms_context
                     context = build_sms_context(req.contract, 'MOVEOUT_APPROVED')
                     sms_service.send_sms(req.contract.id, 'MOVEOUT_APPROVED', context)
                 except Exception as e:
                     print(f"SMS trigger error (MOVEOUT_APPROVED): {e}")
+
+                today = datetime.utcnow().date()
+                if req.contract.end_date <= today:
+                    # Automatically update contract status to terminated
+                    old_contract_status = req.contract.status
+                    req.contract.status = 'terminated'
+                    
+                    # Sync room status
+                    if req.contract.room:
+                        req.contract.room.status = 'available'
+                    
+                    # Log contract status change
+                    log_contract_status_change(
+                        contract=req.contract,
+                        old_status=old_contract_status,
+                        new_status='terminated',
+                        actor_id=current_user.id,
+                        actor_type='admin',
+                        source='admin_request_approval',
+                        reason='Admin approved termination request (Date reached)'
+                    )
+                else:
+                    # Future termination: The status remains 'terminate_requested' 
+                    # but the end_date has been updated. tasks.py will terminate it later.
+                    pass
             
         db.session.commit()
         return jsonify({'message': 'Request status updated'})

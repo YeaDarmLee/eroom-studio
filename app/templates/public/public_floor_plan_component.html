@@ -14,10 +14,10 @@
     .public-floor-plan-wrapper {
         position: relative;
         width: 100%;
+        min-width: 560px;
+        /* Ensure floor plan is readable on mobile - parent will scroll */
         max-width: 860px;
-        /* Limit max width to fit better on screen */
         margin: 0 auto;
-        /* Center the floor plan */
         aspect-ratio: 4 / 3;
         overflow: hidden;
         border-radius: 0.75rem;
@@ -110,11 +110,13 @@
     }
 
     .public-room-label {
-        font-size: 0.75rem;
-        font-weight: 600;
+        font-size: clamp(0.6rem, 1.3vw, 0.75rem);
+        font-weight: 700;
         color: #1e40af;
         pointer-events: none;
         user-select: none;
+        line-height: 1.2;
+        word-break: keep-all;
     }
 
     .public-room-box.available .public-room-label {
@@ -336,91 +338,93 @@
                 </div>
 
                 <!-- Floor Plan Canvas -->
-                <div class="public-floor-plan-wrapper py-16">
-                    <div class="public-floor-plan-container" :class="{ 'no-image': !floorPlans[selectedFloor] }">
-                        <!-- Floor Plan Background Image -->
-                        <img x-show="floorPlans[selectedFloor]" :src="floorPlans[selectedFloor]"
-                            class="public-floor-plan-image" alt="Floor Plan">
+                <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                    <div class="public-floor-plan-wrapper py-8">
+                        <div class="public-floor-plan-container" :class="{ 'no-image': !floorPlans[selectedFloor] }">
+                            <!-- Floor Plan Background Image -->
+                            <img x-show="floorPlans[selectedFloor]" :src="floorPlans[selectedFloor]"
+                                class="public-floor-plan-image" alt="Floor Plan">
 
-                        <!-- No Floor Plan Message (but rooms exist) -->
-                        <div x-show="!floorPlans[selectedFloor] && (roomsByFloor[selectedFloor] || []).length > 0"
-                            class="absolute top-4 left-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 z-10">
-                            <i class="ri-information-line mr-1"></i>
-                            도면 이미지는 준비 중이며, 방 위치만 표시됩니다
-                        </div>
+                            <!-- No Floor Plan Message (but rooms exist) -->
+                            <div x-show="!floorPlans[selectedFloor] && (roomsByFloor[selectedFloor] || []).length > 0"
+                                class="absolute top-4 left-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800 z-10">
+                                <i class="ri-information-line mr-1"></i>
+                                도면 이미지는 준비 중이며, 방 위치만 표시됩니다
+                            </div>
 
-                        <!-- Room Boxes -->
-                        <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
-                            <div class="public-room-box group" :class="[
+                            <!-- Room Boxes -->
+                            <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
+                                <div class="public-room-box group" :class="[
                                     getRoomStatusClass(room.status), 
                                     room.room_type === 'time_based' ? 'time-based' : '',
                                     room.room_type === 'manager' ? 'manager' : ''
-                                ]"
-                                :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
-                                @click="(room.status !== 'occupied' && room.room_type !== 'manager' && room.room_type !== 'time_based') ? viewRoomDetail(room.id) : null">
+                                ]" :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
+                                    @click="(room.status !== 'occupied' && room.room_type !== 'manager' && room.room_type !== 'time_based') ? viewRoomDetail(room.id) : null">
 
-                                <!-- Hover Tooltip (CSS 기반 - 간단한 방식) -->
-                                <div class="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap shadow-xl"
-                                    style="z-index: 9999;" :style="`
+                                    <!-- Hover Tooltip (CSS 기반 - 간단한 방식) -->
+                                    <div class="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap shadow-xl"
+                                        style="z-index: 9999;" :style="`
                                         left: 50%;
                                         ${(room.position_y || 0) < 50 ? 'top: 100%; margin-top: 10px;' : 'bottom: 100%; margin-bottom: 10px;'}
                                         transform: translateX(-50%);
                                     `">
-                                    <div class="flex items-center justify-between gap-4 mb-0.5">
-                                        <div class="font-bold" x-text="room.name"></div>
-                                        <template x-if="room.room_type === 'time_based'">
-                                            <span
-                                                class="px-1 py-0.5 bg-yellow-400 text-yellow-950 text-[10px] rounded font-black leading-none">시간제</span>
-                                        </template>
-                                        <template x-if="room.room_type === 'manager'">
-                                            <span
-                                                class="px-1 py-0.5 bg-purple-500 text-white text-[10px] rounded font-black leading-none">총무방</span>
-                                        </template>
-                                    </div>
-                                    <div class="text-[10px] opacity-70 mb-1"
-                                        x-text="(room.floor.includes('층') ? room.floor : room.floor + '층') + ' | ' + (room.area || '-') + '㎡'">
+                                        <div class="flex items-center justify-between gap-4 mb-0.5">
+                                            <div class="font-bold" x-text="room.name"></div>
+                                            <template x-if="room.room_type === 'time_based'">
+                                                <span
+                                                    class="px-1 py-0.5 bg-yellow-400 text-yellow-950 text-[10px] rounded font-black leading-none">시간제</span>
+                                            </template>
+                                            <template x-if="room.room_type === 'manager'">
+                                                <span
+                                                    class="px-1 py-0.5 bg-purple-500 text-white text-[10px] rounded font-black leading-none">총무방</span>
+                                            </template>
+                                        </div>
+                                        <div class="text-[10px] opacity-70 mb-1"
+                                            x-text="(room.floor.includes('층') ? room.floor : room.floor + '층') + ' | ' + (room.area || '-') + '㎡'">
+                                        </div>
+
+                                        <div class="flex items-center gap-1.5 mt-1 border-t border-white/10 pt-1">
+                                            <span class="opacity-70"
+                                                x-text="room.room_type === 'time_based' ? '시간당:' : '월 임대료:'"></span>
+                                            <span class="font-bold text-yellow-300"
+                                                x-text="'₩' + room.price.toLocaleString()"></span>
+                                        </div>
+
+                                        <div class="mt-1 flex items-center gap-1.5">
+                                            <span class="opacity-70">상태:</span>
+                                            <template x-if="room.room_type === 'manager'">
+                                                <span class="text-purple-300">총무 상주 중</span>
+                                            </template>
+                                            <template x-if="room.room_type !== 'manager'">
+                                                <span
+                                                    :class="room.status === 'available' ? 'text-green-300' : 'text-gray-300'"
+                                                    x-text="room.status === 'available' ? '✓ 예약 가능' : (room.status === 'occupied' ? '✕ 예약 완료' : '⏳ 검토 중')"></span>
+                                            </template>
+                                        </div>
                                     </div>
 
-                                    <div class="flex items-center gap-1.5 mt-1 border-t border-white/10 pt-1">
-                                        <span class="opacity-70"
-                                            x-text="room.room_type === 'time_based' ? '시간당:' : '월 임대료:'"></span>
-                                        <span class="font-bold text-yellow-300"
-                                            x-text="'₩' + room.price.toLocaleString()"></span>
-                                    </div>
-
-                                    <div class="mt-1 flex items-center gap-1.5">
-                                        <span class="opacity-70">상태:</span>
-                                        <template x-if="room.room_type === 'manager'">
-                                            <span class="text-purple-300">총무 상주 중</span>
-                                        </template>
-                                        <template x-if="room.room_type !== 'manager'">
-                                            <span
-                                                :class="room.status === 'available' ? 'text-green-300' : 'text-gray-300'"
-                                                x-text="room.status === 'available' ? '✓ 예약 가능' : (room.status === 'occupied' ? '✕ 예약 완료' : '⏳ 검토 중')"></span>
-                                        </template>
+                                    <!-- Room Label -->
+                                    <div class="public-room-label">
+                                        <div x-text="room.name"></div>
+                                        <div class="text-xs opacity-75" x-text="'₩' + (room.price / 10000) + '만'"></div>
                                     </div>
                                 </div>
+                            </template>
 
-                                <!-- Room Label -->
-                                <div class="public-room-label">
-                                    <div x-text="room.name"></div>
-                                    <div class="text-xs opacity-75" x-text="'₩' + (room.price / 10000) + '만'"></div>
+                            <!-- No Rooms Message -->
+                            <div x-show="!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0"
+                                class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div class="text-center bg-white/90 p-6 rounded-lg">
+                                    <i class="ri-door-line text-4xl text-gray-300 mb-2"></i>
+                                    <p class="text-gray-500 font-medium">이 층에 등록된 방이 없습니다</p>
                                 </div>
-                            </div>
-                        </template>
-
-                        <!-- No Rooms Message -->
-                        <div x-show="!roomsByFloor[selectedFloor] || roomsByFloor[selectedFloor].length === 0"
-                            class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div class="text-center bg-white/90 p-6 rounded-lg">
-                                <i class="ri-door-line text-4xl text-gray-300 mb-2"></i>
-                                <p class="text-gray-500 font-medium">이 층에 등록된 방이 없습니다</p>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div><!-- /overflow-x-auto -->
 
                 <!-- Instructions -->
+
                 <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div class="flex">
                         <i class="ri-information-line text-blue-600 mr-3 mt-0.5"></i>

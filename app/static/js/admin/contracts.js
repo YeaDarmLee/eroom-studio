@@ -392,7 +392,7 @@ document.addEventListener('alpine:init', () => {
                     await this.loadContracts();
                     if (this.detailModalOpen) {
                         this.detailModalOpen = false;
-                        window.showAlert?.('success', '계약 상태가 성공적으로 업데이트되었습니다.');
+                        window.showAlert?.('성공', '계약 상태가 업데이트되었습니다.', 'success');
                     }
                 } else {
                     window.showAlert?.('업데이트 실패', '계약 상태 변경에 실패했습니다.', 'error');
@@ -400,6 +400,36 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 console.error('Error updating status:', error);
                 window.showAlert?.('오류', '오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+            } finally {
+                this.submittingUpdate = false;
+            }
+        },
+
+        async rejectTermination(id) {
+            if (!confirm('해당 해지 요청을 거절하고 계약을 다시 활성화하시겠습니까?')) return;
+
+            this.submittingUpdate = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ status: 'active', reason: 'Termination request rejected by admin' })
+                });
+
+                if (response.ok) {
+                    await this.loadContracts();
+                    if (this.detailModalOpen) this.detailModalOpen = false;
+                    window.showAlert?.('성공', '해지 요청이 거절되고 계약이 활성화되었습니다.', 'success');
+                } else {
+                    window.showAlert?.('거절 실패', '상태 변경에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error rejecting termination:', error);
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             } finally {
                 this.submittingUpdate = false;
             }
@@ -414,7 +444,8 @@ document.addEventListener('alpine:init', () => {
                 'active': 'bg-green-100 text-green-800 border-green-200',
                 'requested': 'bg-yellow-100 text-yellow-800 border-yellow-200',
                 'terminated': 'bg-gray-100 text-gray-800 border-gray-200',
-                'cancelled': 'bg-red-100 text-red-800 border-red-200'
+                'cancelled': 'bg-red-100 text-red-800 border-red-200',
+                'terminate_requested': 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
         },
@@ -424,7 +455,8 @@ document.addEventListener('alpine:init', () => {
                 'active': '이용 중',
                 'requested': '승인 대기',
                 'terminated': '종료됨',
-                'cancelled': '취소됨'
+                'cancelled': '취소됨',
+                'terminate_requested': '해지 신청'
             };
             return labels[status] || status;
         }
