@@ -168,6 +168,15 @@ def get_stats(current_user):
         
         b_available_rooms = b_monthly_rooms - b_occupied_monthly
         
+        # Collect unoccupied monthly rooms
+        occupied_room_ids = {r.room_id for r in Contract.query.filter_by(status='active').with_entities(Contract.room_id).all()}
+        # branch.rooms is lazy='dynamic', so we need to call .all()
+        available_rooms_list = [
+            {'id': r.id, 'name': r.name, 'price': r.price, 'deposit': r.deposit} 
+            for r in branch.rooms.all() 
+            if r.room_type == 'monthly' and r.id not in occupied_room_ids
+        ]
+        
         branch_data.append({
             'id': branch.id,
             'name': branch.name,
@@ -176,6 +185,7 @@ def get_stats(current_user):
             'total_rooms': b_total_rooms,
             'occupied_rooms': b_occupied_rooms,
             'available_rooms': b_available_rooms,
+            'available_rooms_list': available_rooms_list,
             'expiring_contracts': b_expiring,
             'monthly_rooms': b_monthly_rooms,
             'time_based_rooms': time_rooms_map.get(bid, 0),
@@ -512,11 +522,27 @@ def update_contract_status(current_user, id):
         if new_status == 'terminated':
             target_date = contract.termination_effective_date or (contract.end_date if not contract.is_indefinite else None)
             if target_date and target_date > today:
-                # Future termination: Keep as terminate_requested
-                effective_status = 'terminate_requested'
+                import json
+                
+                # Future termination: Set to active but with fixed end_date
+                effective_status = 'active'
+                contract.is_indefinite = False
+                
                 # Sync end_date if needed
                 if contract.termination_effective_date:
                     contract.end_date = contract.termination_effective_date
+                
+                # Mark original termination request as done (if any)
+                termination_req = next((r for r in contract.requests if r.type == 'termination' and r.status != 'done'), None)
+                if termination_req:
+                    termination_req.status = 'done'
+                    try:
+                        details_dict = json.loads(termination_req.details) if termination_req.details else {}
+                    except:
+                        details_dict = {'raw': termination_req.details}
+                    details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                    details_dict['admin_response'] = '해지 승인 완료'
+                    termination_req.details = json.dumps(details_dict)
         
         # 1. Update Status with History
         contract.status = effective_status
@@ -1348,8 +1374,12 @@ def create_user(current_user):
     )
     new_user.set_password(data['password'])
     
-    db.session.add(new_user)
-    db.session.commit()
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '이미 사용 중인 전화번호이거나 중복된 데이터가 존재합니다.'}), 400
     
     return jsonify({
         'message': 'User created',
@@ -1374,7 +1404,12 @@ def update_user(current_user, id):
     if 'onboarding_status' in data:
         user.onboarding_status = data['onboarding_status']
         
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '이미 사용 중인 전화번호이거나 중복된 데이터가 존재합니다.'}), 400
+        
     return jsonify({'message': 'User updated'})
 
 @admin_bp.route('/api/users/<int:id>', methods=['DELETE'])
@@ -1784,3 +1819,68 @@ def search_contracts(current_user):
         })
     
     return jsonify(results[:20])
+
+# ============================================================
+# 특정 월 추가 할인 (Custom Discount) API
+# ============================================================
+from app.models.custom_discount import CustomDiscount
+
+@admin_bp.route('/api/contracts/<int:contract_id>/custom-discounts', methods=['GET'])
+@admin_required
+def get_custom_discounts(current_user, contract_id):
+    """특정 계약의 월별 추가 할인 내역 조회"""
+    discounts = CustomDiscount.query.filter_by(contract_id=contract_id).order_by(CustomDiscount.target_month.desc()).all()
+    return jsonify([{
+        'id': d.id,
+        'target_month': d.target_month,
+        'amount': d.amount,
+        'reason': d.reason,
+        'admin_id': d.admin_id,
+        'created_at': d.created_at.strftime('%Y-%m-%d %H:%M') if d.created_at else ''
+    } for d in discounts])
+
+@admin_bp.route('/api/contracts/<int:contract_id>/custom-discounts', methods=['POST'])
+@admin_required
+def save_custom_discount(current_user, contract_id):
+    """특정 계약에 지정 월 할인 추가 또는 수정"""
+    contract = Contract.query.get_or_404(contract_id)
+    data = request.get_json()
+    
+    target_month = data.get('target_month') # YYYY-MM
+    amount = data.get('amount', 0)
+    reason = data.get('reason', '')
+    
+    if not target_month or not isinstance(amount, int) or amount < 0:
+        return jsonify({'error': '유효한 대상 월(YYYY-MM)과 0 이상의 할인 금액을 입력해주세요.'}), 400
+        
+    discount = CustomDiscount.query.filter_by(contract_id=contract_id, target_month=target_month).first()
+    
+    if discount:
+        discount.amount = amount
+        discount.reason = reason
+        discount.admin_id = current_user.id
+        message = '할인 내역이 수정되었습니다.'
+    else:
+        discount = CustomDiscount(
+            contract_id=contract_id,
+            target_month=target_month,
+            amount=amount,
+            reason=reason,
+            admin_id=current_user.id
+        )
+        db.session.add(discount)
+        message = '할인 내역이 추가되었습니다.'
+        
+    db.session.commit()
+    return jsonify({'message': message, 'id': discount.id})
+
+@admin_bp.route('/api/contracts/<int:contract_id>/custom-discounts/<target_month>', methods=['DELETE'])
+@admin_required
+def delete_custom_discount(current_user, contract_id, target_month):
+    """지정 월 할인 내역 삭제"""
+    discount = CustomDiscount.query.filter_by(contract_id=contract_id, target_month=target_month).first_or_404()
+    
+    db.session.delete(discount)
+    db.session.commit()
+    return jsonify({'message': '할인 내역이 삭제되었습니다.'})
+

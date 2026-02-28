@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, redirect
 from app.services.auth_service import AuthService
 from functools import wraps
+from sqlalchemy.exc import IntegrityError
 import jwt
 import os
 from flask import current_app
@@ -286,6 +287,9 @@ def update_profile(current_user):
                 'phone': current_user.phone
             }
         })
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'message': '이미 사용 중인 전화번호이거나 중복된 데이터가 존재합니다.'}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'업데이트 중 오류가 발생했습니다: {str(e)}'}), 500

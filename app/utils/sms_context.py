@@ -24,7 +24,8 @@ def build_sms_context(contract, msg_type, **kwargs):
         context['due_date'] = f"매월 {contract.payment_day}일"
 
     elif msg_type in ['PAYMENT_REMINDER', 'PAYMENT_OVERDUE_STAGE1', 'PAYMENT_OVERDUE_STAGE2']:
-        context['amount'] = format(int(contract.price or 0), ',')
+        base_amount = int(contract.price or 0)
+        
         # date_override가 있으면 사용 (tasks.py 등에서 계산된 날짜)
         due_date = kwargs.get('due_date')
         if not due_date:
@@ -37,6 +38,28 @@ def build_sms_context(contract, msg_type, **kwargs):
                 last_day = calendar.monthrange(today.year, today.month)[1]
                 due_date_obj = today.replace(day=last_day)
             due_date = due_date_obj.strftime('%Y-%m-%d')
+            
+        target_month = due_date[:7] # YYYY-MM
+        
+        from app.models.custom_discount import CustomDiscount
+        discount = CustomDiscount.query.filter_by(contract_id=contract.id, target_month=target_month).first()
+        
+        discount_amount = discount.amount if discount else 0
+        discount_reason = discount.reason if discount else None
+        
+        final_amount = max(0, base_amount - discount_amount)
+        
+        context['base_amount'] = base_amount
+        context['discount_applied'] = discount_amount
+        context['amount_final'] = final_amount
+        context['discount_reason'] = discount_reason
+        context['month_key'] = target_month
+        
+        if final_amount == 0 and discount_amount > 0:
+            context['amount'] = "0 (할인 적용)"
+        else:
+            context['amount'] = format(final_amount, ',')
+            
         context['due_date'] = due_date
 
     elif msg_type == 'AUTO_RENEW_NOTICE':

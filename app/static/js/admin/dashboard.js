@@ -14,6 +14,11 @@ document.addEventListener('alpine:init', () => {
         branchData: [],
         loading: false,
 
+        // Vacant Rooms Modal
+        vacantRoomsModalOpen: false,
+        selectedBranchName: '',
+        selectedVacantRooms: [],
+
         init() {
             this.loadStats();
         },
@@ -35,6 +40,12 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.loading = false;
             }
+        },
+
+        openVacantRoomsModal(branch) {
+            this.selectedBranchName = branch.name;
+            this.selectedVacantRooms = branch.available_rooms_list || [];
+            this.vacantRoomsModalOpen = true;
         }
     }));
 });

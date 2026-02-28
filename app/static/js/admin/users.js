@@ -158,7 +158,8 @@ document.addEventListener('alpine:init', () => {
                     this.editModalOpen = false;
                     window.showAlert?.('성공', '회원 정보가 수정되었습니다.', 'success');
                 } else {
-                    window.showAlert?.('실패', '수정 실패', 'error');
+                    const data = await response.json();
+                    window.showAlert?.('실패', data.error || '수정 실패', 'error');
                 }
             } catch (error) {
                 window.showAlert?.('오류', '오류가 발생했습니다.', 'error');

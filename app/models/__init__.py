@@ -6,3 +6,4 @@ from .coupon import Coupon
 from .request import Request
 from .tenant_link import TenantRoomLinkRequest
 from .sms import SmsTemplate, SmsLog
+from .custom_discount import CustomDiscount

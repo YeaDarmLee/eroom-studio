@@ -12,6 +12,16 @@ document.addEventListener('alpine:init', () => {
         selectedContract: null,
         submittingUpdate: false,
 
+        // Custom Discount state
+        customDiscountModalOpen: false,
+        customDiscounts: [],
+        customDiscountLoading: false,
+        customDiscountForm: {
+            target_month: '',
+            amount: 0,
+            reason: ''
+        },
+
         // Edit Modal State
         editModalOpen: false,
         editingContract: {},
@@ -272,6 +282,13 @@ document.addEventListener('alpine:init', () => {
             this.detailModalOpen = true;
         },
 
+        openCustomDiscountModal(contract) {
+            this.selectedContract = contract;
+            this.customDiscountForm = { target_month: '', amount: 0, reason: '' };
+            this.customDiscountModalOpen = true;
+            this.fetchCustomDiscounts(contract.id);
+        },
+
         async openEditModal(contract) {
             if (this.branches.length === 0) await this.loadBranches();
             if (this.users.length === 0) await this.loadUsers();
@@ -432,6 +449,81 @@ document.addEventListener('alpine:init', () => {
                 window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             } finally {
                 this.submittingUpdate = false;
+            }
+        },
+
+        async fetchCustomDiscounts(contract_id) {
+            this.customDiscountLoading = true;
+            this.customDiscounts = [];
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${contract_id}/custom-discounts`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    this.customDiscounts = await response.json();
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                this.customDiscountLoading = false;
+            }
+        },
+
+        async saveCustomDiscount() {
+            if (!this.customDiscountForm.target_month || this.customDiscountForm.amount < 0) {
+                window.showAlert?.('입력 오류', '유효한 대상 월과 금액을 입력해주세요.', 'warning');
+                return;
+            }
+            this.customDiscountLoading = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${this.selectedContract.id}/custom-discounts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        target_month: this.customDiscountForm.target_month,
+                        amount: parseInt(this.customDiscountForm.amount, 10),
+                        reason: this.customDiscountForm.reason
+                    })
+                });
+                if (response.ok) {
+                    await this.fetchCustomDiscounts(this.selectedContract.id);
+                    this.customDiscountForm = { target_month: '', amount: 0, reason: '' };
+                    window.showAlert?.('성공', '할인 내역이 저장되었습니다.', 'success');
+                } else {
+                    const data = await response.json();
+                    window.showAlert?.('실패', data.error || '저장 실패', 'error');
+                }
+            } catch (error) {
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.customDiscountLoading = false;
+            }
+        },
+
+        async deleteCustomDiscount(target_month) {
+            if (!confirm(`해당 월(${target_month})의 할인을 삭제하시겠습니까?`)) return;
+            this.customDiscountLoading = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${this.selectedContract.id}/custom-discounts/${target_month}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    await this.fetchCustomDiscounts(this.selectedContract.id);
+                    window.showAlert?.('성공', '할인 내역이 삭제되었습니다.', 'success');
+                } else {
+                    window.showAlert?.('실패', '삭제 중 오류가 발생했습니다.', 'error');
+                }
+            } catch (error) {
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.customDiscountLoading = false;
             }
         },
 

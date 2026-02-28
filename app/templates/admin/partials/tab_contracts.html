@@ -525,8 +525,13 @@
 
                     <!-- Payment & Discount Details -->
                     <div class="space-y-3">
-                        <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
-                            <i class="ri-price-tag-3-line mr-2"></i> 결제 및 할인 정보
+                        <h4
+                            class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center justify-between">
+                            <span class="flex items-center"><i class="ri-price-tag-3-line mr-2"></i> 결제 및 할인 정보</span>
+                            <button @click="openCustomDiscountModal(selectedContract)"
+                                class="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded transition-colors flex items-center gap-1">
+                                <i class="ri-discount-percent-line"></i> 특별할인 관리
+                            </button>
                         </h4>
                         <div class="bg-blue-50/40 rounded-2xl p-5 border border-blue-100/50">
                             <!-- 상단 납부 정보 -->
@@ -755,6 +760,109 @@
                                 </button>
                             </div>
                         </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Discount Modal -->
+    <div x-show="customDiscountModalOpen" class="fixed inset-0 z-[60] overflow-y-auto" style="display: none;">
+        <!-- Backdrop -->
+        <div x-show="customDiscountModalOpen" x-transition.opacity
+            class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
+            @click="customDiscountModalOpen = false"></div>
+
+        <!-- Dialog -->
+        <div class="flex min-h-screen items-center justify-center p-4">
+            <div x-show="customDiscountModalOpen" x-transition.opacity x-transition.scale.95
+                class="relative bg-white w-full max-w-md rounded-[24px] shadow-2xl overflow-hidden border border-gray-100">
+
+                <!-- Header -->
+                <div
+                    class="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white relative z-10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center text-gray-900">
+                            <i class="ri-discount-percent-line text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-black text-gray-900">월별 특별 할인 (Custom Discount)</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5"
+                                x-text="selectedContract?.user_name + ' 님의 계약 (' + selectedContract?.room_name + ')'">
+                            </p>
+                        </div>
+                    </div>
+                    <button @click="customDiscountModalOpen = false"
+                        class="text-gray-400 hover:text-gray-900 transition-colors">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6 bg-gray-50/30">
+                    <div class="space-y-4">
+                        <!-- List of existing discounts -->
+                        <div class="space-y-2">
+                            <template x-if="customDiscountLoading">
+                                <div class="text-center text-xs text-gray-500 py-6"><i
+                                        class="ri-loader-4-line animate-spin mr-1"></i>불러오는 중...</div>
+                            </template>
+                            <template x-if="!customDiscountLoading && customDiscounts.length === 0">
+                                <div
+                                    class="text-center text-xs text-gray-400 py-6 border border-dashed border-gray-200 bg-white rounded-xl">
+                                    적용된 월별 할인이 없습니다.</div>
+                            </template>
+                            <template x-for="discount in customDiscounts" :key="discount.id">
+                                <div
+                                    class="flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
+                                    <div class="pl-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-black text-gray-900"
+                                                x-text="discount.target_month"></span>
+                                            <span
+                                                class="px-1.5 py-0.5 bg-red-50 text-red-600 text-[10px] font-black rounded border border-red-100">-
+                                                <span x-text="formatPrice(discount.amount)"></span></span>
+                                        </div>
+                                        <div class="text-[10.5px] text-gray-500 mt-1"
+                                            x-text="discount.reason || '사유 없음'"></div>
+                                    </div>
+                                    <button @click="deleteCustomDiscount(discount.target_month)"
+                                        class="text-gray-300 hover:text-red-500 transition-colors p-2" title="할인 삭제">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Add new discount form -->
+                        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mt-4">
+                            <h4
+                                class="text-[11px] font-black text-gray-900 uppercase tracking-widest flex items-center mb-4">
+                                <i class="ri-add-circle-fill text-gray-400 mr-1.5"></i> 새로운 할인 할당
+                            </h4>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 font-bold mb-1">대상 월 (YYYY-MM)</label>
+                                    <input type="month" x-model="customDiscountForm.target_month"
+                                        class="w-full text-[13px] px-3 py-2 border border-gray-200 rounded-lg focus:ring-primary focus:border-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 font-bold mb-1">할인 금액 (원)</label>
+                                    <input type="number" x-model="customDiscountForm.amount"
+                                        class="w-full text-[13px] px-3 py-2 border border-gray-200 rounded-lg focus:ring-primary focus:border-primary">
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-[10px] text-gray-500 font-bold mb-1">할인 사유</label>
+                                <input type="text" x-model="customDiscountForm.reason" placeholder="예: 보상, 이벤트 등"
+                                    class="w-full text-[13px] px-3 py-2 border border-gray-200 rounded-lg focus:ring-primary focus:border-primary">
+                            </div>
+                            <button @click="saveCustomDiscount()" :disabled="customDiscountLoading"
+                                class="w-full py-2.5 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm">
+                                <i class="ri-save-line"></i> 해당 월에 할인 적용하기
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

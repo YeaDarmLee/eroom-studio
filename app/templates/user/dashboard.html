@@ -277,6 +277,39 @@
                                             </div>
                                         </template>
 
+                                        <!-- Custom Discounts Panel -->
+                                        <template
+                                            x-if="contract.custom_discounts && contract.custom_discounts.length > 0">
+                                            <div
+                                                class="mt-4 bg-purple-50/40 rounded-2xl p-6 border border-purple-100/50">
+                                                <div class="flex items-center gap-2 mb-4">
+                                                    <i class="ri-discount-percent-line text-purple-500"></i>
+                                                    <h4 class="text-sm font-bold text-gray-900">월별 특별 할인 (관리자 부여)</h4>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mb-4">아래 관리자가 부여한 특별 할인은 <strong>해당 청구
+                                                        월에만 일회성으로 적용</strong>되며, 그 외의 달은 정상 금액이 결제(안내)됩니다.</p>
+                                                <div class="space-y-2">
+                                                    <template x-for="discount in contract.custom_discounts"
+                                                        :key="discount.id">
+                                                        <div
+                                                            class="flex items-center justify-between bg-white p-3.5 rounded-xl border border-purple-100 shadow-sm">
+                                                            <div>
+                                                                <div class="flex items-center gap-2 mb-1">
+                                                                    <span
+                                                                        class="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded"
+                                                                        x-text="discount.target_month"></span>
+                                                                    <span class="text-xs font-bold text-gray-800"
+                                                                        x-text="discount.reason || '관리자 특별 할인'"></span>
+                                                                </div>
+                                                            </div>
+                                                            <span class="text-[13px] font-black text-purple-600"
+                                                                x-text="'- ₩' + discount.amount?.toLocaleString()"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+
                                         <!-- Status-specific Alert / Actions -->
                                         <div class="mt-8">
                                             <!-- Requested Status Alert -->
@@ -363,7 +396,8 @@
                                                         </template>
 
                                                         <!-- Termination Button (Only for Active) -->
-                                                        <template x-if="contract.status === 'active'">
+                                                        <template
+                                                            x-if="contract.status === 'active' && !contract.termination_effective_date">
                                                             <button
                                                                 @click="openServiceModal('termination', contract.id)"
                                                                 class="flex items-center p-4 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-md transition-all group">
@@ -556,7 +590,9 @@
                                     <div class="space-y-2">
                                         <label
                                             class="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">전화번호</label>
-                                        <input type="tel" x-model="profileForm.phone" placeholder="예: 01012345678"
+                                        <input type="tel" x-model="profileForm.phone"
+                                            @input="profileForm.phone = profileForm.phone.replace(/[^0-9]/g, '')"
+                                            placeholder="예: 01012345678"
                                             class="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all">
                                     </div>
                                 </div>

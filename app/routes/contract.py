@@ -331,6 +331,15 @@ def get_my_contracts(current_user):
     contracts = current_user.contracts.all()
     result = []
     for c in contracts:
+        custom_discounts_data = []
+        for cd in c.custom_discounts:
+            custom_discounts_data.append({
+                'id': cd.id,
+                'target_month': cd.target_month,
+                'amount': cd.amount,
+                'reason': cd.reason
+            })
+
         result.append({
             'id': c.id,
             'room': {
@@ -352,6 +361,8 @@ def get_my_contracts(current_user):
             'payment_day': c.payment_day,
             'payment_method': c.payment_method,
             'discount_details': json.loads(c.discount_details) if c.discount_details else None,
-            'coupon_name': c.coupon.name if c.coupon else None
+            'coupon_name': c.coupon.name if c.coupon else None,
+            'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
+            'custom_discounts': custom_discounts_data
         })
     return jsonify(result)

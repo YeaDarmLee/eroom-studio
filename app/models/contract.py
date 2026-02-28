@@ -82,6 +82,7 @@ class Contract(db.Model):
 
     requests = db.relationship('Request', backref='contract', lazy='dynamic')
     status_history = db.relationship('ContractStatusHistory', backref='contract', lazy='dynamic')
+    custom_discounts = db.relationship('CustomDiscount', backref='contract_ref', lazy='dynamic', cascade='all, delete-orphan')
 
     @property
     def is_unmapped(self):
