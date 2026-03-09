@@ -298,6 +298,7 @@ def get_contract_detail(current_user, id):
         'payment_day': c.payment_day,
         'payment_method': c.payment_method,
         'status': c.status,
+        'registration_number': c.user_registration_number_snapshot or (c.user.registration_number if c.user else ''),
         'discount_details': json.loads(c.discount_details) if c.discount_details else None,
         'coupon_name': c.coupon.name if c.coupon else None,
         'is_indefinite': c.is_indefinite,
@@ -353,6 +354,14 @@ def create_contract(current_user):
     if not data.get('user_id'):
         contract.temp_user_name = data.get('user_name')
         contract.temp_user_phone = data.get('user_phone')
+        contract.user_registration_number_snapshot = data.get('registration_number')
+    else:
+        # If user is selected, also capture registration number snapshot
+        contract.user_registration_number_snapshot = data.get('registration_number')
+        # Optionally update user's registration number if not already set
+        user = User.query.get(data['user_id'])
+        if user and data.get('registration_number') and not user.registration_number:
+            user.registration_number = data.get('registration_number')
         
     db.session.add(contract)
     
@@ -398,6 +407,11 @@ def update_contract(current_user, id):
         
     if 'price' in data:
         contract.price = data['price']
+
+    if 'registration_number' in data:
+        contract.user_registration_number_snapshot = data['registration_number']
+        if contract.user and not contract.user.registration_number:
+            contract.user.registration_number = data['registration_number']
     if 'deposit' in data:
         contract.deposit = data['deposit']
     if 'start_time' in data:
@@ -518,6 +532,15 @@ def update_contract_status(current_user, id):
         today = datetime.utcnow().date()
         effective_status = new_status
         
+        # [NEW Logic] When admin approves a requested contract
+        if old_status == 'requested' and new_status in ['approved', 'active']:
+            # Redirect to waiting_signature instead of direct active
+            effective_status = 'waiting_signature'
+        
+        # [NEW Logic] When admin re-approves a rejected contract
+        if old_status == 'signature_rejected' and new_status == 'approved':
+            effective_status = 'waiting_signature'
+
         # If admin is "terminating" or "approving termination", check the date
         if new_status == 'terminated':
             target_date = contract.termination_effective_date or (contract.end_date if not contract.is_indefinite else None)
@@ -557,35 +580,32 @@ def update_contract_status(current_user, id):
         )
         
         # 2. Automated Evidence/Notice on Approval
-        # Only trigger when status changes to approved/active
-        if effective_status in ['approved', 'active'] and old_status != effective_status:
+        # Only trigger when status changes to approved/active/waiting_signature
+        if effective_status in ['approved', 'active', 'waiting_signature'] and old_status != effective_status:
             # Store initial notice info
             contract.notice_email_to = contract.contract_email_snapshot or contract.get_user_info()['email']
             
-            # TODO: PDF Generation (Stub)
-            # pdf_data = generate_summary_pdf(contract)
-            # save_contract_pdf(contract.id, pdf_data)
-            # contract.contract_pdf_hash = ...
-            
-            # TODO: Email Dispatch (Stub)
-            # contract.notice_email_attempts += 1
-            # contract.contract_notice_sent_at = datetime.now()
-            
-            # --- SMS Trigger (New) ---
-            try:
-                from app.utils.sms_service import sms_service
-                user_info = contract.get_user_info()
-                
-                # Debug Logging to File
-                with open('sms_debug.txt', 'a', encoding='utf-8') as f:
-                    f.write(f"\n[{datetime.now()}] Triggering for Contract {contract.id}\n")
-                    f.write(f"Old Status: {old_status}, New Status: {effective_status}\n")
-                    f.write(f"User Phone: {user_info.get('phone')}\n")
-                    f.write(f"Start Date: {contract.start_date}\n")
-                    f.write(f"Payment Day: {contract.payment_day}\n")
+            # --- SMS Trigger (New: Waiting Signature) ---
+            if effective_status == 'waiting_signature':
+                try:
+                    from app.utils.sms_service import sms_service
+                    from app.utils.sms_context import build_sms_context
+                    context = build_sms_context(contract, 'SIGNATURE_REQUESTED') 
+                    # Use DB template
+                    sms_service.send_sms(contract.id, 'SIGNATURE_REQUESTED', context)
+                except Exception as e:
+                    print(f"SMS trigger error (SIGNATURE_REQUESTED): {e}")
 
+            # Debug Logging to File
+            with open('sms_debug.txt', 'a', encoding='utf-8') as f:
+                f.write(f"\n[{datetime.now()}] Triggering for Contract {contract.id}\n")
+                f.write(f"Old Status: {old_status}, New Status: {effective_status}\n")
+                f.write(f"User Phone: {contract.get_user_info().get('phone')}\n")
+                f.write(f"Start Date: {contract.start_date}\n")
+                f.write(f"Payment Day: {contract.payment_day}\n")
+
+            try:
                 context = build_sms_context(contract, 'CONTRACT_APPROVED')
-                
                 success, msg = sms_service.send_sms(contract.id, 'CONTRACT_APPROVED', context)
                 
                 with open('sms_debug.txt', 'a', encoding='utf-8') as f:
@@ -610,10 +630,26 @@ def update_contract_status(current_user, id):
                 except Exception as e:
                     print(f"SMS trigger error (MOVEOUT_APPROVED): {e}")
 
+        # --- SMS Trigger (New: Rejection/Cancellation) ---
+        if effective_status == 'cancelled' and old_status != 'cancelled':
+            try:
+                from app.utils.sms_service import sms_service
+                from app.utils.sms_context import build_sms_context
+                context = build_sms_context(contract, 'CONTRACT_REJECTED', reject_reason=data.get('reason', '사유 미입력'))
+                sms_service.send_sms(contract.id, 'CONTRACT_REJECTED', context)
+            except Exception as e:
+                print(f"SMS trigger error (CONTRACT_REJECTED): {e}")
+
         # 3. Sync room status with contract status
         if contract.room:
             if effective_status == 'active':
                 contract.room.status = 'occupied'
+            elif effective_status == 'waiting_signature':
+                # [NEW] Handle signature request during active contract vs new approval
+                if old_status in ['active', 'terminate_requested']:
+                    contract.room.status = 'occupied'
+                else:
+                    contract.room.status = 'reserved'
             elif effective_status in ['terminated', 'cancelled']:
                 # Set back to available when contract ends or is cancelled
                 contract.room.status = 'available'
@@ -683,7 +719,11 @@ def update_request_status(current_user, id):
             details_dict['responded_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
             req.details = json.dumps(details_dict)
             
-        # Handle automatic actions for specific request types (Approval)
+        # --- SMS Context Prep ---
+        from app.utils.sms_service import sms_service
+        from app.utils.sms_context import build_sms_context
+
+        # Handle automatic actions for specific request types (Approval/Rejection)
         if data.get('status') == 'done':
             if req.type == 'extension' and req.contract:
                 months = details_dict.get('extension_months')
@@ -693,6 +733,13 @@ def update_request_status(current_user, id):
                     # Also update the request details to reflect it was processed
                     details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                     req.details = json.dumps(details_dict)
+                    
+                    # --- SMS Trigger: EXTEND_APPROVED ---
+                    try:
+                        context = build_sms_context(req.contract, 'EXTEND_APPROVED')
+                        sms_service.send_sms(req.contract.id, 'EXTEND_APPROVED', context)
+                    except Exception as e:
+                        print(f"SMS trigger error (EXTEND_APPROVED): {e}")
             
             elif req.type == 'termination' and req.contract:
                 # Update end_date to requested termination date if available
@@ -701,8 +748,6 @@ def update_request_status(current_user, id):
                 
                 # --- SMS Trigger (New) ---
                 try:
-                    from app.utils.sms_service import sms_service
-                    from app.utils.sms_context import build_sms_context
                     context = build_sms_context(req.contract, 'MOVEOUT_APPROVED')
                     sms_service.send_sms(req.contract.id, 'MOVEOUT_APPROVED', context)
                 except Exception as e:
@@ -732,6 +777,23 @@ def update_request_status(current_user, id):
                     # Future termination: The status remains 'terminate_requested' 
                     # but the end_date has been updated. tasks.py will terminate it later.
                     pass
+
+        elif data.get('status') == 'cancelled':
+            # Handle rejection notifications
+            if req.type == 'extension' and req.contract:
+                try:
+                    context = build_sms_context(req.contract, 'EXTEND_REJECTED', reject_reason=data.get('admin_response', '사유 미입력'))
+                    sms_service.send_sms(req.contract.id, 'EXTEND_REJECTED', context)
+                except Exception as e:
+                    print(f"SMS trigger error (EXTEND_REJECTED): {e}")
+            
+            elif req.type == 'termination' and req.contract:
+                try:
+                    # Use CONTRACT_REJECTED for termination rejection (moveout 반려)
+                    context = build_sms_context(req.contract, 'CONTRACT_REJECTED', reject_reason=data.get('admin_response', '사유 미입력'))
+                    sms_service.send_sms(req.contract.id, 'CONTRACT_REJECTED', context)
+                except Exception as e:
+                    print(f"SMS trigger error (CONTRACT_REJECTED via termination failure): {e}")
             
         db.session.commit()
         return jsonify({'message': 'Request status updated'})
@@ -755,6 +817,13 @@ def get_branches(current_user):
         'traffic_info': b.traffic_info,
         'parking_info': b.parking_info,
         'map_info': b.map_info,
+        'is_corporate': b.is_corporate,
+        'registration_number': b.registration_number,
+        'owner_name': b.owner_name,
+        'owner_address': b.owner_address,
+        'owner_birth_date': b.owner_birth_date,
+        'owner_contact': b.owner_contact,
+        'owner_seal_image': b.owner_seal_image,
         'images': [{'id': img.id, 'url': img.image_url} for img in b.images],
         'rooms': [{
             'id': r.id,
@@ -794,23 +863,39 @@ def create_branch(current_user):
         contact=contact,
         traffic_info=traffic_info,
         parking_info=parking_info,
-        map_info=map_info
+        map_info=map_info,
+        # New Lessor/Owner Info
+        owner_name=request.form.get('owner_name'),
+        owner_address=request.form.get('owner_address'),
+        owner_birth_date=request.form.get('owner_birth_date'),
+        owner_contact=request.form.get('owner_contact'),
+        registration_number=request.form.get('registration_number'),
+        is_corporate=request.form.get('is_corporate', 'false').lower() in ('true', '1')
     )
     
-    # Handle image upload
+    # Handle branch images
     if 'image' in request.files:
         file = request.files['image']
         if file and file.filename:
-            # Generate unique filename using UUID and timestamp
             file_ext = os.path.splitext(file.filename)[1]
             unique_filename = f"branch_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
             upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
             os.makedirs(upload_folder, exist_ok=True)
-            
             file_path = os.path.join(upload_folder, unique_filename)
             file.save(file_path)
-            
             branch.image_url = f"/static/uploads/branches/{unique_filename}"
+
+    # Handle owner seal image
+    if 'owner_seal_image' in request.files:
+        file = request.files['owner_seal_image']
+        if file and file.filename:
+            file_ext = os.path.splitext(file.filename)[1]
+            unique_filename = f"seal_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'seals')
+            os.makedirs(upload_folder, exist_ok=True)
+            file_path = os.path.join(upload_folder, unique_filename)
+            file.save(file_path)
+            branch.owner_seal_image = f"/static/uploads/seals/{unique_filename}"
     
     db.session.add(branch)
     db.session.commit()
@@ -861,6 +946,13 @@ def get_branch(current_user, id):
         'traffic_info': branch.traffic_info,
         'parking_info': branch.parking_info,
         'map_info': branch.map_info,
+        'is_corporate': branch.is_corporate,
+        'registration_number': branch.registration_number,
+        'owner_name': branch.owner_name,
+        'owner_address': branch.owner_address,
+        'owner_birth_date': branch.owner_birth_date,
+        'owner_contact': branch.owner_contact,
+        'owner_seal_image': branch.owner_seal_image,
         'rooms': [{
             'id': r.id,
             'name': r.name,
@@ -909,7 +1001,23 @@ def update_branch(current_user, id):
         if 'map_info' in request.form:
             branch.map_info = request.form['map_info']
         
-        # Handle image upload
+        # New Corporate & Owner Fields
+        if 'owner_name' in request.form:
+            branch.owner_name = request.form['owner_name']
+        if 'owner_address' in request.form:
+            branch.owner_address = request.form['owner_address']
+        if 'owner_birth_date' in request.form:
+            branch.owner_birth_date = request.form['owner_birth_date']
+        if 'owner_contact' in request.form:
+            branch.owner_contact = request.form['owner_contact']
+        if 'registration_number' in request.form:
+            branch.registration_number = request.form['registration_number']
+        if 'is_corporate' in request.form:
+            # Handle boolean from form-data (often sent as 'true'/'false' string)
+            val = request.form['is_corporate'].lower()
+            branch.is_corporate = (val == 'true' or val == '1')
+        
+        # Handle branch image upload
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
@@ -923,6 +1031,20 @@ def update_branch(current_user, id):
                 file.save(file_path)
                 
                 branch.image_url = f"/static/uploads/branches/{unique_filename}"
+
+        # Handle owner seal image upload
+        if 'owner_seal_image' in request.files:
+            file = request.files['owner_seal_image']
+            if file and file.filename:
+                file_ext = os.path.splitext(file.filename)[1]
+                unique_filename = f"seal_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'seals')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                file_path = os.path.join(upload_folder, unique_filename)
+                file.save(file_path)
+                
+                branch.owner_seal_image = f"/static/uploads/seals/{unique_filename}"
     
     db.session.commit()
     return jsonify({'message': 'Branch updated'})

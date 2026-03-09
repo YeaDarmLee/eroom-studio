@@ -148,6 +148,9 @@ document.addEventListener('alpine:init', () => {
         openCreateModal() {
             this.newContract = {
                 user_id: '',
+                user_name: '',
+                user_phone: '',
+                registration_number: '',
                 room_id: '',
                 start_date: new Date().toISOString().split('T')[0],
                 end_date: '',
@@ -391,6 +394,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         async updateStatus(id, newStatus) {
+            // Validation: Ensure phone number exists for signature requests
+            if (newStatus === 'waiting_signature' && !this.selectedContract?.user_phone) {
+                window.showAlert?.('연락처 누락', '연락처(전화번호)가 없습니다. 계약 수정 메뉴에서 연락처를 먼저 입력해 주세요.', 'warning');
+                return;
+            }
+
             // If called from modal, we use submittingUpdate for loading state
             if (this.detailModalOpen) this.submittingUpdate = true;
 
@@ -422,6 +431,35 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async openContractView(id) {
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write('로딩 중...');
+            }
+            try {
+                const token = localStorage.getItem('token');
+                // Admin can also use the normal public endpoint if they have admin role, 
+                // but let's check if there is an admin specific one. 
+                // Actually the `get_contract_view` allows `current_user.role == 'admin'`.
+                const response = await fetch(`/api/contracts/${id}/view`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await response.json();
+                if (data.html && printWindow) {
+                    printWindow.document.open();
+                    printWindow.document.write(data.html);
+                    printWindow.document.close();
+                } else if (!data.html && printWindow) {
+                    printWindow.close();
+                    window.showAlert?.('오류', '계약서를 불러올 수 없습니다.', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                if (printWindow) printWindow.close();
+                window.showAlert?.('오류', '계약서를 불러올 수 없습니다.', 'error');
+            }
+        },
+
         async rejectTermination(id) {
             if (!confirm('해당 해지 요청을 거절하고 계약을 다시 활성화하시겠습니까?')) return;
 
@@ -446,6 +484,45 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (error) {
                 console.error('Error rejecting termination:', error);
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.submittingUpdate = false;
+            }
+        },
+
+        async requestSignature(id) {
+            // Validation: Ensure phone number exists
+            if (!this.selectedContract?.user_phone) {
+                window.showAlert?.('연락처 누락', '연락처(전화번호)가 없습니다. 계약 수정 메뉴에서 연락처를 먼저 입력해 주세요.', 'warning');
+                return;
+            }
+
+            if (!confirm('이 계약에 대해 전자서명을 추가로 요청하시겠습니까? \n계약 상태가 "서명 대기"로 변경되며 사용자에게 안내 문자가 발송됩니다.')) return;
+
+            this.submittingUpdate = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        status: 'waiting_signature',
+                        reason: 'Admin requested electronic signature for active contract'
+                    })
+                });
+
+                if (response.ok) {
+                    await this.loadContracts();
+                    if (this.detailModalOpen) this.detailModalOpen = false;
+                    window.showAlert?.('성공', '전자서명 요청이 완료되었습니다.', 'success');
+                } else {
+                    window.showAlert?.('요청 실패', '상태 변경에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error requesting signature:', error);
                 window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             } finally {
                 this.submittingUpdate = false;
@@ -535,6 +612,8 @@ document.addEventListener('alpine:init', () => {
             const classes = {
                 'active': 'bg-green-100 text-green-800 border-green-200',
                 'requested': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                'waiting_signature': 'bg-blue-100 text-blue-800 border-blue-200',
+                'signature_rejected': 'bg-red-100 text-red-800 border-red-200',
                 'terminated': 'bg-gray-100 text-gray-800 border-gray-200',
                 'cancelled': 'bg-red-100 text-red-800 border-red-200',
                 'terminate_requested': 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse'
@@ -546,6 +625,8 @@ document.addEventListener('alpine:init', () => {
             const labels = {
                 'active': '이용 중',
                 'requested': '승인 대기',
+                'waiting_signature': '서명 대기',
+                'signature_rejected': '서명 거절 (수정요청)',
                 'terminated': '종료됨',
                 'cancelled': '취소됨',
                 'terminate_requested': '해지 신청'

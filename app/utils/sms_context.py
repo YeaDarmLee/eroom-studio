@@ -88,6 +88,10 @@ def build_sms_context(contract, msg_type, **kwargs):
     # 추가 주입된 모든 변수 반영 (덮어쓰기 허용)
     context.update(kwargs)
     
+    # SIGNATURE_REJECTED 변수 처리
+    if msg_type == 'SIGNATURE_REJECTED' and 'rejection_reason' not in context:
+        context['rejection_reason'] = getattr(contract, 'rejection_reason', '사유 미입력')
+
     return context
 
 def get_dummy_context():
@@ -103,5 +107,8 @@ def get_dummy_context():
         'moveout_date': '2024-04-30',
         'renew_deadline': '2024-03-02',
         'deposit_refund_date': '2024-05-07',
-        'user_phone': '010-1234-5678'
+        'user_phone': '010-1234-5678',
+        'rejection_reason': '계약서 서명 누락',
+        'reject_reason': '신청 정보 불일치로 반려합니다.',
+        'extend_months': '6'
     }

@@ -311,8 +311,15 @@ def create_contract(current_user):
     try:
         from app.utils.sms_service import sms_service
         from app.utils.sms_context import build_sms_context
+        # User Notification
         context = build_sms_context(contract, 'CONTRACT_APPLIED', amount=format(final_price, ','))
         sms_service.send_sms(contract.id, 'CONTRACT_APPLIED', context)
+        
+        # Admin Notification (New)
+        admin_phone = contract.room.branch.owner_contact if contract.room and contract.room.branch else None
+        if admin_phone:
+            admin_context = build_sms_context(contract, 'ADMIN_CONTRACT_APPLIED')
+            sms_service.send_sms(contract.id, 'ADMIN_CONTRACT_APPLIED', admin_context, to_number=admin_phone)
     except Exception as e:
         # Don't block contract creation if SMS fails, but log it
         print(f"SMS trigger error: {e}")
@@ -366,3 +373,197 @@ def get_my_contracts(current_user):
             'custom_discounts': custom_discounts_data
         })
     return jsonify(result)
+
+@contract_bp.route('/<int:id>/sign', methods=['POST'])
+@token_required
+def sign_contract(current_user, id):
+    contract = Contract.query.get_or_404(id)
+    if contract.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if contract.status != 'waiting_signature':
+        return jsonify({'error': f'서명 가능한 상태가 아닙니다. (현재 상태: {contract.status})'}), 400
+    
+    data = request.get_json()
+    signature_data = data.get('signature_data')
+    address = data.get('address')
+    birth_date = data.get('birth_date')
+    registration_number = data.get('registration_number') # New field
+    
+    if not signature_data or not address or not birth_date:
+        return jsonify({'error': '서명, 주소, 생년월일은 필수입니다.'}), 400
+    
+    # Update User Info
+    if not current_user.address:
+        current_user.address = address
+    if not current_user.birth_date:
+        current_user.birth_date = birth_date
+    if registration_number and not current_user.registration_number:
+        current_user.registration_number = registration_number
+        
+    # Capture Snapshots
+    contract.user_address_snapshot = address
+    contract.user_birth_date_snapshot = birth_date
+    contract.user_registration_number_snapshot = registration_number
+    contract.signature_data = signature_data
+    contract.signed_at = datetime.datetime.utcnow()
+    
+    old_status = contract.status
+    contract.status = 'active'
+    
+    # Sync Room Status
+    if contract.room:
+        contract.room.status = 'occupied'
+        
+    log_contract_status_change(
+        contract=contract,
+        old_status=old_status,
+        new_status='active',
+        actor_id=current_user.id,
+        actor_type='user',
+        source='public_api',
+        reason='User completed electronic signature'
+    )
+    
+    db.session.commit()
+    
+    # SMS Trigger to Admin (New)
+    try:
+        from app.utils.sms_service import sms_service
+        from app.utils.sms_context import build_sms_context
+        # We need an admin phone number to alert. 
+        # For now, we use branch contact or a config value if available.
+        admin_phone = contract.room.branch.owner_contact if contract.room and contract.room.branch else None
+        if admin_phone:
+            context = build_sms_context(contract, 'SIGNATURE_COMPLETED')
+            sms_service.send_sms(contract.id, 'SIGNATURE_COMPLETED', context, to_number=admin_phone)
+    except Exception as e:
+        print(f"Admin SMS error: {e}")
+        
+    return jsonify({'message': '서명이 완료되었습니다.', 'status': contract.status})
+
+@contract_bp.route('/<int:id>/reject', methods=['POST'])
+@token_required
+def reject_contract(current_user, id):
+    contract = Contract.query.get_or_404(id)
+    if contract.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    data = request.get_json()
+    reason = data.get('reason')
+    if not reason:
+        return jsonify({'error': '거절 사유를 입력해주세요.'}), 400
+        
+    old_status = contract.status
+    contract.status = 'signature_rejected'
+    contract.rejection_reason = reason
+    
+    log_contract_status_change(
+        contract=contract,
+        old_status=old_status,
+        new_status='signature_rejected',
+        actor_id=current_user.id,
+        actor_type='user',
+        source='public_api',
+        reason=f"User rejected signature: {reason}"
+    )
+    
+    db.session.commit()
+    
+    # SMS Trigger to Admin (Notify Rejection)
+    try:
+        from app.utils.sms_service import sms_service
+        from app.utils.sms_context import build_sms_context
+        # Use branch owner's contact as the 'admin'
+        admin_phone = contract.room.branch.owner_contact if contract.room and contract.room.branch else None
+        if admin_phone:
+            context = build_sms_context(contract, 'SIGNATURE_REJECTED')
+            sms_service.send_sms(contract.id, 'SIGNATURE_REJECTED', context, to_number=admin_phone)
+    except Exception as e:
+        print(f"Admin Rejection SMS error: {e}")
+        
+    return jsonify({'message': '거절 처리가 완료되었습니다.', 'status': contract.status})
+
+@contract_bp.route('/<int:id>/view', methods=['GET'])
+@token_required
+def get_contract_view(current_user, id):
+    contract = Contract.query.get_or_404(id)
+    # Allow admin or the contract owner to view
+    if current_user.role != 'admin' and contract.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    from flask import render_template, request
+    from datetime import datetime
+    import json
+    
+    mode = request.args.get('mode', 'view')
+    is_signing = (mode == 'sign')
+    
+    # Prepare data for template
+    room = contract.room
+    branch = room.branch if room else None
+    tenant = contract.user
+    
+    # Format Phone Number
+    def format_phone(p):
+        if not p: return ''
+        p = ''.join(filter(str.isdigit, str(p)))
+        if len(p) == 11 and p.startswith('010'):
+            return f"{p[:3]}-{p[3:7]}-{p[7:]}"
+        elif len(p) == 10 and p.startswith('02'):
+            return f"{p[:2]}-{p[2:6]}-{p[6:]}"
+        elif len(p) == 10:
+            return f"{p[:3]}-{p[3:6]}-{p[6:]}"
+        return p
+        
+    # Format Birth Date
+    def format_date(d):
+        if not d: return ''
+        d = ''.join(filter(str.isdigit, str(d)))
+        if len(d) == 8:
+            return f"{d[:4]}-{d[4:6]}-{d[6:]}"
+        return d
+        
+    user_phone_formatted = format_phone(tenant.phone) if tenant else ''
+    user_birth_date_formatted = format_date(tenant.birth_date) if tenant else ''
+    owner_contact_formatted = format_phone(branch.owner_contact) if branch and branch.owner_contact else format_phone('010-9488-5093')
+    
+    # Parse discount_details
+    discount_details = {}
+    if contract.discount_details:
+        try:
+            discount_details = json.loads(contract.discount_details)
+        except:
+            pass
+    
+    html = render_template('contract_print_template.html',
+        branch_name=branch.name if branch else '',
+        branch_address=branch.address if branch else '',
+        room_name=room.name if room else '',
+        deposit=f"{contract.deposit:,}" if contract.deposit else "0",
+        price=f"{contract.price:,}" if contract.price else "0",
+        total_price=f"{contract.price:,}" if contract.price else "0", # 일단 정가와 동일하게 표시
+        duration=contract.months or 0,
+        payment_day=contract.payment_day or 1,
+        start_date=contract.start_date.strftime('%Y-%m-%d') if contract.start_date else '',
+        end_date=contract.end_date.strftime('%Y-%m-%d') if contract.end_date else '',
+        # Owner Info
+        is_corporate=branch.is_corporate if branch else False,
+        registration_number=branch.registration_number if branch else '',
+        owner_name=branch.owner_name if branch else '이룸 스튜디오',
+        owner_address=branch.owner_address if branch else '',
+        owner_contact=owner_contact_formatted,
+        owner_seal_image=branch.owner_seal_image if branch else '',
+        # Lessee Info (Using tenant instead of viewer)
+        user_name=tenant.name if tenant else '',
+        user_address=contract.user_address_snapshot or (tenant.address or '' if tenant else ''),
+        user_phone=user_phone_formatted,
+        user_birth_date=contract.user_birth_date_snapshot or user_birth_date_formatted,
+        user_registration_number=contract.user_registration_number_snapshot or (tenant.registration_number or '' if tenant else ''),
+        signature_data=contract.signature_data,
+        current_date=datetime.now().strftime('%Y-%m-%d'),
+        is_signing=is_signing,
+        discount_details=discount_details
+    )
+    
+    return jsonify({'html': html})

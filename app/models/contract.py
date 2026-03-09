@@ -46,7 +46,7 @@ class Contract(db.Model):
     is_indefinite = db.Column(db.Boolean, default=False) # True: "한달 전 통보" (No fixed end date)
     
     status = db.Column(db.String(20), default='requested')
-    # requested, approved, active, extend_requested, terminate_requested, terminated, cancelled
+    # requested, waiting_signature, signature_rejected, approved, active, extend_requested, terminate_requested, terminated, cancelled
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -71,6 +71,14 @@ class Contract(db.Model):
     notice_email_attempts = db.Column(db.Integer, default=0)
     notice_last_error = db.Column(db.Text)
     contract_pdf_hash = db.Column(db.String(64))
+
+    # --- Electronic Signature Fields ---
+    user_address_snapshot = db.Column(db.String(255))
+    user_birth_date_snapshot = db.Column(db.String(20))
+    user_registration_number_snapshot = db.Column(db.String(20)) # 사업자등록번호 스냅샷
+    signature_data = db.Column(db.Text) # Base64 encoded signature image
+    signed_at = db.Column(db.DateTime)
+    rejection_reason = db.Column(db.Text)
 
     # Termination
     termination_requested_at = db.Column(db.DateTime)

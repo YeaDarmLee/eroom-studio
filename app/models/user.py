@@ -10,6 +10,9 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=True)
     phone = db.Column(db.String(20), unique=True, nullable=True)  # 계약 매핑 키로 사용
     name = db.Column(db.String(64), nullable=True)
+    address = db.Column(db.String(255), nullable=True)
+    birth_date = db.Column(db.String(20), nullable=True) # YYYYMMDD
+    registration_number = db.Column(db.String(20), nullable=True) # 사업자등록번호
     role = db.Column(db.String(20), default='user')  # user, admin
     onboarding_status = db.Column(db.String(20), default='not_started')
     # not_started, new_user_done, existing_pending, existing_linked

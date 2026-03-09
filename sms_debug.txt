@@ -1,0 +1,14 @@
+
+[2026-03-07 05:37:35.645207] Triggering for Contract 252
+Old Status: requested, New Status: waiting_signature
+User Phone: 01059442263
+Start Date: 2026-03-06
+Payment Day: 1
+send_sms result: success=True, msg=Sent
+
+[2026-03-08 06:39:43.535842] Triggering for Contract 135
+Old Status: active, New Status: waiting_signature
+User Phone: 01054682293
+Start Date: 2025-01-01
+Payment Day: 1
+send_sms result: success=True, msg=Sent

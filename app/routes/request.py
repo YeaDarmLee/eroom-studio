@@ -84,18 +84,26 @@ def create_request(current_user):
     db.session.commit()
     
     # --- SMS Trigger (New) ---
-    if req_type == 'termination' and contract:
-        try:
-            from app.utils.sms_service import sms_service
-            from app.utils.sms_context import build_sms_context
-            
+    try:
+        from app.utils.sms_service import sms_service
+        from app.utils.sms_context import build_sms_context
+
+        if req_type == 'termination' and contract:
             # Use the requested termination date for the message if available
             m_date = details.get('termination_date')
             context = build_sms_context(contract, 'MOVEOUT_APPLIED', moveout_date=m_date)
-            
             sms_service.send_sms(contract.id, 'MOVEOUT_APPLIED', context)
-        except Exception as e:
-            print(f"SMS trigger error (MOVEOUT_APPLIED): {e}")
+            
+        elif req_type == 'extension' and contract:
+            # Notify ADMIN about extension request
+            admin_phone = contract.room.branch.owner_contact if contract.room and contract.room.branch else None
+            if admin_phone:
+                extend_months = details.get('extension_months', '?')
+                context = build_sms_context(contract, 'EXTEND_APPLIED', extend_months=extend_months)
+                sms_service.send_sms(contract.id, 'EXTEND_APPLIED', context, to_number=admin_phone)
+
+    except Exception as e:
+        print(f"SMS trigger error in request creation: {e}")
 
     return jsonify({'id': new_request.id, 'status': new_request.status}), 201
 

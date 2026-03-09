@@ -19,7 +19,16 @@ SMS_VARIABLE_SCHEMA = {
     'MOVEOUT_APPROVED': ['user_name', 'branch_name', 'room_name', 'moveout_date', 'deposit_refund_date'],
     'MOVEOUT_DAY': ['user_name', 'branch_name', 'room_name'],
     'PAYMENT_OVERDUE_STAGE1': ['user_name', 'branch_name', 'amount', 'due_date'],
-    'PAYMENT_OVERDUE_STAGE2': ['user_name', 'branch_name', 'amount', 'due_date']
+    'PAYMENT_OVERDUE_STAGE2': ['user_name', 'branch_name', 'amount', 'due_date'],
+    'SIGNATURE_REQUESTED': ['user_name', 'branch_name', 'room_name'],
+    'SIGNATURE_COMPLETED': ['user_name', 'branch_name', 'room_name'],
+    'SIGNATURE_REJECTED': ['user_name', 'branch_name', 'room_name', 'rejection_reason'],
+    'ADMIN_CONTRACT_APPLIED': ['user_name', 'branch_name', 'room_name'],
+    'CONTRACT_REJECTED': ['user_name', 'branch_name', 'room_name', 'reject_reason'],
+    'EXTEND_APPLIED': ['user_name', 'branch_name', 'room_name', 'extend_months'],
+    'EXTEND_APPROVED': ['user_name', 'branch_name', 'room_name', 'end_date'],
+    'EXTEND_REJECTED': ['user_name', 'branch_name', 'room_name', 'reject_reason'],
+    'WELCOME_MESSAGE': ['user_name', 'branch_name', 'room_name']
 }
 
 class SmsProviderInterface:
@@ -41,12 +50,15 @@ class AligoSmsProvider(SmsProviderInterface):
         self.api_url = "https://apis.aligo.in/send/"
 
     def send(self, to_number, content):
-        # 알리고 API 규격에 맞춘 데이터 구성
+        # Remove hyphens and spaces from numbers
+        to_number_clean = "".join(filter(str.isdigit, to_number))
+        sender_clean = "".join(filter(str.isdigit, self.sender))
+        
         data = {
             'key': self.api_key,
             'user_id': self.user_id,
-            'sender': self.sender,
-            'receiver': to_number,
+            'sender': sender_clean,
+            'receiver': to_number_clean,
             'msg': content,
             # 'testmode_yn': 'Y' # 필요시 테스트 모드 활성화
         }

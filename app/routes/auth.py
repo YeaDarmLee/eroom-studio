@@ -141,21 +141,28 @@ def email_register():
     data = request.get_json()
     
     email = data.get('email')
+    phone = data.get('phone')
     password = data.get('password')
     name = data.get('name', '')
     
     # Validation
-    if not email or not password:
-        return jsonify({'message': 'Email and password are required'}), 400
+    if not email or not password or not phone:
+        return jsonify({'message': '이메일, 비밀번호, 휴대폰 번호는 필수 항목입니다.'}), 400
     
     # Check if email already exists
-    existing_user = User.query.filter_by(email=email).first()
-    if existing_user:
-        return jsonify({'message': 'Email already registered'}), 400
+    existing_email = User.query.filter_by(email=email).first()
+    if existing_email:
+        return jsonify({'message': '이미 가입된 이메일입니다.'}), 400
+        
+    # Check if phone already exists
+    existing_phone = User.query.filter_by(phone=phone).first()
+    if existing_phone:
+        return jsonify({'message': '이미 사용 중인 휴대폰 번호입니다.'}), 400
     
     # Create new user
     user = User(
         email=email,
+        phone=phone,
         name=name,
         role='user',
         onboarding_status='new_user_done'

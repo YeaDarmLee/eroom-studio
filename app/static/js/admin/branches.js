@@ -43,6 +43,8 @@ function registerBranchesPage() {
             newFloorInput: '', // For inline floor addition
             imageFile: null,
             imagePreview: null,
+            sealFile: null,
+            sealPreview: null,
             branchImages: [], // Array of {file: File, preview: string}
             existingBranchImages: [], // Array of {id: number, url: string}
             isDraggingBranchImage: false,
@@ -133,9 +135,20 @@ function registerBranchesPage() {
             openEditModal(branch) {
                 this.editMode = true
                 this.currentBranch = branch
-                this.formData = { ...branch }
+                this.formData = {
+                    ...branch,
+                    is_corporate: !!branch.is_corporate,
+                    registration_number: branch.registration_number || '',
+                    owner_name: branch.owner_name || '',
+                    owner_address: branch.owner_address || '',
+                    owner_contact: branch.owner_contact || '',
+                    owner_birth_date: branch.owner_birth_date || '',
+                    owner_seal_image: branch.owner_seal_image || ''
+                }
                 this.imageFile = null
                 this.imagePreview = null
+                this.sealFile = null
+                this.sealPreview = branch.owner_seal_image || null
                 this.branchImages = []
                 this.existingBranchImages = branch.images ? [...branch.images] : []
                 this.showModal = true
@@ -160,8 +173,19 @@ function registerBranchesPage() {
                     formData.append('parking_info', this.formData.parking_info || '')
                     formData.append('map_info', this.formData.map_info || '')
 
+                    // Corporate & Owner Fields
+                    formData.append('is_corporate', this.formData.is_corporate ? 'true' : 'false')
+                    formData.append('registration_number', this.formData.registration_number || '')
+                    formData.append('owner_name', this.formData.owner_name || '')
+                    formData.append('owner_address', this.formData.owner_address || '')
+                    formData.append('owner_contact', this.formData.owner_contact || '')
+                    formData.append('owner_birth_date', this.formData.owner_birth_date || '')
+
                     if (this.imageFile) {
                         formData.append('image', this.imageFile)
+                    }
+                    if (this.sealFile) {
+                        formData.append('owner_seal_image', this.sealFile)
                     }
 
                     const response = await fetch(url, {
@@ -236,6 +260,24 @@ function registerBranchesPage() {
                     this.imagePreview = e.target.result
                 },
                     reader.readAsDataURL(file)
+            },
+
+            handleSealUpload(event) {
+                const file = event.target.files[0]
+                if (!file) return
+
+                if (file.size > 2 * 1024 * 1024) {
+                    window.showAlert?.('파일 크기 초과', '직인 이미지는 2MB를 초과할 수 없습니다.', 'warning')
+                    return
+                }
+
+                this.sealFile = file
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    this.sealPreview = e.target.result
+                }
+                reader.readAsDataURL(file)
+                event.target.value = ''
             },
 
             // ==================== Branch Multi-Image Methods ====================

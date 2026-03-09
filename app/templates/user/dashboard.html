@@ -41,7 +41,7 @@
                         </span>
                         <i x-show="activeTab === 'dashboard'" class="ri-arrow-right-s-line hidden lg:block"></i>
                     </button>
-                    <button @click="activeTab = 'requests'"
+                    <!-- <button @click="activeTab = 'requests'"
                         :class="activeTab === 'requests' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
                         class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
                         <span class="flex items-center">
@@ -60,7 +60,7 @@
                             <span class="ml-2 whitespace-nowrap">문의 내역</span>
                         </span>
                         <i x-show="activeTab === 'inquiries'" class="ri-arrow-right-s-line hidden lg:block"></i>
-                    </button>
+                    </button> -->
                     <button @click="activeTab = 'profile'"
                         :class="activeTab === 'profile' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
                         class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
@@ -110,6 +110,15 @@
                                                 class="px-5 py-2 rounded-xl text-xs font-bold flex items-center shadow-sm"
                                                 x-text="translateStatus(contract.status)">
                                             </span>
+                                            <!-- View Contract Button -->
+                                            <template
+                                                x-if="['active', 'completed', 'terminated', 'terminate_requested', 'waiting_signature', 'signature_rejected'].includes(contract.status)">
+                                                <button @click="openContractView(contract.id)"
+                                                    class="ml-1 px-3 py-2 bg-white border border-gray-200 text-primary text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-1 shadow-sm">
+                                                    <i class="ri-file-text-line"></i>
+                                                    <span class="hidden sm:inline">계약서 보기</span>
+                                                </button>
+                                            </template>
                                         </div>
                                     </div>
 
@@ -312,6 +321,47 @@
 
                                         <!-- Status-specific Alert / Actions -->
                                         <div class="mt-8">
+                                            <!-- Waiting Signature Status Alert -->
+                                            <template x-if="contract.status === 'waiting_signature'">
+                                                <div
+                                                    class="bg-blue-50 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between border border-blue-100 shadow-inner gap-4">
+                                                    <div class="flex items-start">
+                                                        <div class="bg-white p-2 rounded-xl shadow-sm mr-4 mt-0.5">
+                                                            <i class="ri-edit-2-line text-blue-500 text-xl"></i>
+                                                        </div>
+                                                        <div class="text-sm">
+                                                            <p class="font-extrabold text-blue-900 mb-1">계약서 서명이 필요합니다
+                                                            </p>
+                                                            <p class="text-blue-800/80 leading-relaxed font-medium">관리자의
+                                                                승인이 완료되었습니다. 계약 내용을 확인하시고 전자서명을 진행해 주세요.</p>
+                                                        </div>
+                                                    </div>
+                                                    <button @click="openSignatureModal(contract.id)"
+                                                        class="px-6 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all whitespace-nowrap">
+                                                        계약서 확인 및 서명하기
+                                                    </button>
+                                                </div>
+                                            </template>
+
+                                            <!-- Signature Rejected Status Alert -->
+                                            <template x-if="contract.status === 'signature_rejected'">
+                                                <div
+                                                    class="bg-red-50 rounded-2xl p-6 flex items-start border border-red-100 shadow-inner">
+                                                    <div class="bg-white p-2 rounded-xl shadow-sm mr-4 mt-0.5">
+                                                        <i class="ri-error-warning-line text-red-500 text-xl"></i>
+                                                    </div>
+                                                    <div class="text-sm">
+                                                        <p class="font-extrabold text-red-900 mb-1">서명이 거절되었습니다 (수정 요청
+                                                            중)</p>
+                                                        <p class="text-red-800/80 leading-relaxed font-medium"
+                                                            x-text="'거절 사유: ' + (contract.rejection_reason || '사유 없음')">
+                                                        </p>
+                                                        <p class="text-red-800/60 text-xs mt-2">관리자가 내용을 확인 후 다시 안내해 드릴
+                                                            예정입니다.</p>
+                                                    </div>
+                                                </div>
+                                            </template>
+
                                             <!-- Requested Status Alert -->
                                             <template x-if="contract.status === 'requested'">
                                                 <div
@@ -430,7 +480,7 @@
                             </div>
                             <h3 class="text-2xl font-black text-gray-900 mb-3">진행 중인 계약이 없습니다</h3>
                             <p class="text-gray-400 font-medium max-w-sm mx-auto mb-10 leading-relaxed">이룸스튜디오에서 당신만을 위한
-                                프리미엄 쉐어하우스 라이프를 시작해보세요.</p>
+                                프리미엄 연습실을 시작해보세요.</p>
                             <a href="/"
                                 class="inline-flex items-center px-10 py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">
                                 지금 바로 룸 찾아보기 <i class="ri-arrow-right-line ml-2"></i>
@@ -440,129 +490,14 @@
                 </div>
 
                 <!-- Service Requests Tab Content -->
-                <div x-show="activeTab === 'requests'" class="animate-in fade-in slide-in-from-right-4 duration-500">
-                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
-                            <h3 class="font-extrabold text-gray-900 text-lg">서비스 요청 내역</h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-gray-50/50">
-                                    <tr>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                            유형</th>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                            내용</th>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                            날짜</th>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">
-                                            상태</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    <template x-for="req in serviceRequests" :key="req.id">
-                                        <tr class="hover:bg-gray-50/50 transition-all cursor-default">
-                                            <td class="px-8 py-5">
-                                                <span
-                                                    class="inline-flex items-center bg-gray-50 text-gray-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-gray-100 uppercase tracking-wider"
-                                                    x-text="translateRequestType(req.type)"></span>
-                                            </td>
-                                            <td class="px-8 py-5">
-                                                <p class="text-sm font-bold text-gray-800 line-clamp-1"
-                                                    x-text="getRequestMessage(req.details)"></p>
-                                            </td>
-                                            <td class="px-8 py-5 text-[13px] text-gray-400 font-medium"
-                                                x-text="formatDateShort(req.created_at)"></td>
-                                            <td class="px-8 py-5 text-center">
-                                                <span
-                                                    :class="req.status === 'done' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'"
-                                                    class="px-3 py-1 rounded-lg text-[10px] font-black border uppercase tracking-wider"
-                                                    x-text="req.status === 'done' ? '완료' : '처리 중'"></span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                            <template x-if="serviceRequests.length === 0">
-                                <div class="py-24 text-center">
-                                    <div
-                                        class="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                        <i class="ri-tools-line text-3xl text-gray-200"></i>
-                                    </div>
-                                    <p class="text-gray-400 font-bold text-sm">서비스 요청 내역이 존재하지 않습니다.</p>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
+                <!-- <div x-show="activeTab === 'requests'" class="animate-in fade-in slide-in-from-right-4 duration-500">
+                    ... (content hidden) ...
+                </div> -->
 
                 <!-- Inquiries Tab Content -->
-                <div x-show="activeTab === 'inquiries'" class="animate-in fade-in slide-in-from-right-4 duration-500">
-                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
-                            <h3 class="font-extrabold text-gray-900 text-lg">나의 문의 내역</h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-gray-50/50">
-                                    <tr>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                            대상</th>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                            내용</th>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">
-                                            상태</th>
-                                        <th
-                                            class="px-8 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                                            일시</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    <template x-for="inq in inquiries" :key="inq.id">
-                                        <tr class="hover:bg-gray-50/50 transition-all cursor-default">
-                                            <td class="px-8 py-5">
-                                                <span class="text-xs font-bold text-gray-900"
-                                                    x-text="(inq.details.branch_name || '') + ' ' + (inq.details.room_name || '')"></span>
-                                            </td>
-                                            <td class="px-8 py-5">
-                                                <p class="text-sm font-bold text-gray-600 line-clamp-1 max-w-md"
-                                                    x-text="getRequestMessage(inq.details)"></p>
-                                            </td>
-                                            <td class="px-8 py-5 text-center">
-                                                <span :class="{
-                                                    'text-amber-600 bg-amber-50 border-amber-100': inq.status === 'submitted',
-                                                    'text-blue-600 bg-blue-50 border-blue-100': inq.status === 'processing',
-                                                    'text-green-600 bg-green-50 border-green-100': inq.status === 'done'
-                                                }" class="px-3 py-1 rounded-lg text-[10px] font-black border uppercase shadow-sm"
-                                                    x-text="inq.status === 'submitted' ? '접수완료' : (inq.status === 'processing' ? '답변중' : '답변완료')"></span>
-                                            </td>
-                                            <td class="px-8 py-5 text-right">
-                                                <span class="text-xs font-medium text-gray-400"
-                                                    x-text="formatDateShort(inq.created_at)"></span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                            <template x-if="inquiries.length === 0">
-                                <div class="py-24 text-center">
-                                    <div
-                                        class="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                        <i class="ri-chat-3-line text-3xl text-gray-200"></i>
-                                    </div>
-                                    <p class="text-gray-400 font-bold text-sm">문의 내역이 존재하지 않습니다.</p>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
+                <!-- <div x-show="activeTab === 'inquiries'" class="animate-in fade-in slide-in-from-right-4 duration-500">
+                    ... (content hidden) ...
+                </div> -->
 
                 <!-- Profile Management Tab Content -->
                 <div x-show="activeTab === 'profile'" class="animate-in fade-in slide-in-from-right-4 duration-500">
@@ -855,6 +790,9 @@
             </div>
         </div>
     </div>
+
+    <!-- 전자서명 모달 삽입 -->
+    {% include "private/signature_modal.html" %}
 </div>
 
 {% block scripts %}
@@ -1052,6 +990,8 @@
             translateStatus(status) {
                 const map = {
                     'requested': '승인 대기 중',
+                    'waiting_signature': '서명 대기',
+                    'signature_rejected': '서명 거절',
                     'active': '이용 중',
                     'completed': '계약 종료',
                     'terminated': '계약 종료',
@@ -1059,6 +999,224 @@
                     'cancelled': '취소됨'
                 };
                 return map[status] || status;
+            },
+
+            // Signature Pad Methods
+            isSigning: false,
+            signatureModalOpen: false,
+            drawingModalOpen: false,
+            isRejecting: false,
+            rejectionReason: '',
+            signaturePad: null,
+            currentSignatureContractId: null,
+            contractHtml: '',
+            signatureForm: {
+                address: '',
+                birth_date: '',
+                signatureData: null
+            },
+
+            async openSignatureModal(id) {
+                this.currentSignatureContractId = id;
+                this.isRejecting = false;
+                this.rejectionReason = '';
+                this.isSigning = true;
+
+                // Reset form
+                this.signatureForm = {
+                    address: '',
+                    birth_date: '',
+                    signatureData: null
+                };
+
+                try {
+                    const response = await fetch(`/api/contracts/${id}/view?mode=sign`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    const data = await response.json();
+                    if (data.html) {
+                        this.contractHtml = data.html;
+                        this.signatureModalOpen = true;
+                        // We do not initialize the signature pad here anymore.
+                        // It will be initialized when the drawing modal opens.
+                    }
+                } catch (e) {
+                    window.showAlert?.('오류', '계약서 정보를 불러오는데 실패했습니다.', 'error');
+                } finally {
+                    this.isSigning = false;
+                }
+            },
+
+            async openContractView(id) {
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    printWindow.document.write('로딩 중...');
+                }
+                try {
+                    const response = await fetch(`/api/contracts/${id}/view`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    const data = await response.json();
+                    if (data.html && printWindow) {
+                        printWindow.document.open();
+                        printWindow.document.write(data.html);
+                        printWindow.document.close();
+                    } else if (!data.html && printWindow) {
+                        printWindow.close();
+                        window.showAlert?.('오류', '계약서를 불러올 수 없습니다.', 'error');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (printWindow) printWindow.close();
+                    window.showAlert?.('오류', '계약서를 불러올 수 없습니다.', 'error');
+                }
+            },
+
+            resizeSignatureCanvas() {
+                const canvas = document.getElementById('signature-pad');
+                if (!canvas || !this.signaturePad) return;
+
+                const offsetWidth = canvas.offsetWidth;
+                const offsetHeight = canvas.offsetHeight;
+
+                // If width is 0, we can't resize properly (likely modal is still opening)
+                if (offsetWidth === 0) return;
+
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+                // Only resize if dimensions actually changed to avoid unnecessary clears
+                const newWidth = offsetWidth * ratio;
+                const newHeight = offsetHeight * ratio;
+
+                if (canvas.width !== newWidth || canvas.height !== newHeight) {
+                    const data = this.signaturePad.toData(); // Save existing strokes
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    canvas.getContext("2d").scale(ratio, ratio);
+                    this.signaturePad.clear();
+                    this.signaturePad.fromData(data); // Restore strokes
+                }
+            },
+
+            openDrawingModal() {
+                this.drawingModalOpen = true;
+
+                // Retry resizing until dimensions are non-zero (handles mobile animation lag)
+                const tryResize = (retryCount = 0) => {
+                    if (retryCount > 10) return; // Stop after 1s
+
+                    this.$nextTick(() => {
+                        const canvas = document.getElementById('signature-pad');
+                        if (canvas) {
+                            if (!this.signaturePad) {
+                                this.signaturePad = new SignaturePad(canvas, {
+                                    throttle: 0,
+                                    minWidth: 1,
+                                    maxWidth: 2.5
+                                });
+                                window.addEventListener('resize', () => this.resizeSignatureCanvas());
+                            }
+
+                            if (canvas.offsetWidth > 0) {
+                                this.resizeSignatureCanvas();
+                            } else {
+                                setTimeout(() => tryResize(retryCount + 1), 100);
+                            }
+                        } else {
+                            setTimeout(() => tryResize(retryCount + 1), 50);
+                        }
+                    });
+                };
+
+                tryResize();
+            },
+
+            confirmDrawing() {
+                if (this.signaturePad && !this.signaturePad.isEmpty()) {
+                    this.signatureForm.signatureData = this.signaturePad.toDataURL();
+                    this.drawingModalOpen = false;
+                } else {
+                    window.showAlert?.('경고', '서명을 입력해주세요.', 'warning');
+                }
+            },
+
+            cancelDrawing() {
+                this.drawingModalOpen = false;
+            },
+
+            clearSignature() {
+                if (this.signaturePad) {
+                    this.signaturePad.clear();
+                    this.signatureForm.signatureData = null;
+                }
+            },
+
+            async submitSignature() {
+                // Since the UI validates by visually showing signatureData, we can check it
+                if (!this.signatureForm.signatureData) {
+                    window.showAlert?.('경고', '서명을 입력해주세요.', 'warning');
+                    return;
+                }
+                if (!this.signatureForm.address || !this.signatureForm.birth_date) {
+                    window.showAlert?.('경고', '계약서 내에 주소와 생년월일(8자리)을 입력해주세요.', 'warning');
+                    return;
+                }
+
+                this.isSigning = true;
+                try {
+                    const response = await fetch(`/api/contracts/${this.currentSignatureContractId}/sign`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            signature_data: this.signatureForm.signatureData,
+                            address: this.signatureForm.address,
+                            birth_date: this.signatureForm.birth_date
+                        })
+                    });
+
+                    if (response.ok) {
+                        window.showAlert?.('성공', '계약 서명이 완료되었습니다!', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        const err = await response.json();
+                        window.showAlert?.('실패', err.error || '처리 중 오류가 발생했습니다.', 'error');
+                    }
+                } catch (e) {
+                    window.showAlert?.('오류', '서버와 통신할 수 없습니다.', 'error');
+                } finally {
+                    this.isSigning = false;
+                }
+            },
+
+            async submitRejection() {
+                if (!this.rejectionReason) {
+                    window.showAlert?.('경고', '정확한 거절 또는 수정 요청 사유를 입력해주세요.', 'warning');
+                    return;
+                }
+
+                this.isSigning = true;
+                try {
+                    const response = await fetch(`/api/contracts/${this.currentSignatureContractId}/reject`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({ reason: this.rejectionReason })
+                    });
+
+                    if (response.ok) {
+                        window.showAlert?.('성공', '거절 사유를 전송했습니다.', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                } catch (e) {
+                    window.showAlert?.('오류', '통신 오류', 'error');
+                } finally {
+                    this.isSigning = false;
+                }
             },
 
             getStatusBadgeClass(status) {

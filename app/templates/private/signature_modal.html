@@ -1,0 +1,111 @@
+<!-- 전자서명 및 계약서 확인 모달 -->
+<div x-show="signatureModalOpen" class="fixed inset-0 z-50 overflow-y-auto" x-cloak
+    @keydown.escape.window="signatureModalOpen = false">
+
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75" @click="signatureModalOpen = false"></div>
+        </div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div
+            class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="bg-white px-6 pt-6 pb-4">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-black text-gray-900">계약서 확인 및 전자서명</h3>
+                    <button @click="signatureModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                        <i class="ri-close-line text-2xl"></i>
+                    </button>
+                </div>
+
+                <!-- 계약서 미리보기 영역 -->
+                <div
+                    class="border-2 border-gray-100 rounded-2xl p-4 bg-gray-50 max-h-[70vh] overflow-y-auto mb-6 shadow-inner">
+                    <div x-html="contractHtml"></div>
+                </div>
+
+                <!-- 개인정보 입력란 및 기존 서명패드 제거 (계약서 내부로 오버레이 됨) -->
+
+                <!-- 거절 사유 입력 -->
+                <div x-show="isRejecting" x-collapse class="mt-4 p-5 bg-red-50 border border-red-100 rounded-2xl mb-6">
+                    <label class="block text-sm font-black text-red-700 mb-2">내용 수정 요청 사유</label>
+                    <textarea x-model="rejectionReason"
+                        class="w-full border-red-200 rounded-xl text-sm p-4 focus:ring-red-500 focus:border-red-500"
+                        rows="3" placeholder="계약서 내용 중 수정이 필요한 부분을 상세히 적어주세요."></textarea>
+                </div>
+            </div>
+
+            <div class="bg-gray-50/50 px-6 py-5 flex flex-col sm:flex-row-reverse gap-3">
+                <template x-if="!isRejecting">
+                    <div class="flex flex-col sm:flex-row-reverse gap-3 w-full">
+                        <button type="button" @click="submitSignature" :disabled="isSigning"
+                            class="w-full sm:w-auto px-8 py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center">
+                            <span x-show="!isSigning">서명 완료 및 계약 확정</span>
+                            <i x-show="isSigning" class="ri-loader-4-line animate-spin text-xl"></i>
+                        </button>
+                        <button type="button" @click="isRejecting = true"
+                            class="w-full sm:w-auto px-8 py-4 bg-white text-red-600 font-black rounded-2xl border border-red-100 hover:bg-red-50 transition-all">
+                            내용 수정 요청
+                        </button>
+                    </div>
+                </template>
+                <template x-if="isRejecting">
+                    <div class="flex flex-col sm:flex-row-reverse gap-3 w-full">
+                        <button type="button" @click="submitRejection" :disabled="isSigning"
+                            class="w-full sm:w-auto px-8 py-4 bg-red-600 text-white font-black rounded-2xl shadow-xl shadow-red-600/20 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center">
+                            수정 요청 보내기
+                        </button>
+                        <button type="button" @click="isRejecting = false"
+                            class="w-full sm:w-auto px-8 py-4 bg-white text-gray-500 font-black rounded-2xl border border-gray-200 hover:bg-gray-100 transition-all">
+                            이전으로
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Signature Drawing Modal -->
+<div x-show="drawingModalOpen" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak
+    @keydown.escape.window="cancelDrawing()">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-900 opacity-80" @click="cancelDrawing()"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-black text-gray-900">전자 서명하기</h3>
+                <button @click="cancelDrawing()" class="text-gray-400 hover:text-gray-600">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-[11px] text-gray-500 mb-4 tracking-tight">계약서에 들어갈 본인 서명을 그려주세요.</p>
+                <div class="border-2 border-primary/30 border-dashed rounded-2xl bg-white overflow-hidden relative"
+                    style="height: 200px;">
+                    <canvas id="signature-pad"
+                        class="absolute inset-0 w-full h-full touch-none cursor-crosshair"></canvas>
+                </div>
+                <div class="mt-5 flex justify-between items-center">
+                    <button @click="clearSignature"
+                        class="text-sm text-gray-500 font-bold hover:text-red-500 transition-colors px-4 py-2 rounded-xl border border-gray-200 hover:bg-red-50">
+                        <i class="ri-eraser-fill mr-1"></i>지우기
+                    </button>
+                    <button @click="confirmDrawing()"
+                        class="px-8 py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                        서명 확정
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Signature Pad Library -->
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>

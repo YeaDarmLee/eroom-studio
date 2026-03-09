@@ -15,6 +15,16 @@ class Branch(db.Model):
     contact = db.Column(db.String(50)) # e.g. "032-123-4567"
     traffic_info = db.Column(db.Text) # Traffic details
     parking_info = db.Column(db.Text) # Parking details
+
+    # Owner Info for Contracts
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # ID of the user who owns the branch
+    is_corporate = db.Column(db.Boolean, default=False)
+    registration_number = db.Column(db.String(50)) # Business or Corporate Registration Number
+    owner_name = db.Column(db.String(64), default='김훈태')
+    owner_address = db.Column(db.String(255))
+    owner_birth_date = db.Column(db.String(20))
+    owner_contact = db.Column(db.String(50), default='010-9488-5093')
+    owner_seal_image = db.Column(db.String(255)) # URL or path to seal image
     
     rooms = db.relationship('Room', backref='branch', lazy='dynamic')
 

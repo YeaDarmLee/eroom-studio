@@ -32,11 +32,11 @@
                 { id: 'users', icon: 'ri-user-settings-line', label: '회원 관리' },
                 { id: 'contracts', icon: 'ri-file-list-line', label: '계약 관리' },
                 { id: 'coupons', icon: 'ri-coupon-3-line', label: '쿠폰 관리' },
-                { id: 'requests', icon: 'ri-tools-line', label: '요청 관리' },
-                { id: 'inquiries', icon: 'ri-chat-1-line', label: '문의 관리' },
+                /* { id: 'requests', icon: 'ri-tools-line', label: '요청 관리' }, */
+                /* { id: 'inquiries', icon: 'ri-chat-1-line', label: '문의 관리' }, */
                 { id: 'sms', icon: 'ri-message-3-line', label: '문자메세지' },
                 { id: 'branches', icon: 'ri-building-2-line', label: '지점 관리' }
-            ]">
+            ].filter(i => i.id !== 'requests' && i.id !== 'inquiries')">
                 <a href="#" @click.prevent="activeTab = item.id; sidebarOpen = false" :class="{
                         'bg-primary text-white shadow-lg shadow-primary/30': activeTab === item.id,
                         'text-gray-600 hover:bg-white hover:text-gray-900': activeTab !== item.id
@@ -99,11 +99,11 @@
                 { id: 'users', icon: 'ri-user-settings-line', label: '회원 관리', color: 'indigo' },
                 { id: 'contracts', icon: 'ri-file-list-line', label: '계약 관리', color: 'green' },
                 { id: 'coupons', icon: 'ri-coupon-3-line', label: '쿠폰 관리', color: 'red' },
-                { id: 'requests', icon: 'ri-tools-line', label: '요청 관리', color: 'yellow' },
-                { id: 'inquiries', icon: 'ri-chat-1-line', label: '문의 관리', color: 'pink' },
+                /* { id: 'requests', icon: 'ri-tools-line', label: '요청 관리', color: 'yellow' }, */
+                /* { id: 'inquiries', icon: 'ri-chat-1-line', label: '문의 관리', color: 'pink' }, */
                 { id: 'sms', icon: 'ri-message-3-line', label: '문자메세지', color: 'orange' },
                 { id: 'branches', icon: 'ri-building-2-line', label: '지점 관리', color: 'purple' }
-            ]">
+            ].filter(i => i.id !== 'requests' && i.id !== 'inquiries')">
                 <a href="#" @click.prevent="activeTab = item.id" :class="{
                         'bg-primary text-white shadow-lg shadow-primary/30': activeTab === item.id,
                         'text-gray-600 hover:bg-white hover:text-gray-900': activeTab !== item.id

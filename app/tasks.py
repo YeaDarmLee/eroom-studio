@@ -108,4 +108,17 @@ def process_daily_sms_tasks(app):
             context = build_sms_context(contract, 'MOVEOUT_DAY')
             sms_service.send_sms(contract.id, 'MOVEOUT_DAY', context, related_date=target_moveout_date)
 
-        print(f"[{now_kst}] Processed daily SMS tasks: Reminder({len(reminder_contracts)}), Expiry({len(expiry_contracts)}), MoveoutDay({len(moveout_contracts)})")
+        # 6. WELCOME_MESSAGE (On start_date)
+        template = sms_service.get_template('WELCOME_MESSAGE')
+        offset = template.schedule_offset if template else 0
+        target_start_date = today - timedelta(days=offset)
+
+        welcome_contracts = Contract.query.filter(
+            Contract.status == 'active',
+            Contract.start_date == target_start_date
+        ).all()
+        for contract in welcome_contracts:
+            context = build_sms_context(contract, 'WELCOME_MESSAGE')
+            sms_service.send_sms(contract.id, 'WELCOME_MESSAGE', context, related_date=target_start_date)
+
+        print(f"[{now_kst}] Processed daily SMS tasks: Reminder({len(reminder_contracts)}), Expiry({len(expiry_contracts)}), MoveoutDay({len(moveout_contracts)}), Welcome({len(welcome_contracts)})")
