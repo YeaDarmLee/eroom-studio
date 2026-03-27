@@ -80,6 +80,11 @@ def build_sms_context(contract, msg_type, **kwargs):
     elif msg_type == 'MOVEOUT_APPLIED':
         context['moveout_date'] = kwargs.get('moveout_date') or (contract.end_date.strftime('%Y-%m-%d') if contract.end_date else '')
 
+    elif msg_type == 'WELCOME_MESSAGE':
+        context['user_login_id'] = user_info.get('email', '')
+        # 비밀번호는 eroom123! 로 고정 요청됨
+        context['user_password'] = kwargs.get('user_password') or 'eroom123!'
+
     elif msg_type == 'CONTRACT_APPLIED':
         # 계약 신청 시 실시간 결제 금액 (첫 달 금액 등)이 있으면 amount로 사용
         if 'amount' in kwargs:
@@ -87,6 +92,13 @@ def build_sms_context(contract, msg_type, **kwargs):
 
     # 추가 주입된 모든 변수 반영 (덮어쓰기 허용)
     context.update(kwargs)
+    
+    # 한국어 별칭 추가 (사용자 편의성)
+    context['사용자명'] = context['user_name']
+    context['지점명'] = context['branch_name']
+    context['호실명'] = context['room_name']
+    context['사용자 id'] = context.get('user_login_id', '')
+    context['사용자 pw'] = context.get('user_password', '')
     
     # SIGNATURE_REJECTED 변수 처리
     if msg_type == 'SIGNATURE_REJECTED' and 'rejection_reason' not in context:
@@ -110,5 +122,8 @@ def get_dummy_context():
         'user_phone': '010-1234-5678',
         'rejection_reason': '계약서 서명 누락',
         'reject_reason': '신청 정보 불일치로 반려합니다.',
-        'extend_months': '6'
+        'extend_months': '6',
+        '사용자명': '홍길동',
+        '사용자 id': 'user@test.com',
+        '사용자 pw': 'eroom123!'
     }

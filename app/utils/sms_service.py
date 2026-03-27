@@ -28,7 +28,7 @@ SMS_VARIABLE_SCHEMA = {
     'EXTEND_APPLIED': ['user_name', 'branch_name', 'room_name', 'extend_months'],
     'EXTEND_APPROVED': ['user_name', 'branch_name', 'room_name', 'end_date'],
     'EXTEND_REJECTED': ['user_name', 'branch_name', 'room_name', 'reject_reason'],
-    'WELCOME_MESSAGE': ['user_name', 'branch_name', 'room_name']
+    'WELCOME_MESSAGE': ['user_name', 'branch_name', 'room_name', 'user_login_id', 'user_password', '사용자명', '사용자 id', '사용자 pw']
 }
 
 class SmsProviderInterface:
@@ -67,8 +67,8 @@ class AligoSmsProvider(SmsProviderInterface):
             response = requests.post(self.api_url, data=data)
             res_json = response.json()
             
-            # 알리고 응답 코드 확인: result_code가 1이면 성공
-            if res_json.get('result_code') == '1':
+            # 알리고 응답 코드 확인: result_code가 1이면 성공 (숫자형으로 올 수 있으므로 str 변환 후 비교)
+            if str(res_json.get('result_code')) == '1':
                 return str(res_json.get('msg_id'))
             else:
                 # 실패 시 예외 발생시켜 로깅되도록 함
@@ -78,6 +78,30 @@ class AligoSmsProvider(SmsProviderInterface):
         except Exception as e:
             logger.error(f"Aligo SMS Send Failed: {str(e)}")
             raise e
+
+    def get_balance(self):
+        """남은 잔액 조회 API 호출"""
+        url = "https://apis.aligo.in/remain/"
+        data = {
+            'key': self.api_key,
+            'user_id': self.user_id
+        }
+        try:
+            response = requests.post(url, data=data)
+            res_json = response.json()
+            # 0 이상이면 성공 (보통 1)
+            if int(res_json.get('result_code', -1)) >= 0:
+                return {
+                    'SMS_CNT': int(res_json.get('SMS_CNT', 0)),
+                    'LMS_CNT': int(res_json.get('LMS_CNT', 0)),
+                    'MMS_CNT': int(res_json.get('MMS_CNT', 0))
+                }
+            else:
+                logger.error(f"Aligo Balance Check Failed: {res_json.get('message')}")
+                return None
+        except Exception as e:
+            logger.error(f"Aligo Balance API Exception: {str(e)}")
+            return None
 
 class SmsService:
     def __init__(self):
@@ -92,6 +116,13 @@ class SmsService:
         if api_key and user_id and sender:
             return AligoSmsProvider(api_key, user_id, sender), "Aligo"
         return SmsProviderStub(), "Stub"
+
+    def get_balance(self):
+        """통합 잔액 조회 인터페이스"""
+        provider, provider_name = self._get_provider()
+        if provider_name == "Aligo":
+            return provider.get_balance()
+        return {"SMS_CNT": 9999, "LMS_CNT": 9999, "MMS_CNT": 9999}
 
     def get_template(self, msg_type):
         """SMS 템플릿 조회"""

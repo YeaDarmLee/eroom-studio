@@ -26,13 +26,34 @@ document.addEventListener('alpine:init', () => {
         sendingManual: false,
         searchPerformed: false,
 
+        // SMS Balance State
+        smsBalance: { SMS_CNT: 0, LMS_CNT: 0 },
+        loadingBalance: false,
+
         init() {
             this.$watch('activeTab', (val) => {
                 if (val === 'sms') {
                     this.loadTemplates();
                     this.loadLogs();
+                    this.loadBalance();
                 }
             });
+        },
+
+        async loadBalance() {
+            this.loadingBalance = true;
+            try {
+                const response = await fetch('/admin/api/sms/balance', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                if (response.ok) {
+                    this.smsBalance = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading SMS balance:', error);
+            } finally {
+                this.loadingBalance = false;
+            }
         },
 
         async loadTemplates() {

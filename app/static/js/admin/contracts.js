@@ -39,7 +39,9 @@ document.addEventListener('alpine:init', () => {
             deposit: '',
             price: '',
             payment_day: 1,
-            is_indefinite: false
+            payment_method: 'bank',
+            is_indefinite: false,
+            tax_invoice_requested: false
         },
         searchUserQuery: '',
 
@@ -157,6 +159,7 @@ document.addEventListener('alpine:init', () => {
                 deposit: '',
                 price: '',
                 payment_day: 1,
+                payment_method: 'bank',
                 is_indefinite: false
             };
             this.createModalOpen = true;
@@ -246,6 +249,9 @@ document.addEventListener('alpine:init', () => {
             if (status === 'expiring_soon') {
                 return list.filter(c => this.isExpiringSoon(c)).length;
             }
+            if (status === 'active') {
+                return list.filter(c => c.status === 'active' || c.status === 'waiting_signature').length;
+            }
             return list.filter(c => c.status === status).length;
         },
 
@@ -276,6 +282,9 @@ document.addEventListener('alpine:init', () => {
             if (this.filterStatus === 'all') return list;
             if (this.filterStatus === 'expiring_soon') {
                 return list.filter(c => this.isExpiringSoon(c));
+            }
+            if (this.filterStatus === 'active') {
+                return list.filter(c => c.status === 'active' || c.status === 'waiting_signature');
             }
             return list.filter(c => c.status === this.filterStatus);
         },
@@ -313,8 +322,21 @@ document.addEventListener('alpine:init', () => {
                 price: contract.price,
                 deposit: contract.deposit,
                 payment_day: contract.payment_day || 1,
-                is_indefinite: contract.is_indefinite || false
+                payment_method: contract.payment_method || 'bank',
+                tax_invoice_requested: contract.tax_invoice_requested,
+                is_indefinite: contract.is_indefinite || false,
+                has_signature: contract.has_signature,
+                invalidate_signature: false
             };
+
+            // [NEW] 서명이 있는 경우 경고창 노출
+            if (contract.has_signature) {
+                if (confirm('이 계약은 이미 전자서명이 완료된 계약입니다.\n정보를 수정할 경우 기존 서명이 무효화되며 새로운 전자서명을 다시 받아야 합니다.\n계속하시겠습니까?')) {
+                    this.editingContract.invalidate_signature = true;
+                } else {
+                    return; // 취소 시 수정창을 열지 않음
+                }
+            }
 
             this.editModalOpen = true;
             this.detailModalOpen = false;

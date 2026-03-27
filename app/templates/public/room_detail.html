@@ -651,6 +651,30 @@
                                         </div>
                                     </div>
 
+                                    <!-- Tax Invoice Request (Bank Transfer only toggle) -->
+                                    <div class="mb-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                                        <label class="flex items-center justify-between cursor-pointer">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-primary shadow-sm">
+                                                    <i class="ri-file-list-3-line text-lg"></i>
+                                                </div>
+                                                <div>
+                                                    <span class="text-sm font-bold text-gray-900">세금계산서 신청</span>
+                                                    <p class="text-[10px] text-gray-500 mt-0.5">사업자 증빙이 필요한 경우 선택 (부가세
+                                                        10% 추가)</p>
+                                                </div>
+                                            </div>
+                                            <div class="relative">
+                                                <input type="checkbox" x-model="taxInvoiceRequested"
+                                                    :disabled="paymentMethod === 'card'" class="peer sr-only">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary transition-all after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white">
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+
                                     <!-- Monthly Rent Model Breakdown -->
                                     <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-4">
                                         <div class="space-y-2 pb-3 border-b border-gray-200/60 text-sm">
@@ -684,9 +708,10 @@
                                                         x-text="(proratedAmount > 0 ? '+' : '') + proratedAmount.toLocaleString() + '원'"></span>
                                                 </div>
                                             </template>
-                                            <template x-if="paymentMethod === 'card'">
+                                            <template x-if="taxInvoiceRequested">
                                                 <div class="flex justify-between text-gray-500 text-xs">
-                                                    <span>부가세 (10%)</span>
+                                                    <span
+                                                        x-text="paymentMethod === 'card' ? '부가세 (카드 10%)' : '부가세 (계산서 10%)'"></span>
                                                     <span>포함</span>
                                                 </div>
                                             </template>
@@ -915,18 +940,16 @@
                 couponCode: '',
                 couponApplied: false,
                 validatingCoupon: false,
-                couponMessage: '',
-                couponData: null,
-                submitting: false,
-                showConfirmModal: false,
-                showInquiryModal: false,
-                inquiryMessage: '',
                 submittingInquiry: false,
                 termsAgreed: false,
                 termsVersion: 'v1',
+                taxInvoiceRequested: false,
 
                 init() {
                     this.basePrice = window.contractFormConfig.roomPrice || 0;
+                    this.$watch('paymentMethod', (val) => {
+                        if (val === 'card') this.taxInvoiceRequested = true;
+                    });
                 },
 
                 async applyCoupon() {
@@ -1018,13 +1041,13 @@
                 get finalFirstPayment() {
                     // 첫 결제액 = 첫 달 고정비용 + 일할 정산분(추가/차감) + 보증금
                     let price = this.firstMonthPrice + this.proratedAmount;
-                    if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
+                    if (this.taxInvoiceRequested) price = Math.round(price * 1.1);
                     return price + window.contractFormConfig.roomDeposit;
                 },
 
                 get finalRecurringPayment() {
                     let price = this.recurringPrice;
-                    if (this.paymentMethod === 'card') price = Math.round(price * 1.1);
+                    if (this.taxInvoiceRequested) price = Math.round(price * 1.1);
                     return price;
                 },
 
@@ -1089,6 +1112,7 @@
                                 payment_method: this.paymentMethod,
                                 coupon_code: this.couponApplied ? this.couponCode : null,
                                 terms_version: this.termsVersion,
+                                tax_invoice_requested: this.taxInvoiceRequested,
                                 consent_method: "checkbox_v1"
                             })
                         });

@@ -58,6 +58,7 @@ class Contract(db.Model):
     consent_ip = db.Column(db.String(45))
     consent_user_agent = db.Column(db.Text)
     consent_method = db.Column(db.String(50))
+    tax_invoice_requested = db.Column(db.Boolean, default=False) # 세금계산서 신청 여부
 
     # Pricing & Penalty
     pricing_snapshot = db.Column(db.JSON)

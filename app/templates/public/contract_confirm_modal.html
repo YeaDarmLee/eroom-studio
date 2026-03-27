@@ -60,6 +60,12 @@
                             <span class="text-xs font-bold text-gray-900"
                                 x-text="paymentMethod === 'bank' ? '무통장입금' : '카드 결제'"></span>
                         </div>
+                        <template x-if="taxInvoiceRequested">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium text-gray-500">세금계산서</span>
+                                <span class="text-xs font-bold text-primary">신청 (부가세 10% 포함)</span>
+                            </div>
+                        </template>
                     </div>
                 </template>
 

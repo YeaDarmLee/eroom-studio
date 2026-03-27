@@ -242,13 +242,20 @@ def create_contract(current_user):
         # recurring_price has the discount baked in.
         final_price = recurring_price + proration_adjustment
     
-    # Apply VAT only if card
+    # Apply VAT only if card or requested tax invoice
     payment_method = data.get('payment_method', 'bank')
+    tax_invoice_requested = data.get('tax_invoice_requested', False)
+    
+    # Card is always VAT included
     if payment_method == 'card':
+        tax_invoice_requested = True
+
+    if tax_invoice_requested:
         final_price = int(final_price * 1.1)
 
     # breakdown 업데이트 (프론트엔드 표시용)
     breakdown['proration_adjustment'] = proration_adjustment
+    breakdown['tax_invoice_requested'] = tax_invoice_requested
     breakdown['first_month_rent'] = final_price # 일할 계산 + VAT 적용된 첫 달 임대료 부분
     breakdown['first_month_total'] = final_price + (room.deposit if room.room_type != 'time_based' else 0)
 
@@ -262,6 +269,13 @@ def create_contract(current_user):
     consent_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     consent_user_agent = request.headers.get('User-Agent')
 
+    final_recurring_monthly = breakdown['final_monthly_price']
+    if room.room_type == 'time_based':
+        final_recurring_monthly *= (data.get('hours', 1))
+        
+    if tax_invoice_requested:
+        final_recurring_monthly = int(final_recurring_monthly * 1.1)
+
     contract = Contract(
         user_id=current_user.id,
         room_id=room.id,
@@ -272,20 +286,21 @@ def create_contract(current_user):
         payment_method=payment_method,
         payment_day=payment_day,
         months=months if room.room_type != 'time_based' else 0,
-        price=breakdown['final_monthly_price'] * (data.get('hours', 1) if room.room_type == 'time_based' else 1), # Storing Recurring Price
+        price=final_recurring_monthly, # Storing Final Price (VAT included if requested)
         deposit=room.deposit if room.room_type != 'time_based' else 0,
         status='requested',
         coupon_id=breakdown['coupon_id'],
         discount_details=json.dumps(breakdown),
         is_indefinite=is_indefinite,
+        tax_invoice_requested=tax_invoice_requested,
         
         # Evidence Fields
         terms_document_id=terms_doc.id if terms_doc else None,
         terms_version=terms_version,
         terms_snapshot_hash=terms_doc.content_hash if terms_doc else None,
         consented_at=datetime.datetime.utcnow(),
-        consent_ip=consent_ip,
-        consent_user_agent=consent_user_agent,
+        consent_ip=request.headers.get('X-Forwarded-For', request.remote_addr),
+        consent_user_agent=request.headers.get('User-Agent'),
         consent_method=data.get('consent_method', 'checkbox_v1'),
         
         pricing_snapshot=breakdown, # Dict saved as JSON
@@ -536,14 +551,63 @@ def get_contract_view(current_user, id):
         except:
             pass
     
+    # Handle prices for display
+    # 정가 (Original Price) should be Room's base price
+    # 할인가 (Discounted Price) should be Contract's price (already includes VAT if requested)
+    regular_price = room.price if room else 0
+    
+    # For time-based rooms, regular_price should be room.price * hours
+    if room and room.room_type == 'time_based' and contract.start_time and contract.end_time:
+        try:
+            from datetime import datetime as dt
+            fmt = '%H:%M'
+            t1 = dt.strptime(contract.start_time, fmt)
+            t2 = dt.strptime(contract.end_time, fmt)
+            td = t2 - t1
+            # timedelta hours calculation
+            hours = td.total_seconds() / 3600
+            if hours > 0:
+                regular_price = int(room.price * hours)
+        except Exception as e:
+            print(f"Error calculating regular_price for print: {e}")
+            pass
+    
+    display_price = contract.price or 0
+    
+    # Build Duration Display
+    duration_val = contract.months or 0
+    # Fallback for data with 0 months
+    if duration_val == 0 and not contract.is_indefinite and room.room_type != 'time_based' and contract.start_date and contract.end_date:
+        delta = contract.end_date - contract.start_date
+        duration_val = max(1, round(delta.days / 30))
+
+    duration_display = f"{duration_val} 개월"
+    if contract.is_indefinite:
+        duration_display = "무기한 (종료 1개월 전 통보)"
+    elif room and room.room_type == 'time_based' and contract.start_time and contract.end_time:
+        try:
+            from datetime import datetime as dt
+            t1 = dt.strptime(contract.start_time, '%H:%M')
+            t2 = dt.strptime(contract.end_time, '%H:%M')
+            td = t2 - t1
+            hours = td.total_seconds() / 3600
+            if hours > 0:
+                duration_display = f"{int(hours)}시간"
+            else:
+                duration_display = "당일"
+        except:
+            duration_display = "당일"
+            pass
+
     html = render_template('contract_print_template.html',
         branch_name=branch.name if branch else '',
         branch_address=branch.address if branch else '',
         room_name=room.name if room else '',
         deposit=f"{contract.deposit:,}" if contract.deposit else "0",
-        price=f"{contract.price:,}" if contract.price else "0",
-        total_price=f"{contract.price:,}" if contract.price else "0", # 일단 정가와 동일하게 표시
-        duration=contract.months or 0,
+        price=f"{regular_price:,}",
+        total_price=f"{display_price:,}",
+        tax_invoice_requested=contract.tax_invoice_requested,
+        duration=duration_display,
         payment_day=contract.payment_day or 1,
         start_date=contract.start_date.strftime('%Y-%m-%d') if contract.start_date else '',
         end_date=contract.end_date.strftime('%Y-%m-%d') if contract.end_date else '',

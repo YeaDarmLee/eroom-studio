@@ -276,9 +276,14 @@
             </tr>
             <tr>
                 <th>할 인 가</th>
-                <td class="no-wrap">금 {{ total_price }} 원 정</td>
+                <td class="no-wrap">
+                    금 {{ total_price }} 원 정
+                    {% if tax_invoice_requested %}
+                    <br><span style="font-size: 10px; color: #666;">(부가세 포함)</span>
+                    {% endif %}
+                </td>
                 <th>계 약 기 간</th>
-                <td class="no-wrap">{{ duration }} 개월</td>
+                <td class="no-wrap">{{ duration }}</td>
             </tr>
             <tr>
                 <th>시 작 일</th>
@@ -319,7 +324,7 @@
                 </th>
                 <td
                     style="text-align: right; font-weight: bold; font-size: 16px; color: #d97706; background-color: #f8fafc;">
-                    금 {{ price }} 원 정
+                    금 {{ total_price }} 원 정
                 </td>
             </tr>
         </table>
