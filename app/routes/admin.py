@@ -1605,6 +1605,15 @@ def delete_user(current_user, id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': 'User deleted'})
+    
+@admin_bp.route('/api/users/<int:id>/reset-password', methods=['POST'])
+@admin_required
+def reset_user_password(current_user, id):
+    """회원 비밀번호 초기화 (eroom123!)"""
+    user = User.query.get_or_404(id)
+    user.set_password('eroom123!')
+    db.session.commit()
+    return jsonify({'message': '비밀번호가 초기화되었습니다. (eroom123!)'})
 
 @admin_bp.route('/api/coupons', methods=['GET'])
 @admin_required

@@ -4,7 +4,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('contractsTab', () => ({
         contracts: [],
         loading: false,
-        filterStatus: 'all',
+        filterStatus: 'active',
         filterBranchId: 'all',
 
         // Detailed Modal state

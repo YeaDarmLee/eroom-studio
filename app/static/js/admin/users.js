@@ -189,6 +189,28 @@ document.addEventListener('alpine:init', () => {
                 window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             }
         },
+        
+        async resetUserPassword(user) {
+            if (!confirm(`정말로 ${user.name} 회원의 비밀번호를 'eroom123!'으로 초기화하시겠습니까?`)) return;
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/users/${user.id}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    window.showAlert?.('성공', data.message || '비밀번호가 초기화되었습니다.', 'success');
+                } else {
+                    const data = await response.json();
+                    window.showAlert?.('실패', data.error || '초기화 실패', 'error');
+                }
+            } catch (error) {
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            }
+        },
 
         getRoleLabel(role) {
             return role === 'admin' ? '관리자' : '일반 회원';
