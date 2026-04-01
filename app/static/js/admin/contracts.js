@@ -6,6 +6,9 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         filterStatus: 'active',
         filterBranchId: 'all',
+        filterSignature: 'all', // 'all', 'signed', 'unsigned'
+        sortKey: 'room_name', // 'room_name', 'created_at', 'signed_at'
+        sortOrder: 'asc', // 'asc', 'desc'
 
         // Detailed Modal state
         detailModalOpen: false,
@@ -208,29 +211,6 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (response.ok) {
                     this.contracts = await response.json();
-
-                    // Sort by Branch Name then Room Name (Numeric)
-                    this.contracts.sort((a, b) => {
-                        // 1. Branch Name
-                        if (a.branch_name < b.branch_name) return -1;
-                        if (a.branch_name > b.branch_name) return 1;
-
-                        // 2. Room Name (Natural Sort)
-                        const roomA = String(a.room_name);
-                        const roomB = String(b.room_name);
-
-                        // Check if both are numeric-ish
-                        const numA = parseInt(roomA.replace(/[^0-9]/g, ''));
-                        const numB = parseInt(roomB.replace(/[^0-9]/g, ''));
-
-                        // If both have numbers, sort by number
-                        if (!isNaN(numA) && !isNaN(numB)) {
-                            if (numA !== numB) return numA - numB;
-                        }
-
-                        // Fallback/Tie-breaker: String comparison
-                        return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
-                    });
                 }
             } catch (error) {
                 console.error('Error loading contracts:', error);
@@ -243,6 +223,11 @@ document.addEventListener('alpine:init', () => {
             let list = this.contracts;
             if (this.filterBranchId !== 'all') {
                 list = list.filter(c => c.branch_id == this.filterBranchId);
+            }
+            if (this.filterSignature === 'signed') {
+                list = list.filter(c => c.has_signature);
+            } else if (this.filterSignature === 'unsigned') {
+                list = list.filter(c => !c.has_signature);
             }
 
             if (status === 'all') return list.length;
@@ -279,14 +264,56 @@ document.addEventListener('alpine:init', () => {
             }
 
             // Status Filter
-            if (this.filterStatus === 'all') return list;
-            if (this.filterStatus === 'expiring_soon') {
-                return list.filter(c => this.isExpiringSoon(c));
+            if (this.filterStatus !== 'all') {
+                if (this.filterStatus === 'expiring_soon') {
+                    list = list.filter(c => this.isExpiringSoon(c));
+                } else if (this.filterStatus === 'active') {
+                    list = list.filter(c => c.status === 'active' || c.status === 'waiting_signature');
+                } else {
+                    list = list.filter(c => c.status === this.filterStatus);
+                }
             }
-            if (this.filterStatus === 'active') {
-                return list.filter(c => c.status === 'active' || c.status === 'waiting_signature');
+
+            // Signature Filter
+            if (this.filterSignature === 'signed') {
+                list = list.filter(c => c.has_signature);
+            } else if (this.filterSignature === 'unsigned') {
+                list = list.filter(c => !c.has_signature);
             }
-            return list.filter(c => c.status === this.filterStatus);
+
+            // Sorting
+            list.sort((a, b) => {
+                let valA, valB;
+
+                if (this.sortKey === 'room_name') {
+                    // 1. Branch Name first (Secondary sort)
+                    if (a.branch_name !== b.branch_name) {
+                        return a.branch_name.localeCompare(b.branch_name) * (this.sortOrder === 'asc' ? 1 : -1);
+                    }
+                    // 2. Room Name Natural Sort
+                    const roomA = String(a.room_name);
+                    const roomB = String(b.room_name);
+                    const numA = parseInt(roomA.replace(/[^0-9]/g, ''));
+                    const numB = parseInt(roomB.replace(/[^0-9]/g, ''));
+
+                    if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+                        return (numA - numB) * (this.sortOrder === 'asc' ? 1 : -1);
+                    }
+                    return roomA.localeCompare(roomB, undefined, { numeric: true }) * (this.sortOrder === 'asc' ? 1 : -1);
+                } else if (this.sortKey === 'created_at') {
+                    valA = new Date(a.created_at || 0);
+                    valB = new Date(b.created_at || 0);
+                } else if (this.sortKey === 'signed_at') {
+                    valA = new Date(a.signed_at || 0);
+                    valB = new Date(b.signed_at || 0);
+                }
+
+                if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            return list;
         },
 
         openDetailModal(contract) {

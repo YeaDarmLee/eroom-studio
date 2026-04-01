@@ -277,6 +277,7 @@ def get_contracts(current_user):
             'is_indefinite': c.is_indefinite,
             'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
+            'signed_at': c.signed_at.strftime('%Y-%m-%d %H:%M') if c.signed_at else None,
             'has_signature': bool(c.signature_data)
         }
         result.append(contract_data)
@@ -319,6 +320,7 @@ def get_contract_detail(current_user, id):
         'is_indefinite': c.is_indefinite,
         'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
         'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
+        'signed_at': c.signed_at.strftime('%Y-%m-%d %H:%M') if c.signed_at else None,
         'has_signature': bool(c.signature_data),
         'tax_invoice_requested': c.tax_invoice_requested
     }

@@ -44,6 +44,50 @@
                     </template>
                 </div>
             </div>
+            <!-- Signature Filter -->
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">서명 필터</span>
+                <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+                    <button @click="filterSignature = 'all'"
+                        :class="{'bg-primary text-white shadow-md': filterSignature === 'all', 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-100': filterSignature !== 'all'}"
+                        class="px-3 py-1 rounded-full text-[10px] font-bold transition-all whitespace-nowrap shrink-0">
+                        전체
+                    </button>
+                    <button @click="filterSignature = 'signed'"
+                        :class="{'bg-primary text-white shadow-md': filterSignature === 'signed', 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-100': filterSignature !== 'signed'}"
+                        class="px-3 py-1 rounded-full text-[10px] font-bold transition-all whitespace-nowrap shrink-0">
+                        작성완료
+                    </button>
+                    <button @click="filterSignature = 'unsigned'"
+                        :class="{'bg-primary text-white shadow-md': filterSignature === 'unsigned', 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-100': filterSignature !== 'unsigned'}"
+                        class="px-3 py-1 rounded-full text-[10px] font-bold transition-all whitespace-nowrap shrink-0">
+                        미작성
+                    </button>
+                </div>
+            </div>
+            <!-- Sorting Control -->
+            <div class="flex items-center gap-4 py-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">정렬 기준</span>
+                    <select x-model="sortKey" class="text-xs font-bold bg-white border border-gray-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-primary outline-none">
+                        <option value="room_name">방번호</option>
+                        <option value="created_at">최신 등록순</option>
+                        <option value="signed_at">서명 완료순</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                    <button @click="sortOrder = 'asc'" 
+                        :class="sortOrder === 'asc' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+                        class="px-2 py-1 rounded-md text-[10px] font-black transition-all">
+                        오름차순
+                    </button>
+                    <button @click="sortOrder = 'desc'" 
+                        :class="sortOrder === 'desc' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'"
+                        class="px-2 py-1 rounded-md text-[10px] font-black transition-all">
+                        내림차순
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     <!-- Desktop Table -->
