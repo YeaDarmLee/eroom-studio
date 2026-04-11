@@ -73,6 +73,41 @@ class Room(db.Model):
     contracts = db.relationship('Contract', backref='room', lazy='dynamic')
     images = db.relationship('RoomImage', backref='room', lazy='dynamic', cascade='all, delete-orphan')
 
+    def get_next_available_date(self):
+        """
+        Calculates the next available date for this room.
+        Returns a date object or None if not bookable.
+        """
+        if self.room_type == 'manager':
+            return None
+            
+        if self.status == 'available':
+            from datetime import date
+            return date.today()
+            
+        if self.status == 'occupied':
+            # Check for active contract
+            from app.models.contract import Contract
+            from datetime import date, timedelta
+            active_contract = self.contracts.filter(
+                Contract.status.in_(['active', 'waiting_signature', 'approved', 'requested'])
+            ).order_by(Contract.end_date.desc()).first()
+            
+            if active_contract:
+                # 1. termination_effective_date has absolute priority (explicit signal)
+                if active_contract.termination_effective_date:
+                    return active_contract.termination_effective_date + timedelta(days=1)
+                
+                # 2. automatic expiration for fixed-term contracts (is_indefinite=False)
+                # Matches admin UI "Expiring Soon" logic (within 30 days)
+                if not active_contract.is_indefinite and active_contract.end_date:
+                    today = date.today()
+                    diff = active_contract.end_date - today
+                    if 0 <= diff.days <= 30:
+                        return active_contract.end_date + timedelta(days=1)
+        
+        return None
+
     def __repr__(self):
         return f'<Room {self.name}>'
 

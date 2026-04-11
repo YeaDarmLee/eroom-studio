@@ -340,6 +340,7 @@
                             x-transition:enter-start="opacity-0 translate-y-2"
                             x-transition:enter-end="opacity-100 translate-y-0">
                             <!-- Contract Form Content Starts Here -->
+                            {% set next_available = room.get_next_available_date() %}
                             {% if room.room_type == 'manager' %}
                             <!-- Manager Room: Not Available for Contract -->
                             <div class="text-center py-8">
@@ -522,9 +523,20 @@
                                 </div>
                             </div>
 
-                            {% elif room.status == 'available' %}
+                            {% elif room.room_type == 'monthly' and (room.status == 'available' or next_available) %}
                             <!-- Monthly Room: Existing Contract Form -->
                             <div x-data="contractForm()">
+                                <!-- Availability Info Box (New) -->
+                                {% if room.status == 'occupied' and next_available %}
+                                <div class="mb-4 bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-start gap-3">
+                                    <i class="ri-time-line text-orange-500 text-lg mt-0.5"></i>
+                                    <div>
+                                        <p class="text-sm font-bold text-orange-900">현재 사용 중인 방입니다</p>
+                                        <p class="text-xs text-orange-700 leading-relaxed">기존 계약 종료로 인해 <span class="font-bold underline">{{ next_available.strftime('%Y-%m-%d') }}</span>부터 입주가 가능합니다.</p>
+                                    </div>
+                                </div>
+                                {% endif %}
+
                                 <form class="space-y-4" @submit.prevent="applyItem()">
                                     <div>
                                         <label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
@@ -886,7 +898,8 @@
         window.contractFormConfig = {
             roomPrice: Number("{{ room.price or 0 }}"),
             roomDeposit: Number("{{ room.deposit or 0 }}"),
-            roomId: "{{ room.id }}"
+            roomId: "{{ room.id }}",
+            nextAvailableDate: "{{ room.get_next_available_date() or '' }}"
         };
 
         // Initialize Flatpickr for Date and Time
@@ -920,7 +933,7 @@
             flatpickr("#start-date", {
                 locale: "ko",
                 dateFormat: "Y-m-d",
-                minDate: "today",
+                minDate: window.contractFormConfig.nextAvailableDate || "today",
                 onChange: function (selectedDates, dateStr) {
                     const el = document.getElementById('start-date');
                     el.dispatchEvent(new Event('change'));
@@ -933,7 +946,7 @@
         function contractForm() {
             return {
                 months: 2,
-                startDate: new Date().toISOString().split('T')[0],
+                startDate: window.contractFormConfig.nextAvailableDate || new Date().toISOString().split('T')[0],
                 basePrice: 0,
                 paymentDay: 1,
                 paymentMethod: 'bank',
@@ -941,6 +954,12 @@
                 couponApplied: false,
                 validatingCoupon: false,
                 submittingInquiry: false,
+                submitting: false,
+                showConfirmModal: false,
+                showInquiryModal: false,
+                inquiryMessage: '',
+                couponMessage: '',
+                couponData: null,
                 termsAgreed: false,
                 termsVersion: 'v1',
                 taxInvoiceRequested: false,

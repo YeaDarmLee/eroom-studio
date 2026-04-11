@@ -41,6 +41,7 @@ def get_branch(branch_id):
             'price': room.price,
             'deposit': room.deposit,
             'status': room.status,
+            'next_available_date': room.get_next_available_date().isoformat() if room.get_next_available_date() else None,
             'description': room.description,
             'area': room.area,
             'floor': floor,
@@ -97,6 +98,7 @@ def get_room(room_id):
         'deposit': room.deposit,
         'status': room.status,
         'description': room.description,
+        'next_available_date': room.get_next_available_date().isoformat() if room.get_next_available_date() else None,
         'images': [{'id': img.id, 'url': img.image_url} for img in room.images]
     })
 

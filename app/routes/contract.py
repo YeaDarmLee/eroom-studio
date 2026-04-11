@@ -171,6 +171,37 @@ def create_contract(current_user):
         import dateutil.relativedelta
         # 기준일로부터 n개월 뒤의 전날 종료 (프론트엔드와 일치)
         end_date = anchor_date + dateutil.relativedelta.relativedelta(months=months) - datetime.timedelta(days=1)
+
+    # --- Overlap Validation (New) ---
+    is_time_based = room.room_type == 'time_based'
+    blocking_statuses = ['requested', 'approved', 'active', 'waiting_signature']
+    
+    overlap_query = Contract.query.filter(
+        Contract.room_id == room.id,
+        Contract.status.in_(blocking_statuses)
+    )
+    
+    if is_time_based:
+        # For time-based, check same day AND time overlap
+        overlap = overlap_query.filter(
+            Contract.start_date == start_date,
+            Contract.start_time < end_time,
+            Contract.end_time > start_time
+        ).first()
+    else:
+        # For monthly, check date range overlap
+        # Respect termination_effective_date if it exists
+        from sqlalchemy import case, or_
+        overlap = overlap_query.filter(
+            Contract.start_date <= end_date,
+            func.coalesce(Contract.termination_effective_date, Contract.end_date) >= start_date
+        ).first()
+        
+    if overlap:
+        if is_time_based:
+            return jsonify({'message': f'선택하신 시간대에 이미 예약이 존재합니다. ({overlap.start_time} ~ {overlap.end_time})'}), 400
+        else:
+            return jsonify({'message': f'해당 기간({overlap.start_date} ~ {overlap.end_date})에 이미 예약 또는 계약이 존재합니다.'}), 400
     
     # --- Price Calculation with Coupon ---
     breakdown, coupon = calculate_coupon_discount(room, months, coupon_code)

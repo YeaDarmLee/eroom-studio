@@ -83,6 +83,18 @@
         z-index: 100;
     }
 
+    .public-room-box.expiring {
+        background-color: rgba(243, 156, 18, 0.25);
+        border-color: #F39C12;
+    }
+
+    .public-room-box.expiring:hover {
+        background-color: rgba(243, 156, 18, 0.4);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+        z-index: 100;
+    }
+
     .public-room-box.time-based {
         background-color: rgba(241, 196, 15, 0.25);
         border-color: #F1C40F;
@@ -212,6 +224,11 @@
         color: #6b7280;
     }
 
+    .room-tooltip-status.expiring {
+        background-color: #ffedd5;
+        color: #9a3412;
+    }
+
     .public-room-box.occupied .public-room-label {
         color: #7F8C8D;
     }
@@ -257,9 +274,11 @@
         this.selectedFloor = floor;
     },
     
-    getRoomStatusClass(status) {
-        if (status === 'available') return 'available';
-        if (status === 'occupied') return 'occupied';
+    getRoomStatusClass(room) {
+        if (room.status === 'available') return 'available';
+        if (room.status === 'occupied') {
+            return room.next_available_date ? 'expiring' : 'occupied';
+        }
         return '';
     },
     
@@ -298,6 +317,10 @@
                         <span class="text-sm font-medium text-gray-700">총무방</span>
                     </div>
                     <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-[#F39C12]"></div>
+                        <span class="text-sm font-medium text-gray-700">만료 예정 <span class="text-[10px] text-orange-600">(예약 가능)</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
                         <div class="w-4 h-4 rounded bg-[#7F8C8D]"></div>
                         <span class="text-sm font-medium text-gray-700">계약 완료</span>
                     </div>
@@ -316,12 +339,12 @@
                         <div class="flex items-center gap-2 border-l border-gray-200 pl-4">
                             <span class="text-gray-500 text-xs text-green-600">가능</span>
                             <span class="font-bold text-green-600"
-                                x-text="(roomsByFloor[selectedFloor] || []).filter(r => r.status === 'available').length + '개'"></span>
+                                x-text="(roomsByFloor[selectedFloor] || []).filter(r => r.status === 'available' || (r.status === 'occupied' && r.next_available_date)).length + '개'"></span>
                         </div>
                         <div class="flex items-center gap-2 border-l border-gray-200 pl-4">
                             <span class="text-gray-500 text-xs">완료</span>
                             <span class="font-bold text-gray-400"
-                                x-text="(roomsByFloor[selectedFloor] || []).filter(r => r.status === 'occupied').length + '개'"></span>
+                                x-text="(roomsByFloor[selectedFloor] || []).filter(r => r.status === 'occupied' && !r.next_available_date).length + '개'"></span>
                         </div>
                     </div>
                 </div>
@@ -355,11 +378,11 @@
                             <!-- Room Boxes -->
                             <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
                                 <div class="public-room-box group" :class="[
-                                    getRoomStatusClass(room.status), 
+                                    getRoomStatusClass(room), 
                                     room.room_type === 'time_based' ? 'time-based' : '',
                                     room.room_type === 'manager' ? 'manager' : ''
                                 ]" :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
-                                    @click="(room.status !== 'occupied' && room.room_type !== 'manager' && room.room_type !== 'time_based') ? viewRoomDetail(room.id) : null">
+                                    @click="(room.status === 'available' || (room.status === 'occupied' && room.next_available_date)) && room.room_type !== 'manager' && room.room_type !== 'time_based' ? viewRoomDetail(room.id) : null">
 
                                     <!-- Hover Tooltip (CSS 기반 - 간단한 방식) -->
                                     <div class="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap shadow-xl"
@@ -383,22 +406,15 @@
                                             x-text="(room.floor.includes('층') ? room.floor : room.floor + '층') + ' | ' + (room.area || '-') + '㎡'">
                                         </div>
 
-                                        <div class="flex items-center gap-1.5 mt-1 border-t border-white/10 pt-1">
-                                            <span class="opacity-70"
-                                                x-text="room.room_type === 'time_based' ? '시간당:' : '월 임대료:'"></span>
-                                            <span class="font-bold text-yellow-300"
-                                                x-text="'₩' + room.price.toLocaleString()"></span>
-                                        </div>
-
-                                        <div class="mt-1 flex items-center gap-1.5">
+                                        <div class="mt-1 flex items-center gap-1.5 border-t border-white/10 pt-1">
                                             <span class="opacity-70">상태:</span>
                                             <template x-if="room.room_type === 'manager'">
                                                 <span class="text-purple-300">총무 상주 중</span>
                                             </template>
                                             <template x-if="room.room_type !== 'manager'">
                                                 <span
-                                                    :class="room.status === 'available' ? 'text-green-300' : 'text-gray-300'"
-                                                    x-text="room.status === 'available' ? '✓ 예약 가능' : (room.status === 'occupied' ? '✕ 예약 완료' : '⏳ 검토 중')"></span>
+                                                    :class="room.status === 'available' ? 'text-green-300' : (room.next_available_date ? 'text-orange-300' : 'text-gray-300')"
+                                                    x-text="room.status === 'available' ? '✓ 예약 가능' : (room.next_available_date ? '⏳ 만료 예정 (' + room.next_available_date + ')' : '✕ 예약 완료')"></span>
                                             </template>
                                         </div>
                                     </div>
@@ -432,6 +448,7 @@
                             <ul class="list-disc list-inside space-y-1 text-xs">
                                 <li>방 박스를 <strong>클릭</strong>하면 상세 정보를 확인할 수 있습니다</li>
                                 <li><span class="text-green-600 font-semibold">초록색</span> 방은 월간 계약 가능 룸입니다</li>
+                                <li><span class="text-orange-600 font-semibold">주황색</span> 방은 퇴거 예정일이 확정되어 사전 예약이 가능한 룸입니다</li>
                                 <!-- <li><span class="text-yellow-600 font-semibold">노란색</span> 방은 시간제 예약 가능한 룸입니다</li> -->
                                 <li><span class="text-purple-600 font-semibold">보라색</span> 방은 총무가 머무는 방입니다</li>
                                 <li><span class="text-gray-600 font-semibold">회색</span> 방은 이미 계약된 방입니다</li>
