@@ -178,6 +178,9 @@
         </div>
 
 
+        <!-- Floor Plan Section (Real Admin-Configured Data) -->
+        {% include 'public/public_floor_plan_component.html' %}
+
 
         <!-- Room List Cards with Tabs -->
         <div class="mb-16" x-data="{ activeRoomTab: 'monthly' }">
@@ -334,9 +337,6 @@
                 </div>
             </div> -->
         </div>
-
-        <!-- Floor Plan Section (Real Admin-Configured Data) -->
-        {% include 'public/public_floor_plan_component.html' %}
 
         <!-- Traffic & Parking -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
