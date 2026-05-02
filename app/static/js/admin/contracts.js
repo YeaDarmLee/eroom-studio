@@ -49,6 +49,15 @@ document.addEventListener('alpine:init', () => {
         searchUserQuery: '',
 
         init() {
+            // [NEW] Event listener for external navigation (e.g. from Dashboard)
+            window.addEventListener('set-contract-filter', (e) => {
+                console.log('[Contracts] Received filter update event:', e.detail);
+                if (e.detail && e.detail.status) {
+                    this.filterStatus = e.detail.status;
+                    this.loadContracts();
+                }
+            });
+
             // Lazy load when tab is active
             this.$watch('activeTab', (value) => {
                 if (value === 'contracts') {

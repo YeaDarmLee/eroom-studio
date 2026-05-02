@@ -73,12 +73,28 @@ def get_stats(current_user):
 
     # 3. Expiring Contracts (Active, Not Indefinite, End Date <= 30 days)
     one_month_from_now = (datetime.utcnow() + timedelta(days=30)).date()
-    expiring_count = Contract.query.filter(
+    expiring_query = Contract.query.filter(
         Contract.status == 'active',
         Contract.is_indefinite == False,
         Contract.end_date != None,
         Contract.end_date <= one_month_from_now
-    ).count()
+    ).options(
+        joinedload(Contract.room).joinedload(Room.branch),
+        joinedload(Contract.user)
+    ).order_by(Contract.end_date.asc())
+    
+    expiring_count = expiring_query.count()
+    expiring_contracts_list = []
+    for c in expiring_query.limit(100).all():
+        user_info = c.get_user_info()
+        expiring_contracts_list.append({
+            'id': c.id,
+            'user_name': user_info['name'] or '알 수 없음',
+            'room_name': c.room.name if c.room else '알 수 없음',
+            'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+            'end_date': c.end_date.strftime('%Y-%m-%d')
+        })
+
 
     # 4. Room Stats (Occupied/Available) by Branch
     # We need to list branches with their stats.
@@ -234,8 +250,10 @@ def get_stats(current_user):
             'monthlyRooms': total_monthly_all,
             'maintenanceRooms': maintenance_monthly_all
         },
-        'branchData': branch_data
+        'branchData': branch_data,
+        'expiringContracts': expiring_contracts_list
     })
+
 
 @admin_bp.route('/api/contracts', methods=['GET'])
 @admin_required
@@ -600,31 +618,24 @@ def update_contract_status(current_user, id):
         if old_status == 'signature_rejected' and new_status == 'approved':
             effective_status = 'waiting_signature'
 
-        # If admin is "terminating" or "approving termination", check the date
+        # [REVISED] When admin clicks 'Force Terminate', end it immediately regardless of date
         if new_status == 'terminated':
-            target_date = contract.termination_effective_date or (contract.end_date if not contract.is_indefinite else None)
-            if target_date and target_date > today:
-                import json
-                
-                # Future termination: Set to active but with fixed end_date
-                effective_status = 'active'
-                contract.is_indefinite = False
-                
-                # Sync end_date if needed
-                if contract.termination_effective_date:
-                    contract.end_date = contract.termination_effective_date
-                
-                # Mark original termination request as done (if any)
-                termination_req = next((r for r in contract.requests if r.type == 'termination' and r.status != 'done'), None)
-                if termination_req:
-                    termination_req.status = 'done'
-                    try:
-                        details_dict = json.loads(termination_req.details) if termination_req.details else {}
-                    except:
-                        details_dict = {'raw': termination_req.details}
-                    details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-                    details_dict['admin_response'] = '해지 승인 완료'
-                    termination_req.details = json.dumps(details_dict)
+            contract.end_date = today
+            contract.termination_effective_date = today
+            contract.is_indefinite = False
+            
+            # Mark original termination request as done (if any)
+            termination_req = next((r for r in contract.requests if r.type == 'termination' and r.status != 'done'), None)
+            if termination_req:
+                termination_req.status = 'done'
+                try:
+                    details_dict = json.loads(termination_req.details) if termination_req.details else {}
+                except:
+                    details_dict = {'raw': termination_req.details}
+                details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                details_dict['admin_response'] = '해지 승인 및 즉시 종료 완료'
+                termination_req.details = json.dumps(details_dict)
+
         
         # 1. Update Status with History
         contract.status = effective_status

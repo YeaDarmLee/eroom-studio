@@ -1,4 +1,4 @@
-﻿<!-- FIXED VERSION: 2025-12-03 (Modular Alpine.js Architecture) -->
+<!-- FIXED VERSION: 2025-12-03 (Modular Alpine.js Architecture) -->
 <!DOCTYPE html>
 <html lang="ko">
 
@@ -269,6 +269,7 @@
         const adminFlatpickrConfig = {
             locale: "ko",
             dateFormat: "Y-m-d",
+            disableMobile: true, // Force Flatpickr UI on mobile instead of native picker
             onChange: function (selectedDates, dateStr, instance) {
                 instance.element.dispatchEvent(new Event('input'));
                 instance.element.dispatchEvent(new Event('change'));
@@ -290,6 +291,7 @@
                 noCalendar: true,
                 dateFormat: "H:i",
                 time_24hr: true,
+                disableMobile: true, // Also for time picker
                 onChange: function (selectedDates, dateStr, instance) {
                     instance.element.dispatchEvent(new Event('input'));
                     instance.element.dispatchEvent(new Event('change'));
