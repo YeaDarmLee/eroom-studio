@@ -243,6 +243,9 @@ document.addEventListener('alpine:init', () => {
             if (status === 'expiring_soon') {
                 return list.filter(c => this.isExpiringSoon(c)).length;
             }
+            if (status === 'auto_extend_waiting') {
+                return list.filter(c => c.status === 'active' && c.auto_extend_status === 'notified').length;
+            }
             if (status === 'active') {
                 return list.filter(c => c.status === 'active' || c.status === 'waiting_signature').length;
             }
@@ -276,6 +279,8 @@ document.addEventListener('alpine:init', () => {
             if (this.filterStatus !== 'all') {
                 if (this.filterStatus === 'expiring_soon') {
                     list = list.filter(c => this.isExpiringSoon(c));
+                } else if (this.filterStatus === 'auto_extend_waiting') {
+                    list = list.filter(c => c.status === 'active' && c.auto_extend_status === 'notified');
                 } else if (this.filterStatus === 'active') {
                     list = list.filter(c => c.status === 'active' || c.status === 'waiting_signature');
                 } else {
@@ -581,6 +586,35 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (error) {
                 console.error('Error requesting signature:', error);
+                window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
+            } finally {
+                this.submittingUpdate = false;
+            }
+        },
+
+        async confirmMoveOut(id) {
+            if (!confirm('이 계약을 퇴실 확정 처리하시겠습니까?\n자동연장이 취소되며 다음 계약 주기에서 제외됩니다.')) return;
+
+            this.submittingUpdate = true;
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/admin/api/contracts/${id}/confirm-moveout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                if (response.ok) {
+                    await this.loadContracts();
+                    if (this.detailModalOpen) this.detailModalOpen = false;
+                    window.showAlert?.('성공', '퇴실 확정(자동연장 취소) 처리가 완료되었습니다.', 'success');
+                } else {
+                    const data = await response.json();
+                    window.showAlert?.('요청 실패', data.error || '상태 변경에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error confirming move-out:', error);
                 window.showAlert?.('오류', '오류가 발생했습니다.', 'error');
             } finally {
                 this.submittingUpdate = false;

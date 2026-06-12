@@ -6,14 +6,14 @@
             <div class="flex items-center gap-2">
                 <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar flex-1 pb-1">
                     <template
-                        x-for="status in ['all', 'active', 'requested', 'waiting_signature', 'terminate_requested', 'terminated', 'expiring_soon']">
+                        x-for="status in ['all', 'active', 'requested', 'waiting_signature', 'terminate_requested', 'terminated', 'expiring_soon', 'auto_extend_waiting']">
                         <button @click="filterStatus = status"
                             :class="{'bg-white shadow text-primary ring-1 ring-black/5': filterStatus === status, 'text-gray-500 hover:text-gray-700': filterStatus !== status}"
                             class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize flex items-center gap-1.5 shrink-0">
                             <span
-                                x-text="status === 'all' ? '전체' : (status === 'expiring_soon' ? '만료예정' : getStatusLabel(status))"></span>
+                                x-text="status === 'all' ? '전체' : (status === 'expiring_soon' ? '만료예정' : (status === 'auto_extend_waiting' ? '자동연장 대기' : getStatusLabel(status)))"></span>
                             <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-gray-100/80 text-gray-500"
-                                :class="{'bg-red-50 text-red-500 font-bold': status === 'expiring_soon' && getContractCount('expiring_soon') > 0, 'bg-primary/10 text-primary': filterStatus === status && status !== 'expiring_soon', 'bg-amber-100 text-amber-600 font-bold': status === 'terminate_requested' && getContractCount('terminate_requested') > 0}"
+                                :class="{'bg-red-50 text-red-500 font-bold': status === 'expiring_soon' && getContractCount('expiring_soon') > 0, 'bg-primary/10 text-primary': filterStatus === status && status !== 'expiring_soon' && status !== 'auto_extend_waiting', 'bg-amber-100 text-amber-600 font-bold': status === 'terminate_requested' && getContractCount('terminate_requested') > 0, 'bg-blue-50 text-blue-500 font-bold': status === 'auto_extend_waiting' && getContractCount('auto_extend_waiting') > 0}"
                                 x-text="getContractCount(status)"></span>
                         </button>
                     </template>
@@ -834,6 +834,43 @@
                             </template>
                         </div>
                     </div>
+                    
+                    <!-- History Section -->
+                    <div class="space-y-3">
+                        <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center">
+                            <i class="ri-history-line mr-2"></i> 계약 이력 및 자동연장 내역
+                        </h4>
+                        <div class="bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50 max-h-48 overflow-y-auto custom-scrollbar">
+                            <template x-if="!selectedContract?.history || selectedContract.history.length === 0">
+                                <div class="text-center py-4 text-xs text-gray-400">
+                                    기록된 이력이 없습니다.
+                                </div>
+                            </template>
+                            <template x-if="selectedContract?.history && selectedContract.history.length > 0">
+                                <div class="space-y-3">
+                                    <template x-for="(hist, index) in selectedContract.history" :key="index">
+                                        <div class="flex items-start gap-3 text-sm">
+                                            <div class="flex flex-col items-center mt-1">
+                                                <div class="w-2 h-2 rounded-full bg-primary/40"></div>
+                                                <div class="w-px h-full bg-gray-200 mt-1" x-show="index !== selectedContract.history.length - 1"></div>
+                                            </div>
+                                            <div class="flex-1 pb-2">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-bold text-gray-700" x-text="hist.reason"></span>
+                                                    <span class="text-[10px] text-gray-400" x-text="hist.created_at"></span>
+                                                </div>
+                                                <div class="text-[11px] text-gray-500 mt-0.5">
+                                                    상태 변경: <span x-text="getStatusLabel(hist.old_status)"></span> ➔ <span class="font-bold text-gray-700" x-text="getStatusLabel(hist.new_status)"></span>
+                                                    <span class="ml-2 text-gray-400" x-text="'(주체: ' + (hist.actor_type === 'system' ? '시스템 자동처리' : '관리자/사용자') + ')'"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Action Footer -->
@@ -873,6 +910,17 @@
                                 class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-amber-500 text-white text-sm font-black rounded-xl shadow-xl shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
                                 <template x-if="!submittingUpdate">
                                     <span>퇴실 통보 접수</span>
+                                </template>
+                                <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                            </button>
+                        </template>
+
+                        <!-- [NEW] Auto Extend Termination -->
+                        <template x-if="selectedContract?.status === 'active' && selectedContract?.auto_extend_status === 'notified'">
+                            <button @click="confirmMoveOut(selectedContract.id)" :disabled="submittingUpdate"
+                                class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-purple-600 text-white text-sm font-black rounded-xl shadow-xl shadow-purple-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                <template x-if="!submittingUpdate">
+                                    <span>퇴실 확정 (자동연장 취소)</span>
                                 </template>
                                 <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
                             </button>

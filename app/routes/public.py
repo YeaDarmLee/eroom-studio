@@ -132,3 +132,71 @@ def get_room_reservations(room_id):
         })
         
     return jsonify(result)
+
+@public_bp.route('/branches/<string:branch_name>/rooms-status', methods=['GET'])
+@db_retry(max_retries=3, delay=1)
+def get_branch_rooms_status(branch_name):
+    # 지점 영문명 -> DB 지점명 매핑
+    mapping = {
+        "samsung": ["삼성점", "삼성", "samsung"],
+        "hongdae": ["홍대점", "홍대", "hongdae"],
+        "incheon": ["인천점", "인천", "incheon"],
+        "mokdong": ["목동점", "목동", "mokdong"],
+        "bongcheon": ["봉천점", "봉천", "bongcheon"],
+        "bucheon": ["부천점", "부천", "bucheon"]
+    }
+    
+    branch = None
+    search_names = mapping.get(branch_name.lower())
+    if search_names:
+        for name in search_names:
+            branch = Branch.query.filter(Branch.name.like(f"%{name}%")).first()
+            if branch:
+                break
+                
+    if not branch:
+        branch = Branch.query.filter(Branch.name.like(f"%{branch_name}%")).first()
+        
+    if not branch:
+        return jsonify({'error': 'Branch not found'}), 404
+        
+    # 공실 상태인 방 필터링
+    available_rooms = []
+    valid_rooms = [r for r in branch.rooms.all() if r.room_type not in ['time_based', 'manager']]
+    
+    for room in valid_rooms:
+        if room.status == 'available':
+            # 평수 계산 (area가 제곱미터인 경우 평수로 환산)
+            area_pyung = (room.area / 3.3058) if room.area else 0.0
+            available_rooms.append({
+                'floor': room.floor or '',
+                'name': room.name,
+                'area_pyung': area_pyung,
+                'price': room.price or 0,
+                'description': room.description or ''
+            })
+            
+    is_fully_occupied = len(available_rooms) == 0
+    next_available_date_str = None
+    
+    if is_fully_occupied:
+        # 모든 유효한 방 중 가장 빠른 입실 가능 예정일 계산
+        dates = []
+        for room in valid_rooms:
+            d = room.get_next_available_date()
+            if d:
+                dates.append(d)
+        if dates:
+            next_available_date_str = min(dates).strftime('%Y-%m-%d')
+        else:
+            # 기본값 설정
+            from datetime import date, timedelta
+            next_available_date_str = (date.today() + timedelta(days=14)).strftime('%Y-%m-%d')
+            
+    return jsonify({
+        'branch_name': branch.name,
+        'available_rooms': available_rooms,
+        'is_fully_occupied': is_fully_occupied,
+        'next_available_date': next_available_date_str
+    })
+

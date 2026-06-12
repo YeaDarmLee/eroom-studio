@@ -28,7 +28,9 @@ SMS_VARIABLE_SCHEMA = {
     'EXTEND_APPLIED': ['user_name', 'branch_name', 'room_name', 'extend_months'],
     'EXTEND_APPROVED': ['user_name', 'branch_name', 'room_name', 'end_date'],
     'EXTEND_REJECTED': ['user_name', 'branch_name', 'room_name', 'reject_reason'],
-    'WELCOME_MESSAGE': ['user_name', 'branch_name', 'room_name', 'user_login_id', 'user_password', '사용자명', '사용자 id', '사용자 pw']
+    'WELCOME_MESSAGE': ['user_name', 'branch_name', 'room_name', 'user_login_id', 'user_password', '사용자명', '사용자 id', '사용자 pw'],
+    'AUTO_EXTEND_PRE_NOTICE': ['user_name', 'branch_name', 'room_name', 'end_date', 'extend_months'],
+    'AUTO_EXTEND_COMPLETED': ['user_name', 'branch_name', 'room_name', 'end_date']
 }
 
 class SmsProviderInterface:

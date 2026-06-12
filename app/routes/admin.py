@@ -293,6 +293,7 @@ def get_contracts(current_user):
             'discount_details': json.loads(c.discount_details) if c.discount_details else None,
             'coupon_name': c.coupon.name if c.coupon else None,
             'is_indefinite': c.is_indefinite,
+            'auto_extend_status': c.auto_extend_status,
             'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
             'signed_at': c.signed_at.strftime('%Y-%m-%d %H:%M') if c.signed_at else None,
@@ -311,6 +312,19 @@ def get_contract_detail(current_user, id):
     c = Contract.query.get_or_404(id)
     user_info = c.get_user_info()
     
+    # 이력 조회
+    from app.models.contract import ContractStatusHistory
+    histories = ContractStatusHistory.query.filter_by(contract_id=id).order_by(ContractStatusHistory.created_at.desc()).all()
+    history_list = []
+    for h in histories:
+        history_list.append({
+            'old_status': h.old_status,
+            'new_status': h.new_status,
+            'actor_type': h.actor_type,
+            'reason': h.reason,
+            'created_at': h.created_at.strftime('%Y-%m-%d %H:%M')
+        })
+        
     contract_data = {
         'id': c.id,
         'user_name': user_info['name'] or '알 수 없음',
@@ -336,11 +350,13 @@ def get_contract_detail(current_user, id):
         'discount_details': json.loads(c.discount_details) if c.discount_details else None,
         'coupon_name': c.coupon.name if c.coupon else None,
         'is_indefinite': c.is_indefinite,
+        'auto_extend_status': c.auto_extend_status,
         'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
         'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
         'signed_at': c.signed_at.strftime('%Y-%m-%d %H:%M') if c.signed_at else None,
         'has_signature': bool(c.signature_data),
-        'tax_invoice_requested': c.tax_invoice_requested
+        'tax_invoice_requested': c.tax_invoice_requested,
+        'history': history_list
     }
     
     return jsonify(contract_data)
@@ -593,6 +609,33 @@ def get_requests(current_user):
             'branch_id': branch_id
         })
     return jsonify(results)
+
+@admin_bp.route('/api/contracts/<int:id>/confirm-moveout', methods=['POST'])
+@admin_required
+def confirm_moveout(current_user, id):
+    """자동연장 대기 중인 계약에 대해 퇴실 확정 처리 (자동연장 취소)"""
+    contract = Contract.query.get_or_404(id)
+    
+    if contract.auto_extend_status != 'notified':
+        return jsonify({'error': '자동연장 대기 상태의 계약만 퇴실 확정 처리가 가능합니다.'}), 400
+        
+    contract.auto_extend_status = 'will_terminate'
+    
+    # 이력 기록
+    from app.models.contract import ContractStatusHistory
+    history = ContractStatusHistory(
+        contract_id=contract.id,
+        old_status=contract.status,
+        new_status=contract.status,
+        actor_id=current_user.id,
+        actor_type='admin',
+        source='admin_ui',
+        reason='관리자가 퇴실 확정 처리함 (자동연장 취소)'
+    )
+    db.session.add(history)
+    db.session.commit()
+    
+    return jsonify({'message': '퇴실 확정 처리가 완료되었습니다.'})
 
 @admin_bp.route('/api/contracts/<int:id>/status', methods=['PUT'])
 @admin_required

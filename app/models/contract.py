@@ -48,6 +48,9 @@ class Contract(db.Model):
     status = db.Column(db.String(20), default='requested')
     # requested, waiting_signature, signature_rejected, approved, active, extend_requested, terminate_requested, terminated, cancelled
     
+    auto_extend_status = db.Column(db.String(20), default='none')
+    # none, notified, will_terminate, extended
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # --- Evidence Fields ---

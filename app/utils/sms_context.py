@@ -70,6 +70,13 @@ def build_sms_context(contract, msg_type, **kwargs):
             renew_deadline = (contract.end_date - timedelta(days=30)).strftime('%Y-%m-%d')
         context['renew_deadline'] = renew_deadline or today.strftime('%Y-%m-%d')
 
+    elif msg_type == 'AUTO_EXTEND_PRE_NOTICE':
+        context['end_date'] = contract.end_date.strftime('%Y-%m-%d') if contract.end_date else ''
+        context['extend_months'] = contract.months or 1 # Default 1 month if not set
+        
+    elif msg_type == 'AUTO_EXTEND_COMPLETED':
+        context['end_date'] = contract.end_date.strftime('%Y-%m-%d') if contract.end_date else ''
+
     elif msg_type == 'MOVEOUT_APPROVED':
         moveout_date = kwargs.get('moveout_date') or (contract.end_date.strftime('%Y-%m-%d') if contract.end_date else today.strftime('%Y-%m-%d'))
         context['moveout_date'] = moveout_date
@@ -125,5 +132,6 @@ def get_dummy_context():
         'extend_months': '6',
         '사용자명': '홍길동',
         '사용자 id': 'user@test.com',
-        '사용자 pw': 'eroom123!'
+        '사용자 pw': 'eroom123!',
+        'extend_months': '3'
     }
