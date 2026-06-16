@@ -6,16 +6,29 @@ from datetime import datetime
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-# .env 파일 로드
-load_dotenv()
+import sys
+
+# .env 파일 로드 (PyInstaller 배포 환경을 고려한 절대 경로화)
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(dotenv_path=env_path)
 
 # 상수 정의
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "template")
 RESULT_DIR = os.path.join(BASE_DIR, "result")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://eroom-studio.co.kr")
 
-BRANCHES = ["samsung", "hongdae", "incheon", "mokdong", "bongcheon", "bucheon"]
+# MULE_TARGET_BRANCHES 환경변수 로드 및 정제
+target_branches_env = os.getenv("MULE_TARGET_BRANCHES")
+if target_branches_env:
+    BRANCHES = [b.strip().lower() for b in target_branches_env.split(",") if b.strip()]
+else:
+    BRANCHES = ["samsung", "hongdae", "incheon", "mokdong", "bongcheon", "bucheon"]
+
 
 # 로컬 테스트 및 API 실패 시를 위한 Mock 데이터
 MOCK_DATA = {
@@ -230,9 +243,12 @@ def generate_images(generated_files):
         browser.close()
     print("[FINISHED] 모든 지점 홍보 이미지가 성공적으로 재생성되었습니다!")
 
-if __name__ == "__main__":
+def main():
     # 1단계: API 데이터 기반으로 HTML 생성
     html_files = build_templates()
     
     # 2단계: 생성된 HTML을 이미지로 캡처
     generate_images(html_files)
+
+if __name__ == "__main__":
+    main()

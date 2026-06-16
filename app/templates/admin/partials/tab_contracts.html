@@ -894,16 +894,48 @@
                     <div class="flex flex-col sm:flex-row sm:justify-end gap-2">
                         <template
                             x-if="selectedContract?.status === 'requested' || selectedContract?.status === 'signature_rejected'">
-                            <button @click="updateStatus(selectedContract.id, 'waiting_signature')"
-                                :disabled="submittingUpdate"
-                                class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-secondary text-white text-sm font-black rounded-xl shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-                                <template x-if="!submittingUpdate">
-                                    <span
-                                        x-text="selectedContract.status === 'signature_rejected' ? '계약 재승인 (서명 요청)' : '계약 승인 (서명 요청)'"></span>
-                                </template>
-                                <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
-                            </button>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <button @click="updateStatus(selectedContract.id, 'waiting_signature')"
+                                    :disabled="submittingUpdate"
+                                    class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-secondary text-white text-sm font-black rounded-xl shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                    <template x-if="!submittingUpdate">
+                                        <span
+                                            x-text="selectedContract.status === 'signature_rejected' ? '계약 재승인 (서명 요청)' : '계약 승인 (서명 요청)'"></span>
+                                    </template>
+                                    <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                                </button>
+                                <button @click="updateStatus(selectedContract.id, 'cancelled')"
+                                    :disabled="submittingUpdate"
+                                    class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-red-500 text-white text-sm font-black rounded-xl shadow-xl shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                    <template x-if="!submittingUpdate">
+                                        <span>계약 반려/취소</span>
+                                    </template>
+                                    <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                                </button>
+                            </div>
                         </template>
+
+                        <template x-if="selectedContract?.status === 'waiting_signature'">
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <button @click="updateStatus(selectedContract.id, 'cancelled')"
+                                    :disabled="submittingUpdate"
+                                    class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-gray-500 text-white text-sm font-black rounded-xl shadow-xl shadow-gray-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                    <template x-if="!submittingUpdate">
+                                        <span>계약 승인 취소</span>
+                                    </template>
+                                    <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                                </button>
+                                <button @click="updateStatus(selectedContract.id, 'terminated')"
+                                    :disabled="submittingUpdate"
+                                    class="w-full sm:w-auto flex justify-center items-center px-6 py-3 bg-red-500 text-white text-sm font-black rounded-xl shadow-xl shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                    <template x-if="!submittingUpdate">
+                                        <span>계약 강제 종료</span>
+                                    </template>
+                                    <i x-show="submittingUpdate" class="ri-loader-4-line animate-spin text-lg"></i>
+                                </button>
+                            </div>
+                        </template>
+
 
                         <template x-if="selectedContract?.status === 'active' && selectedContract?.is_indefinite">
                             <button @click="applyTerminationNotice(selectedContract)" :disabled="submittingUpdate"

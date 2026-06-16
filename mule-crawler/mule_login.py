@@ -13,7 +13,14 @@ import urllib.request
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright, Page, BrowserContext
 
-load_dotenv()
+# .env 파일 로드 (PyInstaller 배포 환경을 고려한 절대 경로화)
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(dotenv_path=env_path)
 
 # 윈도우 환경에서 유니코드 특수문자 출력 시 UnicodeEncodeError 방지
 if sys.platform == "win32":
@@ -245,9 +252,32 @@ async def get_mule_page(playwright) -> tuple[object, BrowserContext, Page]:
 
     context = browser.contexts[0] if browser.contexts else await browser.new_context()
 
+    # 1. 기존에 열려 있는 공지 팝업 창이 있다면 즉시 닫기
+    for p in list(context.pages):
+        try:
+            if "/popup/" in p.url:
+                await p.close()
+        except Exception:
+            pass
+
+    # 2. 앞으로 새로 열리는 공지 팝업창도 자동 감지하여 즉시 닫기
+    def handle_popup_page(new_page):
+        async def close_if_popup():
+            try:
+                # 팝업 URL 로드를 조금 대기한 후 감지하여 닫음
+                await new_page.wait_for_load_state("domcontentloaded")
+                if "/popup/" in new_page.url:
+                    await new_page.close()
+            except Exception:
+                pass
+        asyncio.create_task(close_if_popup())
+
+    context.on("page", handle_popup_page)
+
     mule_page = None
     for p in context.pages:
-        if "mule.co.kr" in p.url:
+        # 공지 팝업 페이지(/popup/)는 메인 페이지 제어 대상에서 제외
+        if "mule.co.kr" in p.url and "/popup/" not in p.url:
             mule_page = p
             await mule_page.bring_to_front()
             break
@@ -334,18 +364,36 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
     await page.wait_for_timeout(4000)
 
     set_notice(f"[{branch_name.upper()}] 로그인 제출 요청을 브라우저에 전달했습니다.")
-    await page.evaluate("document.querySelector('a.login-bt.login').click()")
-    await page.wait_for_timeout(4000)
+    try:
+        await page.evaluate("document.querySelector('a.login-bt.login').click()")
+    except Exception as ce:
+        print(f"  >>> [{branch_name.upper()}] 로그인 버튼 클릭 오류 (무시 가능): {ce}")
+        
+    try:
+        await page.wait_for_load_state("domcontentloaded", timeout=4000)
+    except Exception:
+        pass
 
-    # 성공 체크
-    success = await page.evaluate("""
-        () => {
-            const loginBtn = document.querySelector('li.l-login');
-            if (!loginBtn) return true;
-            const style = window.getComputedStyle(loginBtn);
-            return style.display === 'none' || style.visibility === 'hidden';
-        }
-    """)
+    # 성공 체크 (Execution context was destroyed 에러 방지를 위해 재시도 루프 적용)
+    success = False
+    for retry in range(4):
+        try:
+            success = await page.evaluate("""
+                () => {
+                    const logoutBtn = document.querySelector('li.l-logout');
+                    if (!logoutBtn) return false;
+                    const style = window.getComputedStyle(logoutBtn);
+                    return style.display !== 'none' && style.visibility !== 'hidden';
+                }
+            """)
+            if success:
+                break
+            await page.wait_for_timeout(1500)
+        except Exception as ee:
+            if retry < 3:
+                await page.wait_for_timeout(1500)
+            else:
+                print(f"  >>> [{branch_name.upper()}] 상태 체크 중 에러 발생: {ee}")
 
     if success:
         set_stage_status(4, "완료", f"[{branch_name.upper()}] 뮬(mule.co.kr) 사이트 로그인이 성공적으로 끝났습니다.")
@@ -374,22 +422,6 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
 
 
 async def main():
-    # 1단계: 실시간 템플릿 및 이미지 자동 생성
-    print("=" * 70)
-    print(" [1단계] 실시간 지점 공실 템플릿 및 홍보 이미지 자동 생성")
-    print("=" * 70)
-    try:
-        # 비동기 Playwright 프로세스 공간 충돌을 방지하기 위해 서브프로세스로 안전하게 가동
-        # capture_output을 사용하지 않고 부모 프로세스의 stdout/stderr를 공유하여 터미널에 실시간으로 로그가 표시됩니다.
-        import sys
-        result = subprocess.run([sys.executable, "generate_templates_and_images.py"])
-        if result.returncode != 0:
-            print(f"\n✖ 에셋 생성 스크립트가 비정상 종료되었습니다 (종료 코드: {result.returncode})\n")
-        else:
-            print("\n✔ 모든 홍보용 이미지 애셋 빌드 완료!\n")
-    except Exception as e:
-        print(f"✖ 에셋 생성 중 예외 발생: {e}\n")
-
     print("=" * 70)
     print(" [2단계] 자동화용 크롬 브라우저 기동 및 원격 포트 연결")
     print("=" * 70)
@@ -413,7 +445,13 @@ async def main():
             print("[오류] 크롬 디버깅 포트(9223) 연결에 실패했습니다.")
             sys.exit(1)
 
-    BRANCHES = ["samsung", "hongdae", "incheon", "mokdong", "bongcheon", "bucheon"]
+    # MULE_TARGET_BRANCHES 환경변수 로드 및 정제
+    target_branches_env = os.getenv("MULE_TARGET_BRANCHES")
+    if target_branches_env:
+        BRANCHES = [b.strip().lower() for b in target_branches_env.split(",") if b.strip()]
+    else:
+        BRANCHES = ["samsung", "hongdae", "incheon", "mokdong", "bongcheon", "bucheon"]
+
 
     print("\n" + "=" * 70)
     print(" [3단계] 뮬(mule.co.kr) 지점별 순환 로그인 시작")
@@ -453,78 +491,72 @@ async def main():
                 print(f"✔ [{branch.upper()}] 계정({branch_id}) 로그인 완료! 리다이렉트 안정을 위해 3초간 대기합니다...")
                 await page.wait_for_timeout(3000)
                 
-                print(f"  >>> 홍보글 작성/확인 페이지로 이동합니다...")
+                print(f"  >>> [{branch.upper()}] 게시글 수정 페이지로 이동합니다...")
+                post_idx = os.getenv(f"MULE_POST_IDX_{branch.upper()}")
+                if not post_idx:
+                    print(f"[경고] [{branch.upper()}] 수정 대상 게시글 번호가 설정되지 않아 건너뜁니다.")
+                    continue
+
                 try:
-                    # wait_until="commit"을 사용하여 무거운 리소스(광고/이미지) 대기 중 크래시 가능성 원천 방지
-                    await page.goto("https://www.mule.co.kr/bbs/info/room?v=w&", wait_until="commit", timeout=12000)
-                    
+                    # 1. 상세 페이지 이동
+                    await page.goto(f"{MULE_URL}/bbs/info/room?v=v&idx={post_idx}", wait_until="domcontentloaded")
+                    await page.wait_for_timeout(2000)
+
+                    # 2. '수정' 버튼 찾기 및 클릭
+                    modify_btn = None
+                    for selector in ["a#bt-modify", "a#bt-edit", "a#bt-update"]:
+                        btn = page.locator(selector).first
+                        if await btn.is_visible():
+                            modify_btn = btn
+                            break
+
+                    if not modify_btn:
+                        # 텍스트 기반 폴백 매칭
+                        btn_text_candidates = page.locator("a, button, span").filter(has_text="수정")
+                        count = await btn_text_candidates.count()
+                        for i in range(count):
+                            candidate = btn_text_candidates.nth(i)
+                            if await candidate.is_visible():
+                                modify_btn = candidate
+                                break
+
+                    if not modify_btn:
+                        print(f"✖ [{branch.upper()}] 수정 버튼을 찾을 수 없습니다. (스킵)")
+                        try:
+                            debug_img_path = f"result/debug_{branch.lower()}_no_modify_btn.png"
+                            debug_html_path = f"result/debug_{branch.lower()}_no_modify_btn.html"
+                            await page.screenshot(path=debug_img_path)
+                            html_content = await page.content()
+                            with open(debug_html_path, "w", encoding="utf-8") as df:
+                                df.write(html_content)
+                            print(f"    [디버그] 스크린샷 저장됨: {debug_img_path}")
+                            print(f"    [디버그] HTML 소스 저장됨: {debug_html_path}")
+                        except Exception as de:
+                            print(f"    [디버그] 캡처 실패: {de}")
+                        continue
+
+                    await modify_btn.click(force=True)
+                    await page.wait_for_timeout(3000)
+
+                    # 3. 수정 폼 로딩 완료 대기 (제목 입력칸 기준)
+                    await page.wait_for_selector("input#input-title", timeout=10000)
+
                     # 폼 자동 기입 프로세스 시작
-                    print(f"  >>> [{branch.upper()}] 폼 데이터 자동 입력 중...")
-                    # 1. 구분 선택
-                    await page.wait_for_selector("select#input-category", timeout=5000)
-                    await page.select_option("select#input-category", "개인연습실")
-                    
-                    # 2. 옵션 선택 (주차, 24시, 숙식)
-                    for val in ["주차", "24시", "숙식"]:
-                        checkbox = page.locator(f"input[type='checkbox'][value='{val}']")
-                        if await checkbox.is_visible():
-                            if not await checkbox.is_checked():
-                                await checkbox.check()
-                                
-                    # 3. 홈페이지 주소 기입
-                    homepage_input = page.locator("input[v-model='bbs.homepage']").first
-                    if not await homepage_input.is_visible():
-                        homepage_input = page.locator("input[placeholder*='http://']").first
-                    await homepage_input.fill("https://eroom-studio.co.kr")
-                    
-                    # 4. 전화번호 기입
-                    await page.fill("input#input-sell-tel", "01094885093")
-                    
-                    # 5. 제목 기입 (SEO 및 클릭률 극대화 하이브리드 제목 - .env에서 관리)
+                    print(f"  >>> [{branch.upper()}] 폼 데이터 자동 수정 중...")
+
+                    # 4. 제목 기입 (새로운 제목으로 덮어쓰기)
                     branch_upper = branch.upper()
                     title_text = os.getenv(
                         f"MULE_TITLE_{branch_upper}",
                         f"이룸스튜디오 {branch_upper}점"  # .env에 없을 경우 기본값
                     )
                     await page.fill("input#input-title", title_text)
-                    
-                    # 6. 주소 검색 및 상세주소 기입
-                    addr_map = {
-                        "samsung": ("서울특별시 강남구 삼성동 151-29 이호빌딩", "3층"),
-                        "hongdae": ("서울특별시 마포구 서교동 352-31", "3층"),
-                        "incheon": ("인천광역시 남동구 간석동 117-18", "4층"),
-                        "mokdong": ("서울특별시 양천구 신정동 902-4", "3층 4층"),
-                        "bongcheon": ("서울특별시 관악구 봉천동 931-11", "2층 3층"),
-                        "bucheon": ("경기도 부천시 상동 407-2 반달빌딩", "5층, H-Ground")
-                    }
-                    addr_info = addr_map.get(branch.lower())
-                    if addr_info:
-                        search_addr, detail_addr = addr_info
-                        try:
-                            # 6-1. '주소검색' 버튼 클릭하여 검색 모드로 전환
-                            juso_btn = page.locator("div.juso-btn a").filter(has_text="주소검색").first
-                            await juso_btn.wait_for(state="visible", timeout=4000)
-                            await juso_btn.click()
-                            
-                            # 6-2. 주소 검색창 입력
-                            await page.wait_for_selector("input#search-map-text", timeout=4000)
-                            await page.fill("input#search-map-text", search_addr)
-                            
-                            # 6-3. 검색 버튼 클릭
-                            search_btn = page.locator("div.juso-btn a").filter(has_text="검색").first
-                            await search_btn.click()
-                            
-                            # 6-4. 결과 리스트 대기 및 클릭
-                            await page.wait_for_selector("a.pointer", timeout=4000)
-                            await page.locator("a.pointer").first.click()
-                            
-                            # 6-5. 상세주소 입력창 대기 및 입력
-                            await page.wait_for_selector("input[placeholder*='상세주소']", timeout=4000)
-                            await page.fill("input[placeholder*='상세주소']", detail_addr)
-                            
-                            print(f"  >>> [{branch.upper()}] 주소 설정 완료: {search_addr} / {detail_addr}")
-                        except Exception as ae:
-                            print(f"  >>> [{branch.upper()}] 주소 자동 기입 중 문제 발생: {ae}")
+
+                    # 5. 기존 에디터 내용 비우기 (초기화)
+                    await page.evaluate("""() => {
+                        $('#summernote').summernote('code', '');
+                    }""")
+                    await page.wait_for_timeout(1500)
                     
                     # 7. 본문 이미지 등록 (Summernote)
                     try:
@@ -568,12 +600,12 @@ async def main():
                     print(f"  >>> [{branch.upper()}] 이미지 렌더링 대기 중... (5초)")
                     await page.wait_for_timeout(5000)
                     
-                    # 9. 이용약관 동의 체크박스 클릭
+                    # 9. 이용약관 동의 체크박스 클릭 (신규 등록 시에만 존재하므로 보일 때만 클릭)
                     try:
                         agree_checkbox = page.locator("div.checker-label").first
-                        await agree_checkbox.wait_for(state="visible", timeout=4000)
-                        await agree_checkbox.click()
-                        print(f"  >>> [{branch.upper()}] 이용약관 동의 체크박스 클릭 완료!")
+                        if await agree_checkbox.is_visible():
+                            await agree_checkbox.click()
+                            print(f"  >>> [{branch.upper()}] 이용약관 동의 체크박스 클릭 완료!")
                     except Exception as ae:
                         print(f"  >>> [{branch.upper()}] 이용약관 동의 클릭 중 문제 발생: {ae}")
                     
@@ -583,12 +615,46 @@ async def main():
                         await save_btn.wait_for(state="visible", timeout=4000)
                         await save_btn.click()
                         print(f"  >>> [{branch.upper()}] 저장 버튼 클릭 완료! 게시글 등록 요청 전송!")
-                        await page.wait_for_timeout(2000)  # 저장 처리 대기
+                        await page.wait_for_timeout(3000)  # 저장 처리 및 리다이렉션 대기
                     except Exception as se:
                         print(f"  >>> [{branch.upper()}] 저장 버튼 클릭 중 문제 발생: {se}")
+
+                    # 11. 최신글로 올리기 수행
+                    try:
+                        # 저장 완료 후 최신 상태 상세 페이지로 명시적 이동
+                        await page.goto(f"{MULE_URL}/bbs/info/room?v=v&idx={post_idx}", wait_until="domcontentloaded")
+                        await page.wait_for_timeout(2000)
+
+                        # '최신글로 올리기' 버튼 탐색 및 클릭
+                        bump_btn = page.locator("div.market-btn-wrapper a").filter(has_text="최신글로 올리기").first
+                        if await bump_btn.is_visible():
+                            await bump_btn.click()
+                            print(f"  >>> [{branch.upper()}] '최신글로 올리기' 버튼 클릭 완료!")
+                            await page.wait_for_timeout(1500) # SweetAlert 모달 등장 대기
+
+                            # SweetAlert 확인 버튼 클릭 (wait_for를 사용하여 최대 3초 대기)
+                            try:
+                                confirm_btn = page.locator(".swal-button--confirm, button.swal-button").filter(has_text="확인").first
+                                await confirm_btn.wait_for(state="visible", timeout=3000)
+                                await confirm_btn.click()
+                                print(f"  >>> [{branch.upper()}] 최신글 올리기 확인 팝업 승인 완료!")
+                                await page.wait_for_timeout(2000)
+                            except Exception as pe:
+                                try:
+                                    confirm_btn_alt = page.locator(".swal-button--confirm").first
+                                    await confirm_btn_alt.wait_for(state="visible", timeout=1000)
+                                    await confirm_btn_alt.click()
+                                    print(f"  >>> [{branch.upper()}] 최신글 올리기 확인 팝업 승인 완료! (예비)")
+                                    await page.wait_for_timeout(2000)
+                                except Exception:
+                                    print(f"  >>> [경고] [{branch.upper()}] 확인 팝업의 승인 버튼을 찾지 못했습니다: {pe}")
+                        else:
+                            print(f"  >>> [정보] [{branch.upper()}] '최신글로 올리기' 버튼이 노출되지 않아 스킵합니다.")
+                    except Exception as be:
+                        print(f"  >>> [{branch.upper()}] 최신글로 올리기 처리 중 예외 발생: {be}")
                     
                     print(f"  >>> [{branch.upper()}] 모든 홍보 필수 항목 및 이미지 자동 입력 완료!")
-                    print(f"  >>> 저장 완료. 5초 대기 후 다음 계정 전환...")
+                    print(f"  >>> 저장 및 최신글 갱신 완료. 5초 대기 후 다음 계정 전환...")
                 except Exception as ge:
                     print(f"  >>> 페이지 이동 및 기입 중 예외 발생: {ge}")
                 await asyncio.sleep(5)
@@ -607,4 +673,16 @@ async def main():
 
 
 if __name__ == "__main__":
+    # 1단계: 실시간 템플릿 및 이미지 자동 생성 (동기 실행으로 비동기 루프 충돌 우려 해소)
+    print("=" * 70)
+    print(" [1단계] 실시간 지점 공실 템플릿 및 홍보 이미지 자동 생성")
+    print("=" * 70)
+    try:
+        from generate_templates_and_images import main as generate_assets
+        generate_assets()
+        print("\n✔ 모든 홍보용 이미지 애셋 빌드 완료!\n")
+    except Exception as e:
+        print(f"✖ 에셋 생성 중 예외 발생: {e}\n")
+
+    # 비동기 메인 루프 시작
     asyncio.run(main())

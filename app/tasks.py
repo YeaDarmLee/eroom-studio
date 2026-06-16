@@ -46,6 +46,35 @@ def terminate_expired_contracts(app):
             db.session.commit()
             print(f"[{get_kst_now()}] Auto-terminated {expired_count} expired contracts and updated room statuses.")
 
+        # 미체결 상태(서명대기/승인대기/서명거절)에서 계약 종료일 경과한 건 자동 취소 처리
+        expired_waiting_contracts = Contract.query.filter(
+            Contract.status.in_(['waiting_signature', 'requested', 'signature_rejected']),
+            Contract.end_date < today
+        ).all()
+        
+        expired_waiting_count = len(expired_waiting_contracts)
+        
+        if expired_waiting_count > 0:
+            for contract in expired_waiting_contracts:
+                reason = '미체결 상태(서명대기/승인대기/서명거절)에서 계약 종료일 경과로 인한 자동 취소'
+                history = ContractStatusHistory(
+                    contract_id=contract.id,
+                    old_status=contract.status,
+                    new_status='cancelled',
+                    actor_type='system',
+                    source='batch',
+                    reason=reason
+                )
+                db.session.add(history)
+                contract.status = 'cancelled'
+                if contract.room:
+                    # 방 상태를 계약 가능 상태로 변경
+                    contract.room.status = 'available'
+            
+            db.session.commit()
+            print(f"[{get_kst_now()}] Auto-cancelled {expired_waiting_count} expired waiting contracts and updated room statuses.")
+
+
 def process_daily_sms_tasks(app):
     """결제 안내, 자동 연장 안내 등 매일 오전 9시에 실행되는 일괄 SMS 작업을 처리합니다."""
     from app.utils.sms_service import sms_service
