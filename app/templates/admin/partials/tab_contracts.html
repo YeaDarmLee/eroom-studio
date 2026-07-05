@@ -182,7 +182,7 @@
                 </template>
 
                 <!-- Data Rows -->
-                <template x-for="contract in filteredContracts" :key="contract.id">
+                <template x-for="contract in paginatedContracts" :key="contract.id">
                     <tr @click="openDetailModal(contract)" x-show="!loading"
                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
                         x-transition:enter-end="opacity-100"
@@ -334,7 +334,7 @@
         </template>
         <!-- Data cards -->
         <div class="divide-y divide-gray-100" x-show="!loading">
-            <template x-for="contract in filteredContracts" :key="contract.id">
+            <template x-for="contract in paginatedContracts" :key="contract.id">
                 <div @click="openDetailModal(contract)"
                     class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors cursor-pointer active:bg-gray-100">
                     <!-- Avatar -->
@@ -395,6 +395,37 @@
                     데이터가 없습니다.
                 </div>
             </template>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4 flex items-center justify-between" x-show="totalPages > 1 && !loading">
+        <div class="text-sm text-gray-500 hidden sm:block">
+            총 <span class="font-bold text-gray-900" x-text="filteredContracts.length"></span>건 중 
+            <span class="font-bold text-gray-900" x-text="(currentPage - 1) * itemsPerPage + 1"></span> - 
+            <span class="font-bold text-gray-900" x-text="Math.min(currentPage * itemsPerPage, filteredContracts.length)"></span>
+        </div>
+        <div class="flex flex-1 justify-between sm:justify-end items-center gap-2">
+            <button @click="prevPage()" :disabled="currentPage === 1" 
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                :class="currentPage === 1 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'">
+                이전
+            </button>
+            <div class="flex items-center gap-1">
+                <template x-for="page in totalPages" :key="page">
+                    <button @click="goToPage(page)"
+                        x-show="Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors"
+                        :class="currentPage === page ? 'bg-primary/10 text-primary border border-primary/20' : 'text-gray-600 hover:bg-gray-50'">
+                        <span x-text="page"></span>
+                    </button>
+                </template>
+            </div>
+            <button @click="nextPage()" :disabled="currentPage === totalPages"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                :class="currentPage === totalPages ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'">
+                다음
+            </button>
         </div>
     </div>
 

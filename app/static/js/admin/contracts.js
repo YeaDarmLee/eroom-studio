@@ -9,6 +9,10 @@ document.addEventListener('alpine:init', () => {
         filterSignature: 'all', // 'all', 'signed', 'unsigned'
         sortKey: 'room_name', // 'room_name', 'created_at', 'signed_at'
         sortOrder: 'asc', // 'asc', 'desc'
+        
+        // Pagination
+        currentPage: 1,
+        itemsPerPage: 15,
 
         // Detailed Modal state
         detailModalOpen: false,
@@ -54,9 +58,17 @@ document.addEventListener('alpine:init', () => {
                 console.log('[Contracts] Received filter update event:', e.detail);
                 if (e.detail && e.detail.status) {
                     this.filterStatus = e.detail.status;
+                    this.currentPage = 1;
                     this.loadContracts();
                 }
             });
+
+            // Watch filters to reset page
+            this.$watch('filterStatus', () => this.currentPage = 1);
+            this.$watch('filterBranchId', () => this.currentPage = 1);
+            this.$watch('filterSignature', () => this.currentPage = 1);
+            this.$watch('sortKey', () => this.currentPage = 1);
+            this.$watch('sortOrder', () => this.currentPage = 1);
 
             // Lazy load when tab is active
             this.$watch('activeTab', (value) => {
@@ -330,9 +342,52 @@ document.addEventListener('alpine:init', () => {
             return list;
         },
 
-        openDetailModal(contract) {
-            this.selectedContract = contract;
+        get totalPages() {
+            return Math.ceil(this.filteredContracts.length / this.itemsPerPage) || 1;
+        },
+
+        get paginatedContracts() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            const end = start + this.itemsPerPage;
+            return this.filteredContracts.slice(start, end);
+        },
+
+        nextPage() {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+            }
+        },
+
+        prevPage() {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+            }
+        },
+
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page;
+            }
+        },
+
+        async openDetailModal(contract) {
+            // 먼저 목록 데이터로 모달을 열어 즉각적인 UI 반응을 제공
+            this.selectedContract = { ...contract, history: [] };
             this.detailModalOpen = true;
+
+            // 상세 API를 호출하여 history 포함된 전체 데이터로 업데이트
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/admin/api/contracts/${contract.id}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    const detail = await response.json();
+                    this.selectedContract = detail;
+                }
+            } catch (error) {
+                console.error('Error loading contract detail:', error);
+            }
         },
 
         openCustomDiscountModal(contract) {

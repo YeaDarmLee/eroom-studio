@@ -4,6 +4,10 @@ document.addEventListener('alpine:init', () => {
         logs: [],
         loading: false,
         activeSmsSubTab: 'templates', // 'templates' or 'logs'
+        
+        // Logs Pagination
+        logsCurrentPage: 1,
+        logsItemsPerPage: 15,
 
         // Template Management
         editingTemplate: null,
@@ -80,6 +84,16 @@ document.addEventListener('alpine:init', () => {
                 console.error('Error loading SMS logs:', error);
             }
         },
+
+        // Logs Pagination Logic
+        get totalLogsPages() { return Math.ceil(this.logs.length / this.logsItemsPerPage) || 1; },
+        get paginatedLogs() {
+            const start = (this.logsCurrentPage - 1) * this.logsItemsPerPage;
+            return this.logs.slice(start, start + this.logsItemsPerPage);
+        },
+        nextLogsPage() { if (this.logsCurrentPage < this.totalLogsPages) this.logsCurrentPage++; },
+        prevLogsPage() { if (this.logsCurrentPage > 1) this.logsCurrentPage--; },
+        goToLogsPage(page) { if (page >= 1 && page <= this.totalLogsPages) this.logsCurrentPage = page; },
 
         // Manual Sending Logic
         openManualModal() {

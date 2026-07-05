@@ -71,13 +71,11 @@ def get_stats(current_user):
     total_monthly_revenue = revenue_result.total_revenue or 0
     total_deposit = revenue_result.total_deposit or 0
 
-    # 3. Expiring Contracts (Active, Not Indefinite, End Date <= 30 days)
-    one_month_from_now = (datetime.utcnow() + timedelta(days=30)).date()
+    # 3. Expiring Contracts (Active, Not Indefinite, auto_extend_status == 'will_terminate')
     expiring_query = Contract.query.filter(
         Contract.status == 'active',
         Contract.is_indefinite == False,
-        Contract.end_date != None,
-        Contract.end_date <= one_month_from_now
+        Contract.auto_extend_status == 'will_terminate'
     ).options(
         joinedload(Contract.room).joinedload(Room.branch),
         joinedload(Contract.user)
@@ -114,8 +112,7 @@ def get_stats(current_user):
         func.sum(
             case((
                 (Contract.is_indefinite == False) & 
-                (Contract.end_date != None) & 
-                (Contract.end_date <= one_month_from_now), 1
+                (Contract.auto_extend_status == 'will_terminate'), 1
             ), else_=0)
         ).label('expiring')
     ).select_from(Contract).join(Room).filter(Contract.status == 'active').group_by(Room.branch_id).all()
@@ -254,6 +251,82 @@ def get_stats(current_user):
         'expiringContracts': expiring_contracts_list
     })
 
+@admin_bp.route('/rent-management')
+@admin_required
+def rent_management(current_user):
+    """Admin rent management page"""
+    return render_template('admin/rent_management.html')
+
+@admin_bp.route('/api/contracts/<int:id>/rent-payment', methods=['POST'])
+@admin_required
+def toggle_rent_payment(current_user, id):
+    contract = Contract.query.get_or_404(id)
+    data = request.get_json()
+    month_str = data.get('month') # e.g., "2026-07"
+    is_paid = data.get('is_paid', True)
+    
+    if not month_str:
+        return jsonify({'error': 'Month is required'}), 400
+        
+    paid_list = contract.paid_months or []
+    if isinstance(paid_list, str):
+        try:
+            paid_list = json.loads(paid_list)
+        except:
+            paid_list = []
+    
+    if not isinstance(paid_list, list):
+        paid_list = list(paid_list) if paid_list else []
+
+    if is_paid:
+        if month_str not in paid_list:
+            paid_list.append(month_str)
+    else:
+        if month_str in paid_list:
+            paid_list.remove(month_str)
+            
+    contract.paid_months = paid_list
+    
+    # JSON 컬럼 변경 감지 강제 트리거
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(contract, 'paid_months')
+    
+    db.session.commit()
+    
+    return jsonify({'message': 'Payment status updated', 'paid_months': paid_list})
+
+@admin_bp.route('/api/rent-management-contracts', methods=['GET'])
+@admin_required
+def get_rent_management_contracts(current_user):
+    active_contracts = Contract.query.filter_by(status='active').options(
+        joinedload(Contract.user),
+        joinedload(Contract.room).joinedload(Room.branch)
+    ).all()
+    
+    result = []
+    for c in active_contracts:
+        user_info = c.get_user_info()
+        paid_list = c.paid_months or []
+        if isinstance(paid_list, str):
+            try:
+                paid_list = json.loads(paid_list)
+            except:
+                paid_list = []
+        if not isinstance(paid_list, list):
+            paid_list = list(paid_list) if paid_list else []
+                
+        result.append({
+            'id': c.id,
+            'user_name': user_info['name'] or '알 수 없음',
+            'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
+            'room_name': c.room.name if c.room else '알 수 없음',
+            'price': c.price if c.price is not None else (c.room.price if c.room else 0),
+            'payment_day': c.payment_day,
+            'paid_months': paid_list
+        })
+    # Sort by payment_day ascending
+    result.sort(key=lambda x: (x['payment_day'] or 1))
+    return jsonify(result)
 
 @admin_bp.route('/api/contracts', methods=['GET'])
 @admin_required
@@ -314,7 +387,7 @@ def get_contract_detail(current_user, id):
     
     # 이력 조회
     from app.models.contract import ContractStatusHistory
-    histories = ContractStatusHistory.query.filter_by(contract_id=id).order_by(ContractStatusHistory.created_at.desc()).all()
+    histories = ContractStatusHistory.query.filter_by(contract_id=id).order_by(ContractStatusHistory.changed_at.desc()).all()
     history_list = []
     for h in histories:
         history_list.append({
@@ -322,7 +395,7 @@ def get_contract_detail(current_user, id):
             'new_status': h.new_status,
             'actor_type': h.actor_type,
             'reason': h.reason,
-            'created_at': h.created_at.strftime('%Y-%m-%d %H:%M')
+            'created_at': h.changed_at.strftime('%Y-%m-%d %H:%M') if h.changed_at else ''
         })
         
     contract_data = {
@@ -1413,6 +1486,10 @@ def upload_room_images(current_user, id):
     files = request.files.getlist('images')
     uploaded_images = []
     
+    # Get current max order_index
+    max_order = db.session.query(db.func.max(RoomImage.order_index)).filter_by(room_id=id).scalar()
+    current_order = (max_order or 0) + 1
+    
     for file in files:
         if file and file.filename:
             filename = secure_filename(f"room_{id}_{file.filename}")
@@ -1423,9 +1500,10 @@ def upload_room_images(current_user, id):
             file.save(file_path)
             
             image_url = f"/static/uploads/rooms/{filename}"
-            room_image = RoomImage(room_id=id, image_url=image_url)
+            room_image = RoomImage(room_id=id, image_url=image_url, order_index=current_order)
             db.session.add(room_image)
             uploaded_images.append({'url': image_url})
+            current_order += 1
     
     db.session.commit()
     return jsonify({'message': 'Images uploaded', 'images': uploaded_images}), 201
@@ -1448,6 +1526,24 @@ def delete_room_image(current_user, room_id, image_id):
     db.session.delete(room_image)
     db.session.commit()
     return jsonify({'message': 'Image deleted'})
+
+@admin_bp.route('/api/rooms/<int:room_id>/images/reorder', methods=['PUT'])
+@admin_required
+def reorder_room_images(current_user, room_id):
+    """Reorder room images"""
+    data = request.get_json()
+    image_ids = data.get('image_ids', [])
+    
+    if not image_ids:
+        return jsonify({'error': 'No image ids provided'}), 400
+        
+    for index, image_id in enumerate(image_ids):
+        img = RoomImage.query.filter_by(id=image_id, room_id=room_id).first()
+        if img:
+            img.order_index = index
+            
+    db.session.commit()
+    return jsonify({'message': 'Images reordered'})
 
 # ============================================================
 # 미매핑 계약 관리 API

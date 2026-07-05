@@ -450,6 +450,41 @@ function registerBranchesPage() {
                 }
             },
 
+            moveRoomImageLeft(index) {
+                if (index > 0) {
+                    const temp = this.existingRoomImages[index];
+                    this.existingRoomImages[index] = this.existingRoomImages[index - 1];
+                    this.existingRoomImages[index - 1] = temp;
+                    this.saveRoomImageOrder(this.currentRoom.id);
+                }
+            },
+
+            moveRoomImageRight(index) {
+                if (index < this.existingRoomImages.length - 1) {
+                    const temp = this.existingRoomImages[index];
+                    this.existingRoomImages[index] = this.existingRoomImages[index + 1];
+                    this.existingRoomImages[index + 1] = temp;
+                    this.saveRoomImageOrder(this.currentRoom.id);
+                }
+            },
+
+            async saveRoomImageOrder(roomId) {
+                const token = localStorage.getItem('token');
+                const imageIds = this.existingRoomImages.map(img => img.id);
+                try {
+                    await fetch(`/admin/api/rooms/${roomId}/images/reorder`, {
+                        method: 'PUT',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + token 
+                        },
+                        body: JSON.stringify({ image_ids: imageIds })
+                    });
+                } catch (error) {
+                    console.error('Error reordering images:', error);
+                }
+            },
+
             removeImage() {
                 this.imageFile = null
                 this.imagePreview = null
@@ -588,6 +623,9 @@ function registerBranchesPage() {
                 this.showRoomModal = true;
 
                 this.loadingData = true;
+                const isSameBranch = this.currentBranch && this.currentBranch.id === branch.id;
+                const previousFloor = this.selectedFloor;
+                
                 this.currentBranch = branch;
                 this.branchRooms = [];
 
@@ -602,7 +640,12 @@ function registerBranchesPage() {
                         this.roomsByFloor = data.rooms_by_floor || {};
                         this.floorPlans = data.floor_plans || {};
                         this.currentBranch = { ...branch, floors: data.floors || [] };
-                        this.selectedFloor = (data.floors && data.floors.length > 0) ? data.floors[0] : '1F';
+                        
+                        if (isSameBranch && data.floors && data.floors.includes(previousFloor)) {
+                            this.selectedFloor = previousFloor;
+                        } else {
+                            this.selectedFloor = (data.floors && data.floors.length > 0) ? data.floors[0] : '1F';
+                        }
                     }
                 } catch (error) {
                     console.error('Error loading rooms:', error);

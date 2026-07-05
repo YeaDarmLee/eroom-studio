@@ -1,0 +1,356 @@
+<div x-show="activeTab === 'rent-management'" class="space-y-6 animate-fade-in" x-data="rentManagementTab" x-init="initRentTab()">
+    <!-- Page header -->
+    <div class="sm:flex sm:justify-between sm:items-center mb-8">
+        <div class="mb-4 sm:mb-0 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <i class="ri-money-dollar-circle-line text-emerald-600 text-xl"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl text-slate-800 font-bold">월세 납부 관리</h1>
+        </div>
+        <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+            <button @click="prevMonth()" class="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors">
+                <i class="ri-arrow-left-s-line text-lg"></i>
+            </button>
+            <div class="text-lg font-black text-slate-700 min-w-[120px] text-center" x-text="displayMonth"></div>
+            <button @click="nextMonth()" class="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors">
+                <i class="ri-arrow-right-s-line text-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="bg-white shadow-sm rounded-2xl border border-slate-200 overflow-hidden relative">
+        <div x-show="loading" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+            <div class="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+            <div class="mt-4 text-sm font-bold text-slate-500">데이터를 불러오는 중입니다...</div>
+        </div>
+
+        <header class="px-6 py-4 border-b border-slate-100 flex flex-col md:flex-row md:justify-between md:items-center bg-slate-50/50 gap-4">
+            <h2 class="font-bold text-slate-800 shrink-0">
+                조회 결과 <span class="text-emerald-500 ml-1" x-text="filteredContracts.length"></span>건
+                <span class="text-xs text-slate-400 font-normal ml-1" x-text="'(전체 ' + contracts.length + '건)'"></span>
+            </h2>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Branch Filter -->
+                <select x-model="filterBranch" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:ring-emerald-500 focus:border-emerald-500 min-w-[120px] shadow-sm">
+                    <option value="all">전체 지점</option>
+                    <template x-for="branch in availableBranches" :key="branch">
+                        <option :value="branch" x-text="branch"></option>
+                    </template>
+                </select>
+                
+                <!-- Payment Status Filter -->
+                <div class="flex bg-white border border-slate-200 rounded-lg overflow-hidden text-sm font-medium shadow-sm">
+                    <button @click="filterPaymentStatus = 'all'" 
+                        class="px-4 py-2 transition-colors"
+                        :class="filterPaymentStatus === 'all' ? 'bg-emerald-50 text-emerald-600 font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                        전체
+                    </button>
+                    <div class="w-px bg-slate-200"></div>
+                    <button @click="filterPaymentStatus = 'unpaid'" 
+                        class="px-4 py-2 transition-colors"
+                        :class="filterPaymentStatus === 'unpaid' ? 'bg-rose-50 text-rose-600 font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                        미납
+                    </button>
+                    <div class="w-px bg-slate-200"></div>
+                    <button @click="filterPaymentStatus = 'paid'" 
+                        class="px-4 py-2 transition-colors"
+                        :class="filterPaymentStatus === 'paid' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                        납부완료
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="text-xs font-black uppercase text-slate-400 bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4">지점 / 호실</th>
+                        <th class="px-6 py-4">사용자명</th>
+                        <th class="px-6 py-4 text-right">이용료(월세)</th>
+                        <th class="px-6 py-4 text-center">이번 달 입금 예정일</th>
+                        <th class="px-6 py-4 text-center">납부 상태</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm divide-y divide-slate-100">
+                    <!-- Skeleton Rows -->
+                    <template x-if="loading">
+                        <template x-for="i in 5">
+                            <tr class="animate-pulse">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="h-4 w-24 bg-gray-200 rounded mb-1.5"></div>
+                                    <div class="h-3 w-16 bg-gray-200 rounded"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right"><div class="h-4 w-24 bg-gray-200 rounded ml-auto"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center"><div class="h-6 w-20 bg-gray-200 rounded-full mx-auto"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <div class="h-8 w-24 bg-gray-200 rounded-lg"></div>
+                                        <div class="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </template>
+                    <!-- Data Rows -->
+                    <template x-for="c in paginatedContracts" :key="c.id">
+                        <tr class="hover:bg-slate-50 transition-colors" x-show="!loading">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-bold text-slate-800" x-text="c.branch_name"></div>
+                                <div class="text-xs text-slate-400 font-medium mt-0.5" x-text="c.room_name"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-bold text-slate-700" x-text="c.user_name"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <div class="font-black text-emerald-600" x-text="'₩' + Number(c.price).toLocaleString()"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span class="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold" x-text="getPaymentDayDisplay(c.payment_day)"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button @click="togglePayment(c)" 
+                                        class="w-24 px-3 py-1.5 text-xs font-black rounded-lg border transition-all shadow-sm"
+                                        :class="isPaid(c) ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-slate-600'">
+                                        <span x-text="isPaid(c) ? '납부완료' : '미납'"></span>
+                                    </button>
+                                    
+                                    <!-- 미납 상태일 때만 보이는 문자 발송 버튼 -->
+                                    <button x-show="!isPaid(c)" 
+                                        @click="sendOverdueSms(c)"
+                                        title="미납 안내 문자 발송"
+                                        class="p-1.5 rounded-lg text-rose-500 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-colors">
+                                        <i class="ri-message-3-line text-sm"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <template x-if="!loading && contracts.length === 0">
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                                <i class="ri-folder-open-line text-4xl block mb-2 opacity-30"></i>
+                                활성 계약이 없습니다.
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="px-6 py-4 border-t border-slate-100 bg-white flex items-center justify-between" x-show="totalPages > 1 && !loading">
+            <div class="text-sm text-slate-500 hidden sm:block">
+                총 <span class="font-bold text-slate-900" x-text="filteredContracts.length"></span>건 중 
+                <span class="font-bold text-slate-900" x-text="(currentPage - 1) * itemsPerPage + 1"></span> - 
+                <span class="font-bold text-slate-900" x-text="Math.min(currentPage * itemsPerPage, filteredContracts.length)"></span>
+            </div>
+            <div class="flex flex-1 justify-between sm:justify-end items-center gap-2">
+                <button @click="prevPage()" :disabled="currentPage === 1" 
+                    class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                    :class="currentPage === 1 ? 'border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:bg-slate-50'">
+                    이전
+                </button>
+                <div class="flex items-center gap-1">
+                    <template x-for="page in totalPages" :key="page">
+                        <button @click="goToPage(page)"
+                            x-show="Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors"
+                            :class="currentPage === page ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'text-slate-600 hover:bg-slate-50'">
+                            <span x-text="page"></span>
+                        </button>
+                    </template>
+                </div>
+                <button @click="nextPage()" :disabled="currentPage === totalPages"
+                    class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                    :class="currentPage === totalPages ? 'border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:bg-slate-50'">
+                    다음
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('rentManagementTab', () => ({
+        currentDate: new Date(),
+        currentMonthStr: '',
+        displayMonth: '',
+        contracts: [],
+        loading: false,
+        // Filters
+        filterBranch: 'all',
+        filterPaymentStatus: 'all',
+        
+        // Pagination
+        currentPage: 1,
+        itemsPerPage: 15,
+
+        initRentTab() {
+            this.updateMonthDisplay();
+            // 탭이 바뀔때마다 데이터를 갱신하려면 watcher를 사용할 수 있습니다.
+            this.$watch('activeTab', (value) => {
+                if (value === 'rent-management') {
+                    this.loadContracts();
+                }
+            });
+            this.$watch('filterBranch', () => { this.currentPage = 1; });
+            this.$watch('filterPaymentStatus', () => { this.currentPage = 1; });
+        },
+
+        updateMonthDisplay() {
+            const year = this.currentDate.getFullYear();
+            const month = String(this.currentDate.getMonth() + 1).padStart(2, '0');
+            this.currentMonthStr = `${year}-${month}`;
+            this.displayMonth = `${year}년 ${this.currentDate.getMonth() + 1}월`;
+            if (this.activeTab === 'rent-management') {
+                this.loadContracts();
+            }
+        },
+
+        prevMonth() {
+            this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+            this.updateMonthDisplay();
+        },
+
+        nextMonth() {
+            this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+            this.updateMonthDisplay();
+        },
+        
+        // Derived State
+        get availableBranches() {
+            const branches = new Set();
+            this.contracts.forEach(c => {
+                if (c.branch_name) branches.add(c.branch_name);
+            });
+            return Array.from(branches).sort();
+        },
+        
+        get filteredContracts() {
+            return this.contracts.filter(c => {
+                // Branch filter
+                if (this.filterBranch !== 'all' && c.branch_name !== this.filterBranch) return false;
+                
+                // Payment status filter
+                const paid = this.isPaid(c);
+                if (this.filterPaymentStatus === 'paid' && !paid) return false;
+                if (this.filterPaymentStatus === 'unpaid' && paid) return false;
+                
+                return true;
+            });
+        },
+
+        // Pagination logic
+        get totalPages() { return Math.ceil(this.filteredContracts.length / this.itemsPerPage) || 1; },
+        get paginatedContracts() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            return this.filteredContracts.slice(start, start + this.itemsPerPage);
+        },
+        nextPage() { if (this.currentPage < this.totalPages) this.currentPage++; },
+        prevPage() { if (this.currentPage > 1) this.currentPage--; },
+        goToPage(page) { if (page >= 1 && page <= this.totalPages) this.currentPage = page; },
+
+        getPaymentDayDisplay(day) {
+            const m = this.currentDate.getMonth() + 1;
+            const d = day || 1;
+            return `${m}월 ${d}일`;
+        },
+
+        isPaid(contract) {
+            return contract.paid_months && contract.paid_months.includes(this.currentMonthStr);
+        },
+
+        async loadContracts() {
+            this.loading = true;
+            try {
+                const response = await fetch('/admin/api/rent-management-contracts', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                if (!response.ok) throw new Error('네트워크 오류');
+                this.contracts = await response.json();
+                this.currentPage = 1; // reset page when loading new data
+            } catch (e) {
+                console.error(e);
+                window.showAlert?.('오류', '데이터를 불러오는데 실패했습니다.', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async togglePayment(contract) {
+            const currentlyPaid = this.isPaid(contract);
+            const newStatus = !currentlyPaid;
+            
+            // Optimistic Update
+            if (newStatus) {
+                contract.paid_months.push(this.currentMonthStr);
+            } else {
+                contract.paid_months = contract.paid_months.filter(m => m !== this.currentMonthStr);
+            }
+
+            try {
+                const response = await fetch(`/admin/api/contracts/${contract.id}/rent-payment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: JSON.stringify({
+                        month: this.currentMonthStr,
+                        is_paid: newStatus
+                    })
+                });
+                if (!response.ok) throw new Error('업데이트 실패');
+                
+                const data = await response.json();
+                contract.paid_months = data.paid_months; // sync with server
+            } catch (e) {
+                console.error(e);
+                window.showAlert?.('오류', '상태 변경에 실패했습니다.', 'error');
+                // Revert
+                if (newStatus) {
+                    contract.paid_months = contract.paid_months.filter(m => m !== this.currentMonthStr);
+                } else {
+                    contract.paid_months.push(this.currentMonthStr);
+                }
+            }
+        },
+
+        async sendOverdueSms(contract) {
+            if (!confirm(`[${contract.branch_name} ${contract.room_name}] ${contract.user_name}님에게 당월(${this.displayMonth}) 미납 안내 문자를 발송하시겠습니까?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/sms/manual', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token') 
+                    },
+                    body: JSON.stringify({
+                        contract_id: contract.id,
+                        type: 'PAYMENT_OVERDUE_STAGE1'
+                    })
+                });
+                
+                if (response.ok) {
+                    window.showAlert?.('성공', '미납 안내 문자가 성공적으로 발송되었습니다.', 'success');
+                } else {
+                    const err = await response.json();
+                    throw new Error(err.message || '문자 발송 실패');
+                }
+            } catch (e) {
+                console.error('SMS 전송 에러:', e);
+                window.showAlert?.('발송 실패', e.message || '문자 발송 중 오류가 발생했습니다.', 'error');
+            }
+        }
+    }));
+});
+</script>

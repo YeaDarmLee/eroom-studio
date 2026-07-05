@@ -7,19 +7,63 @@ import asyncio
 import subprocess
 import os
 import sys
+
+# --- Logging Setup ---
+import logging
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger('mule_crawler')
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    # USER_DIR을 기준으로 로그 파일을 생성하도록 하여 exe 파일과 같은 경로에 남도록 보완합니다.
+    log_path = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__)), 'mule_crawler.log')
+    fh = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8')
+    fh.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter('%(message)s'))
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+import builtins
+def custom_print(*args, **kwargs):
+    msg = " ".join(str(a) for a in args)
+    if "[오류]" in msg or "Exception" in msg or "Error" in msg or "WARNING" in msg or "✖" in msg:
+        logger.error(msg)
+    else:
+        logger.info(msg)
+builtins.print = custom_print
+# ---------------------
 import time
 import shutil
 import urllib.request
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright, Page, BrowserContext
 
-# .env 파일 로드 (PyInstaller 배포 환경을 고려한 절대 경로화)
+# .env 파일 및 경로 설정 (PyInstaller 배포 환경 고려)
 if getattr(sys, 'frozen', False):
-    BASE_DIR = os.path.dirname(sys.executable)
+    BUNDLE_DIR = sys._MEIPASS
+    USER_DIR = os.path.dirname(sys.executable)
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+    USER_DIR = BUNDLE_DIR
 
-env_path = os.path.join(BASE_DIR, ".env")
+env_path = os.path.join(USER_DIR, ".env")
+
+# 사용자의 실행 폴더에 .env가 없을 경우, 기본값(번들) 복사 후 종료
+if not os.path.exists(env_path):
+    print("\n=======================================================")
+    print("[알림] 설정 파일(.env)이 존재하지 않아 자동 생성했습니다.")
+    print("=======================================================\n")
+    default_env = os.path.join(BUNDLE_DIR, ".env")
+    if os.path.exists(default_env):
+        shutil.copy2(default_env, env_path)
+    else:
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("API_BASE_URL=https://eroom-studio.co.kr\nUSERNAME=gnswp\nCHROME_PROFILE_DIR=Profile 1\nMULE_TARGET_BRANCHES=samsung, hongdae, incheon, mokdong, bongcheon, bucheon\n")
+    print(f"안내: {env_path} 파일을 열어서 계정 정보를 입력하신 후, 다시 실행해 주세요!")
+    input("\n[Enter] 키를 누르면 프로그램이 종료됩니다...")
+    sys.exit(0)
+
 load_dotenv(dotenv_path=env_path)
 
 # 윈도우 환경에서 유니코드 특수문자 출력 시 UnicodeEncodeError 방지
@@ -36,8 +80,13 @@ CDP_URL = f"http://127.0.0.1:{CDP_PORT}"
 
 
 # ── 사용자의 실제 크롬 프로필 경로 ──
-USERNAME = os.environ.get("USERNAME", "")
-REAL_USER_DATA_DIR = rf"C:\Users\{USERNAME}\AppData\Local\Google\Chrome\User Data"
+USERNAME = os.environ.get("USERNAME", "") or os.environ.get("USER", "")
+
+if sys.platform == "darwin":
+    REAL_USER_DATA_DIR = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+else:
+    REAL_USER_DATA_DIR = rf"C:\Users\{USERNAME}\AppData\Local\Google\Chrome\User Data"
+
 CHROME_PROFILE_DIR = os.getenv("CHROME_PROFILE_DIR", "Profile 1")
 REAL_PROFILE_PATH = os.path.join(REAL_USER_DATA_DIR, CHROME_PROFILE_DIR)
 
@@ -69,12 +118,16 @@ def generate_seo_text(branch, data):
             desc = desc.replace('\n', ' • ').strip()
             room_list_html += f"<li>{r['floor']} {r['name']} (실평수: 약 {r['area_pyung']:.2f}평) - {desc}</li>"
             
+    # 인천점 특별 프로모션 문구 (조건부)
+    incheon_promo = ""
+
     # 예약 및 문의 카드와 서비스 정보
     seo_html = f"""
 <br><br>
 <hr>
 <h3>이룸스튜디오 {branch_ko} 실시간 공실 현황 & 서비스 안내</h3>
 <br>
+{incheon_promo}
 <p><strong>[실시간 이용 가능한 룸 정보]</strong></p>
 <ul>
   {room_list_html}
@@ -82,8 +135,8 @@ def generate_seo_text(branch, data):
 <br>
 <p><strong>[이룸스튜디오 {branch_ko} 특별 할인 혜택]</strong></p>
 <ul>
-  <li><strong>6개월 계약 시</strong>: 특별 할인가 적용 혜택</li>
-  <li><strong>12개월 계약 시</strong>: 추가 장기 계약 특별 할인 혜택</li>
+  <li><strong>6개월 계약 시</strong>: 매월 특별 할인가 적용 혜택</li>
+  <li><strong>12개월 계약 시</strong>: 매월 특별 할인가 적용 혜택 <strong>+ 1개월 추가 무료 (렌트프리) 제공!</strong></li>
   <li>※ 6개월/12개월 장기 계약 고객분들께 최대 혜택을 집중하여 제공해 드립니다.</li>
 </ul>
 <br>
@@ -104,16 +157,21 @@ def generate_seo_text(branch, data):
 <p>24시간 언제든 편하게 문자나 카카오톡으로 지점명({branch_ko})과 함께 문의 남겨주시면 성심성의껏 답변해 드리겠습니다!</p>
 <hr>
 """
-    return seo_html.replace("\n", "").replace("'", "\\'")
+    return seo_html
 
 # ── 복사될 크롤러 전용 임시 프로필 경로 ──
-BOT_PROFILE_DIR = r"C:\workspace\Eroom-Studio\mule-crawler\chrome-debug-profile"
+BOT_PROFILE_DIR = os.path.join(USER_DIR, "chrome-debug-profile")
 
-CHROME_PATHS = [
-    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-    rf"C:\Users\{USERNAME}\AppData\Local\Google\Chrome\Application\chrome.exe",
-]
+if sys.platform == "darwin":
+    CHROME_PATHS = [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    ]
+else:
+    CHROME_PATHS = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        rf"C:\Users\{USERNAME}\AppData\Local\Google\Chrome\Application\chrome.exe",
+    ]
 
 # ── 5대 주요 단계 정의 ──
 stages = [
@@ -197,6 +255,12 @@ def kill_existing_chrome() -> bool:
                         pid = parts[-1]
                         subprocess.run(["taskkill", "/f", "/pid", pid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         time.sleep(1)
+        elif sys.platform == "darwin":
+            result = subprocess.run(["lsof", "-t", f"-i:{CDP_PORT}"], capture_output=True, text=True)
+            for pid in result.stdout.splitlines():
+                if pid.strip():
+                    subprocess.run(["kill", "-9", pid.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(1)
         return True
     except Exception:
         return False
@@ -288,7 +352,12 @@ async def get_mule_page(playwright) -> tuple[object, BrowserContext, Page]:
         await mule_page.wait_for_timeout(2000)
 
     # 로그아웃 확인 창 등 다이얼로그 발생 시 자동 확인 처리 (1회만 등록)
-    mule_page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept()))
+    async def handle_dialog(dialog):
+        try:
+            await dialog.accept()
+        except Exception:
+            pass
+    mule_page.on("dialog", handle_dialog)
 
     set_stage_status(2, "완료")
     return browser, context, mule_page
@@ -477,190 +546,194 @@ async def main():
 
             print(f"\n--- [{idx+1}/6] {branch.upper()} 지점 로그인 처리 ---")
             
-            branch_id = os.getenv(f"MULE_ID_{branch.upper()}")
-            branch_pw = os.getenv(f"MULE_PW_{branch.upper()}")
+            try:
+                branch_id = os.getenv(f"MULE_ID_{branch.upper()}")
+                branch_pw = os.getenv(f"MULE_PW_{branch.upper()}")
             
-            if not branch_id or not branch_pw:
-                print(f"[경고] [{branch.upper()}] 계정 정보(MULE_ID_{branch.upper()})가 .env에 존재하지 않아 건너뜁니다.")
-                await asyncio.sleep(1)
-                continue
-                
-            success = await do_login(page, branch_id, branch_pw, branch)
-            
-            if success:
-                print(f"✔ [{branch.upper()}] 계정({branch_id}) 로그인 완료! 리다이렉트 안정을 위해 3초간 대기합니다...")
-                await page.wait_for_timeout(3000)
-                
-                print(f"  >>> [{branch.upper()}] 게시글 수정 페이지로 이동합니다...")
-                post_idx = os.getenv(f"MULE_POST_IDX_{branch.upper()}")
-                if not post_idx:
-                    print(f"[경고] [{branch.upper()}] 수정 대상 게시글 번호가 설정되지 않아 건너뜁니다.")
+                if not branch_id or not branch_pw:
+                    print(f"[경고] [{branch.upper()}] 계정 정보(MULE_ID_{branch.upper()})가 .env에 존재하지 않아 건너뜁니다.")
+                    await asyncio.sleep(1)
                     continue
-
-                try:
-                    # 1. 상세 페이지 이동
-                    await page.goto(f"{MULE_URL}/bbs/info/room?v=v&idx={post_idx}", wait_until="domcontentloaded")
-                    await page.wait_for_timeout(2000)
-
-                    # 2. '수정' 버튼 찾기 및 클릭
-                    modify_btn = None
-                    for selector in ["a#bt-modify", "a#bt-edit", "a#bt-update"]:
-                        btn = page.locator(selector).first
-                        if await btn.is_visible():
-                            modify_btn = btn
-                            break
-
-                    if not modify_btn:
-                        # 텍스트 기반 폴백 매칭
-                        btn_text_candidates = page.locator("a, button, span").filter(has_text="수정")
-                        count = await btn_text_candidates.count()
-                        for i in range(count):
-                            candidate = btn_text_candidates.nth(i)
-                            if await candidate.is_visible():
-                                modify_btn = candidate
-                                break
-
-                    if not modify_btn:
-                        print(f"✖ [{branch.upper()}] 수정 버튼을 찾을 수 없습니다. (스킵)")
-                        try:
-                            debug_img_path = f"result/debug_{branch.lower()}_no_modify_btn.png"
-                            debug_html_path = f"result/debug_{branch.lower()}_no_modify_btn.html"
-                            await page.screenshot(path=debug_img_path)
-                            html_content = await page.content()
-                            with open(debug_html_path, "w", encoding="utf-8") as df:
-                                df.write(html_content)
-                            print(f"    [디버그] 스크린샷 저장됨: {debug_img_path}")
-                            print(f"    [디버그] HTML 소스 저장됨: {debug_html_path}")
-                        except Exception as de:
-                            print(f"    [디버그] 캡처 실패: {de}")
+                
+                success = await do_login(page, branch_id, branch_pw, branch)
+            
+                if success:
+                    print(f"✔ [{branch.upper()}] 계정({branch_id}) 로그인 완료! 리다이렉트 안정을 위해 3초간 대기합니다...")
+                    await page.wait_for_timeout(3000)
+                
+                    print(f"  >>> [{branch.upper()}] 게시글 수정 페이지로 이동합니다...")
+                    post_idx = os.getenv(f"MULE_POST_IDX_{branch.upper()}")
+                    if not post_idx:
+                        print(f"[경고] [{branch.upper()}] 수정 대상 게시글 번호가 설정되지 않아 건너뜁니다.")
                         continue
 
-                    await modify_btn.click(force=True)
-                    await page.wait_for_timeout(3000)
-
-                    # 3. 수정 폼 로딩 완료 대기 (제목 입력칸 기준)
-                    await page.wait_for_selector("input#input-title", timeout=10000)
-
-                    # 폼 자동 기입 프로세스 시작
-                    print(f"  >>> [{branch.upper()}] 폼 데이터 자동 수정 중...")
-
-                    # 4. 제목 기입 (새로운 제목으로 덮어쓰기)
-                    branch_upper = branch.upper()
-                    title_text = os.getenv(
-                        f"MULE_TITLE_{branch_upper}",
-                        f"이룸스튜디오 {branch_upper}점"  # .env에 없을 경우 기본값
-                    )
-                    await page.fill("input#input-title", title_text)
-
-                    # 5. 기존 에디터 내용 비우기 (초기화)
-                    await page.evaluate("""() => {
-                        $('#summernote').summernote('code', '');
-                    }""")
-                    await page.wait_for_timeout(1500)
-                    
-                    # 7. 본문 이미지 등록 (Summernote)
                     try:
-                        print(f"  >>> [{branch.upper()}] 본문 에디터 홍보 이미지 업로드 진행 중...")
-                        # 7-1. 에디터의 '사진등록' 아이콘 클릭
-                        await page.locator("i.note-icon-picture").first.click()
-                        
-                        # 7-2. 이미지 파일 경로 지정 및 업로드
-                        promo_image_path = os.path.abspath(f"result/promo_{branch.lower()}.png")
-                        if os.path.exists(promo_image_path):
-                            file_input = page.locator("input.note-image-input[type='file']").first
-                            await file_input.wait_for(state="attached", timeout=4000)
-                            await file_input.set_input_files(promo_image_path)
-                            
-                            # 7-3. '그림 삽입' 버튼이 존재하고 활성화되었는지 판단하여 클릭
-                            await page.wait_for_timeout(1500)  # 파일 선택 후 모달 처리 대기
-                            insert_btn = page.locator("input.note-image-btn").first
-                            if await insert_btn.is_visible() and not await insert_btn.is_disabled():
-                                await insert_btn.click()
-                                print(f"  >>> [{branch.upper()}] '그림 삽입' 버튼 클릭 완료")
-                            print(f"  >>> [{branch.upper()}] 홍보 이미지 등록 완료!")
-                            
-                            # 7-4. 본문 하단에 SEO 최적화용 텍스트 추가 주입 (Summernote API)
-                            try:
-                                branch_data = fetch_branch_data(branch)
-                                seo_html = generate_seo_text(branch, branch_data)
-                                
-                                await page.evaluate(f"""() => {{
-                                    const currentCode = $('#summernote').summernote('code');
-                                    $('#summernote').summernote('code', currentCode + '{seo_html}');
-                                }}""")
-                                print(f"  >>> [{branch.upper()}] 본문 에디터에 SEO 텍스트 추가 기입 완료!")
-                            except Exception as se:
-                                print(f"  >>> [{branch.upper()}] SEO 텍스트 추가 중 문제 발생: {se}")
-                        else:
-                            print(f"  >>> [경고] [{branch.upper()}] 홍보용 이미지 파일이 경로에 존재하지 않습니다: {promo_image_path}")
-                    except Exception as ie:
-                        print(f"  >>> [{branch.upper()}] 이미지 자동 업로드 중 예외 발생: {ie}")
-                    
-                    # 8. 이미지 렌더링 대기 (에디터 내 이미지 로딩 완료 후 진행)
-                    print(f"  >>> [{branch.upper()}] 이미지 렌더링 대기 중... (5초)")
-                    await page.wait_for_timeout(5000)
-                    
-                    # 9. 이용약관 동의 체크박스 클릭 (신규 등록 시에만 존재하므로 보일 때만 클릭)
-                    try:
-                        agree_checkbox = page.locator("div.checker-label").first
-                        if await agree_checkbox.is_visible():
-                            await agree_checkbox.click()
-                            print(f"  >>> [{branch.upper()}] 이용약관 동의 체크박스 클릭 완료!")
-                    except Exception as ae:
-                        print(f"  >>> [{branch.upper()}] 이용약관 동의 클릭 중 문제 발생: {ae}")
-                    
-                    # 10. 저장 버튼 클릭
-                    try:
-                        save_btn = page.locator("a#bt-save")
-                        await save_btn.wait_for(state="visible", timeout=4000)
-                        await save_btn.click()
-                        print(f"  >>> [{branch.upper()}] 저장 버튼 클릭 완료! 게시글 등록 요청 전송!")
-                        await page.wait_for_timeout(3000)  # 저장 처리 및 리다이렉션 대기
-                    except Exception as se:
-                        print(f"  >>> [{branch.upper()}] 저장 버튼 클릭 중 문제 발생: {se}")
-
-                    # 11. 최신글로 올리기 수행
-                    try:
-                        # 저장 완료 후 최신 상태 상세 페이지로 명시적 이동
+                        # 1. 상세 페이지 이동
                         await page.goto(f"{MULE_URL}/bbs/info/room?v=v&idx={post_idx}", wait_until="domcontentloaded")
                         await page.wait_for_timeout(2000)
 
-                        # '최신글로 올리기' 버튼 탐색 및 클릭
-                        bump_btn = page.locator("div.market-btn-wrapper a").filter(has_text="최신글로 올리기").first
-                        if await bump_btn.is_visible():
-                            await bump_btn.click()
-                            print(f"  >>> [{branch.upper()}] '최신글로 올리기' 버튼 클릭 완료!")
-                            await page.wait_for_timeout(1500) # SweetAlert 모달 등장 대기
+                        # 2. '수정' 버튼 찾기 및 클릭
+                        modify_btn = None
+                        for selector in ["a#bt-modify", "a#bt-edit", "a#bt-update"]:
+                            btn = page.locator(selector).first
+                            if await btn.is_visible():
+                                modify_btn = btn
+                                break
 
-                            # SweetAlert 확인 버튼 클릭 (wait_for를 사용하여 최대 3초 대기)
+                        if not modify_btn:
+                            # 텍스트 기반 폴백 매칭
+                            btn_text_candidates = page.locator("a, button, span").filter(has_text="수정")
+                            count = await btn_text_candidates.count()
+                            for i in range(count):
+                                candidate = btn_text_candidates.nth(i)
+                                if await candidate.is_visible():
+                                    modify_btn = candidate
+                                    break
+
+                        if not modify_btn:
+                            print(f"✖ [{branch.upper()}] 수정 버튼을 찾을 수 없습니다. (스킵)")
                             try:
-                                confirm_btn = page.locator(".swal-button--confirm, button.swal-button").filter(has_text="확인").first
-                                await confirm_btn.wait_for(state="visible", timeout=3000)
-                                await confirm_btn.click()
-                                print(f"  >>> [{branch.upper()}] 최신글 올리기 확인 팝업 승인 완료!")
-                                await page.wait_for_timeout(2000)
-                            except Exception as pe:
-                                try:
-                                    confirm_btn_alt = page.locator(".swal-button--confirm").first
-                                    await confirm_btn_alt.wait_for(state="visible", timeout=1000)
-                                    await confirm_btn_alt.click()
-                                    print(f"  >>> [{branch.upper()}] 최신글 올리기 확인 팝업 승인 완료! (예비)")
-                                    await page.wait_for_timeout(2000)
-                                except Exception:
-                                    print(f"  >>> [경고] [{branch.upper()}] 확인 팝업의 승인 버튼을 찾지 못했습니다: {pe}")
-                        else:
-                            print(f"  >>> [정보] [{branch.upper()}] '최신글로 올리기' 버튼이 노출되지 않아 스킵합니다.")
-                    except Exception as be:
-                        print(f"  >>> [{branch.upper()}] 최신글로 올리기 처리 중 예외 발생: {be}")
+                                debug_img_path = f"result/debug_{branch.lower()}_no_modify_btn.png"
+                                debug_html_path = f"result/debug_{branch.lower()}_no_modify_btn.html"
+                                await page.screenshot(path=debug_img_path)
+                                html_content = await page.content()
+                                with open(debug_html_path, "w", encoding="utf-8") as df:
+                                    df.write(html_content)
+                                print(f"    [디버그] 스크린샷 저장됨: {debug_img_path}")
+                                print(f"    [디버그] HTML 소스 저장됨: {debug_html_path}")
+                            except Exception as de:
+                                print(f"    [디버그] 캡처 실패: {de}")
+                            continue
+
+                        await modify_btn.click(force=True)
+                        await page.wait_for_timeout(3000)
+
+                        # 3. 수정 폼 로딩 완료 대기 (제목 입력칸 기준)
+                        await page.wait_for_selector("input#input-title", timeout=10000)
+
+                        # 폼 자동 기입 프로세스 시작
+                        print(f"  >>> [{branch.upper()}] 폼 데이터 자동 수정 중...")
+
+                        # 4. 제목 기입 (새로운 제목으로 덮어쓰기)
+                        branch_upper = branch.upper()
+                        title_text = os.getenv(
+                            f"MULE_TITLE_{branch_upper}",
+                            f"이룸스튜디오 {branch_upper}점"  # .env에 없을 경우 기본값
+                        )
+                        await page.fill("input#input-title", title_text)
+
+                        # 5. 기존 에디터 내용 비우기 (초기화)
+                        await page.evaluate("""() => {
+                            $('#summernote').summernote('code', '');
+                        }""")
+                        await page.wait_for_timeout(1500)
                     
-                    print(f"  >>> [{branch.upper()}] 모든 홍보 필수 항목 및 이미지 자동 입력 완료!")
-                    print(f"  >>> 저장 및 최신글 갱신 완료. 5초 대기 후 다음 계정 전환...")
-                except Exception as ge:
-                    print(f"  >>> 페이지 이동 및 기입 중 예외 발생: {ge}")
-                await asyncio.sleep(5)
-            else:
-                print(f"✖ [{branch.upper()}] 계정({branch_id}) 로그인 실패! 3초 대기 후 전환...")
-                await asyncio.sleep(3)
+                        # 7. 본문 이미지 등록 (Summernote)
+                        try:
+                            print(f"  >>> [{branch.upper()}] 본문 에디터 홍보 이미지 업로드 진행 중...")
+                            # 7-1. 에디터의 '사진등록' 아이콘 클릭
+                            await page.locator("i.note-icon-picture").first.click()
+                        
+                            # 7-2. 이미지 파일 경로 지정 및 업로드
+                            promo_image_path = os.path.join(USER_DIR, "result", f"promo_{branch.lower()}.png")
+                            if os.path.exists(promo_image_path):
+                                file_input = page.locator("input.note-image-input[type='file']").first
+                                await file_input.wait_for(state="attached", timeout=4000)
+                                await file_input.set_input_files(promo_image_path)
+                            
+                                # 7-3. '그림 삽입' 버튼이 존재하고 활성화되었는지 판단하여 클릭
+                                await page.wait_for_timeout(1500)  # 파일 선택 후 모달 처리 대기
+                                insert_btn = page.locator("input.note-image-btn").first
+                                if await insert_btn.is_visible() and not await insert_btn.is_disabled():
+                                    await insert_btn.click()
+                                    print(f"  >>> [{branch.upper()}] '그림 삽입' 버튼 클릭 완료")
+                                print(f"  >>> [{branch.upper()}] 홍보 이미지 등록 완료!")
+                            
+                                # 7-4. 본문 하단에 SEO 최적화용 텍스트 추가 주입 (Summernote API)
+                                try:
+                                    branch_data = fetch_branch_data(branch)
+                                    seo_html = generate_seo_text(branch, branch_data)
+                                
+                                    await page.evaluate("""(html) => {
+                                        const currentCode = $('#summernote').summernote('code');
+                                        $('#summernote').summernote('code', currentCode + html);
+                                    }""", seo_html)
+                                    print(f"  >>> [{branch.upper()}] 본문 에디터에 SEO 텍스트 추가 기입 완료!")
+                                except Exception as se:
+                                    print(f"  >>> [{branch.upper()}] SEO 텍스트 추가 중 문제 발생: {se}")
+                            else:
+                                print(f"  >>> [경고] [{branch.upper()}] 홍보용 이미지 파일이 경로에 존재하지 않습니다: {promo_image_path}")
+                        except Exception as ie:
+                            print(f"  >>> [{branch.upper()}] 이미지 자동 업로드 중 예외 발생: {ie}")
+                    
+                        # 8. 이미지 렌더링 대기 (에디터 내 이미지 로딩 완료 후 진행)
+                        print(f"  >>> [{branch.upper()}] 이미지 렌더링 대기 중... (5초)")
+                        await page.wait_for_timeout(5000)
+                    
+                        # 9. 이용약관 동의 체크박스 클릭 (신규 등록 시에만 존재하므로 보일 때만 클릭)
+                        try:
+                            agree_checkbox = page.locator("div.checker-label").first
+                            if await agree_checkbox.is_visible():
+                                await agree_checkbox.click()
+                                print(f"  >>> [{branch.upper()}] 이용약관 동의 체크박스 클릭 완료!")
+                        except Exception as ae:
+                            print(f"  >>> [{branch.upper()}] 이용약관 동의 클릭 중 문제 발생: {ae}")
+                    
+                        # 10. 저장 버튼 클릭
+                        try:
+                            save_btn = page.locator("a#bt-save")
+                            await save_btn.wait_for(state="visible", timeout=4000)
+                            await save_btn.click()
+                            print(f"  >>> [{branch.upper()}] 저장 버튼 클릭 완료! 게시글 등록 요청 전송!")
+                            await page.wait_for_timeout(3000)  # 저장 처리 및 리다이렉션 대기
+                        except Exception as se:
+                            print(f"  >>> [{branch.upper()}] 저장 버튼 클릭 중 문제 발생: {se}")
+
+                        # 11. 최신글로 올리기 수행
+                        try:
+                            # 저장 완료 후 최신 상태 상세 페이지로 명시적 이동
+                            await page.goto(f"{MULE_URL}/bbs/info/room?v=v&idx={post_idx}", wait_until="domcontentloaded")
+                            await page.wait_for_timeout(2000)
+
+                            # '최신글로 올리기' 버튼 탐색 및 클릭
+                            bump_btn = page.locator("div.market-btn-wrapper a").filter(has_text="최신글로 올리기").first
+                            if await bump_btn.is_visible():
+                                await bump_btn.click()
+                                print(f"  >>> [{branch.upper()}] '최신글로 올리기' 버튼 클릭 완료!")
+                                await page.wait_for_timeout(1500) # SweetAlert 모달 등장 대기
+
+                                # SweetAlert 확인 버튼 클릭 (wait_for를 사용하여 최대 3초 대기)
+                                try:
+                                    confirm_btn = page.locator(".swal-button--confirm, button.swal-button").filter(has_text="확인").first
+                                    await confirm_btn.wait_for(state="visible", timeout=3000)
+                                    await confirm_btn.click()
+                                    print(f"  >>> [{branch.upper()}] 최신글 올리기 확인 팝업 승인 완료!")
+                                    await page.wait_for_timeout(2000)
+                                except Exception as pe:
+                                    try:
+                                        confirm_btn_alt = page.locator(".swal-button--confirm").first
+                                        await confirm_btn_alt.wait_for(state="visible", timeout=1000)
+                                        await confirm_btn_alt.click()
+                                        print(f"  >>> [{branch.upper()}] 최신글 올리기 확인 팝업 승인 완료! (예비)")
+                                        await page.wait_for_timeout(2000)
+                                    except Exception:
+                                        print(f"  >>> [경고] [{branch.upper()}] 확인 팝업의 승인 버튼을 찾지 못했습니다: {pe}")
+                            else:
+                                print(f"  >>> [정보] [{branch.upper()}] '최신글로 올리기' 버튼이 노출되지 않아 스킵합니다.")
+                        except Exception as be:
+                            print(f"  >>> [{branch.upper()}] 최신글로 올리기 처리 중 예외 발생: {be}")
+                    
+                        print(f"  >>> [{branch.upper()}] 모든 홍보 필수 항목 및 이미지 자동 입력 완료!")
+                        print(f"  >>> 저장 및 최신글 갱신 완료. 5초 대기 후 다음 계정 전환...")
+                    except Exception as ge:
+                        print(f"  >>> 페이지 이동 및 기입 중 예외 발생: {ge}")
+                    await asyncio.sleep(5)
+                else:
+                    print(f"✖ [{branch.upper()}] 계정({branch_id}) 로그인 실패! 3초 대기 후 전환...")
+                    await asyncio.sleep(3)
+            except Exception as loop_err:
+                print(f"✖ [{branch.upper()}] 지점 작업 중 예외 발생하여 스킵합니다: {loop_err}")
+                logger.error(f"[{branch.upper()}] 지점 상세 예외 정보:", exc_info=True)
 
         print("\n" + "=" * 70)
         print(" [4단계] 모든 작업 완료 및 크롬 브라우저 연결 종료")
@@ -668,8 +741,14 @@ async def main():
         await asyncio.sleep(3)
 
     finally:
+        try:
+            await browser.close()
+            print("  >>> Playwright browser.close() 호출 완료")
+        except Exception:
+            pass
         await playwright.stop()
-        print("[완료] Playwright 엔진을 종료하고 브라우저 핸들을 반환하였습니다.")
+        kill_existing_chrome()
+        print("[완료] Playwright 엔진을 종료하고 브라우저 프로세스를 킬하여 완전히 종료하였습니다.")
 
 
 if __name__ == "__main__":

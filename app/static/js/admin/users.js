@@ -7,6 +7,10 @@ document.addEventListener('alpine:init', () => {
         searchQuery: '',
         filterBranchId: 'all',
         branches: [],
+        
+        // Pagination
+        currentPage: 1,
+        itemsPerPage: 15,
 
         // Edit Modal
         editModalOpen: false,
@@ -30,6 +34,10 @@ document.addEventListener('alpine:init', () => {
                     if (this.branches.length === 0) this.loadBranches();
                 }
             });
+
+            // Watch filters to reset page
+            this.$watch('searchQuery', () => this.currentPage = 1);
+            this.$watch('filterBranchId', () => this.currentPage = 1);
 
             if (this.activeTab === 'users') {
                 this.loadUsers();
@@ -133,6 +141,34 @@ document.addEventListener('alpine:init', () => {
                 (u.email && u.email.toLowerCase().includes(lowerQuery)) ||
                 (u.phone && u.phone.includes(lowerQuery))
             );
+        },
+
+        get totalPages() {
+            return Math.ceil(this.filteredUsers.length / this.itemsPerPage) || 1;
+        },
+
+        get paginatedUsers() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            const end = start + this.itemsPerPage;
+            return this.filteredUsers.slice(start, end);
+        },
+
+        nextPage() {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+            }
+        },
+
+        prevPage() {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+            }
+        },
+
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page;
+            }
         },
 
         openEditModal(user) {

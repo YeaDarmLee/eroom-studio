@@ -37,6 +37,7 @@ class Contract(db.Model):
     # New Fields for Payment
     payment_method = db.Column(db.String(20), default='bank') # bank, card
     payment_day = db.Column(db.Integer, default=1) # 1, 15
+    paid_months = db.Column(db.JSON, default=list) # e.g. ["2026-07", "2026-08"]
     
     # Coupon & Discount
     coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id'), nullable=True)

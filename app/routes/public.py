@@ -166,8 +166,8 @@ def get_branch_rooms_status(branch_name):
     
     for room in valid_rooms:
         if room.status == 'available':
-            # 평수 계산 (area가 제곱미터인 경우 평수로 환산)
-            area_pyung = (room.area / 3.3058) if room.area else 0.0
+            # 평수 계산 (DB에 이미 평수 단위로 입력된 것으로 간주)
+            area_pyung = room.area if room.area else 0.0
             available_rooms.append({
                 'floor': room.floor or '',
                 'name': room.name,

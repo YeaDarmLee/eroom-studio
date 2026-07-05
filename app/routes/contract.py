@@ -630,6 +630,30 @@ def get_contract_view(current_user, id):
             duration_display = "당일"
             pass
 
+    # 계약 이력 조회 (계약서에 표시용)
+    from app.models.contract import ContractStatusHistory
+    raw_histories = ContractStatusHistory.query.filter_by(contract_id=id).order_by(ContractStatusHistory.changed_at.asc()).all()
+
+    STATUS_LABELS = {
+        'active': '이용 중', 'requested': '승인 대기', 'waiting_signature': '서명 대기',
+        'signature_rejected': '서명 거절', 'terminated': '종료됨',
+        'cancelled': '취소됨', 'terminate_requested': '해지 신청'
+    }
+    ACTOR_LABELS = {
+        'admin': '관리자', 'user': '사용자', 'system': '시스템 자동처리'
+    }
+
+    history_list = []
+    for h in raw_histories:
+        history_list.append({
+            'old_status': STATUS_LABELS.get(h.old_status, h.old_status or '-'),
+            'new_status': STATUS_LABELS.get(h.new_status, h.new_status or '-'),
+            'actor_type': ACTOR_LABELS.get(h.actor_type, h.actor_type or ''),
+            'reason': h.reason or '',
+            'changed_at': h.changed_at.strftime('%Y-%m-%d %H:%M') if h.changed_at else '',
+            'is_auto_extend': '자동 연장' in (h.reason or ''),
+        })
+
     html = render_template('contract_print_template.html',
         branch_name=branch.name if branch else '',
         branch_address=branch.address if branch else '',
@@ -658,7 +682,9 @@ def get_contract_view(current_user, id):
         signature_data=contract.signature_data,
         current_date=datetime.now().strftime('%Y-%m-%d'),
         is_signing=is_signing,
-        discount_details=discount_details
+        discount_details=discount_details,
+        history_list=history_list
     )
     
     return jsonify({'html': html})
+

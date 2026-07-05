@@ -7,3 +7,11 @@ instance/
 .vscode/
 *.db
 *.sqlite3
+
+# mule-crawler build artifacts and logs
+**/build/
+**/dist/
+**/*.spec
+**/chrome-debug-profile/
+**/result/
+**/*.log

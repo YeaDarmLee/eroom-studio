@@ -6,6 +6,11 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         filterBranchId: 'all',
         branches: [],
+        
+        // Pagination
+        inquiriesCurrentPage: 1,
+        requestsCurrentPage: 1,
+        itemsPerPage: 15,
 
         // Modal state
         responseModalOpen: false,
@@ -15,13 +20,18 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.$watch('activeTab', (value) => {
-                if (value === 'requests') {
+                if (value === 'requests' || value === 'inquiries') {
                     if (this.allData.length === 0) this.loadRequests();
                     if (this.branches.length === 0) this.loadBranches();
                 }
             });
 
-            if (this.activeTab === 'requests') {
+            this.$watch('filterBranchId', () => {
+                this.inquiriesCurrentPage = 1;
+                this.requestsCurrentPage = 1;
+            });
+
+            if (this.activeTab === 'requests' || this.activeTab === 'inquiries') {
                 this.loadRequests();
                 this.loadBranches();
             }
@@ -73,6 +83,26 @@ document.addEventListener('alpine:init', () => {
             }
             return list;
         },
+
+        // Pagination for Inquiries
+        get totalInquiriesPages() { return Math.ceil(this.inquiries.length / this.itemsPerPage) || 1; },
+        get paginatedInquiries() {
+            const start = (this.inquiriesCurrentPage - 1) * this.itemsPerPage;
+            return this.inquiries.slice(start, start + this.itemsPerPage);
+        },
+        nextInquiriesPage() { if (this.inquiriesCurrentPage < this.totalInquiriesPages) this.inquiriesCurrentPage++; },
+        prevInquiriesPage() { if (this.inquiriesCurrentPage > 1) this.inquiriesCurrentPage--; },
+        goToInquiriesPage(page) { if (page >= 1 && page <= this.totalInquiriesPages) this.inquiriesCurrentPage = page; },
+
+        // Pagination for Requests
+        get totalRequestsPages() { return Math.ceil(this.requests.length / this.itemsPerPage) || 1; },
+        get paginatedRequests() {
+            const start = (this.requestsCurrentPage - 1) * this.itemsPerPage;
+            return this.requests.slice(start, start + this.itemsPerPage);
+        },
+        nextRequestsPage() { if (this.requestsCurrentPage < this.totalRequestsPages) this.requestsCurrentPage++; },
+        prevRequestsPage() { if (this.requestsCurrentPage > 1) this.requestsCurrentPage--; },
+        goToRequestsPage(page) { if (page >= 1 && page <= this.totalRequestsPages) this.requestsCurrentPage = page; },
 
         openResponseModal(req) {
             this.selectedRequest = req;

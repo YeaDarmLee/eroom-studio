@@ -1,0 +1,103 @@
+[CONTRACT_APPLIED] offset: 0
+{{user_name}}님 {{branch_name}} {{room_name}} 계약 신청이 완료되었습니다.
+---
+[CONTRACT_APPROVED] offset: 0
+{{user_name}}님 {{branch_name}} {{room_name}} 계약이 승인되었습니다.
+---
+[PAYMENT_REMINDER] offset: -3
+{{due_date}} 납부일 입니다.
+■ 금액:{{amount}}원
+기한 내 납부 부탁드립니다.
+---
+[AUTO_RENEW_NOTICE] offset: -30
+안녕하세요 {{user_name}}님,
+현재 이용 중인 {{branch_name}} {{room_name}} 계약이
+{{end_date}} 종료 예정입니다.
+
+■ 별도 퇴실 신청이 없을 경우 동일 조건으로 자동 연장됩니다.
+
+퇴실을 원하실 경우 {{renew_deadline}}까지
+관리자에게 회신 부탁드립니다.
+---
+[MOVEOUT_APPLIED] offset: 0
+{{user_name}}님 {{branch_name}} {{room_name}} 퇴실 신청이 접수되었습니다.
+■ 퇴실 신청일: {{moveout_date}}
+---
+[MOVEOUT_APPROVED] offset: 0
+{{user_name}}님 {{branch_name}} {{room_name}} 퇴실 신청이 승인되었습니다.
+■ 최종 사용일: {{moveout_date}}
+---
+[MOVEOUT_DAY] offset: 0
+{{user_name}}님 {{branch_name}} {{room_name}} 퇴실일입니다.
+뒷정리 및 도어락 초기화 후 회신 부탁드립니다.
+---
+[PAYMENT_OVERDUE_STAGE1] offset: 1
+{{due_date}} 이용료 {{amount}}원 미납되었습니다.
+확인 후 납부 바랍니다.
+---
+[PAYMENT_OVERDUE_STAGE2] offset: 5
+{{due_date}} 이용료 {{amount}}원 미납되었습니다.
+미납 지속 시 이용제한/보증금 차감 예정입니다.
+---
+[SIGNATURE_REQUESTED] offset: 0
+안녕하세요, {{user_name}}님. 신청하신 {{branch_name}} {{room_name}} 계약서가 준비되었습니다. 마이페이지에서 내용을 확인하시고 전자서명을 완료해주세요.
+
+https://eroom-studio.co.kr
+---
+[SIGNATURE_COMPLETED] offset: 0
+[이룸스튜디오] {{user_name}}님 {{branch_name}} {{room_name}} 서명 완료되었습니다. 계약서가 활성 상태로 전환되었습니다.
+---
+[SIGNATURE_REJECTED] offset: 0
+[이룸스튜디오] {{user_name}}님이 {{branch_name}} {{room_name}} 계약 서명을 거절하셨습니다. (사유: {{rejection_reason}})
+---
+[ADMIN_CONTRACT_APPLIED] offset: 0
+[이룸스튜디오] 신규 계약 신청: {{user_name}}님이 {{branch_name}} {{room_name}} 계약을 신청했습니다.
+---
+[CONTRACT_REJECTED] offset: 0
+안녕하세요, {{user_name}}님. 신청하신 {{branch_name}} {{room_name}} 계약(또는 퇴실) 신청이 아래 사유로 반려되었습니다.
+
+사유: {{reject_reason}}
+
+자세한 사항은 이룸스튜디오 마이페이지를 확인해주세요.
+---
+[EXTEND_APPLIED] offset: 0
+[이룸스튜디오] 계약 연장 신청: {{user_name}}님이 {{branch_name}} {{room_name}} 계약을 {{extend_months}}개월 연장 신청했습니다.
+---
+[EXTEND_APPROVED] offset: 0
+안녕하세요, {{user_name}}님. 신청하신 {{branch_name}} {{room_name}} 계약 연장이 승인되었습니다. 변경된 종료일: {{end_date}}
+---
+[EXTEND_REJECTED] offset: 0
+안녕하세요, {{user_name}}님. 신청하신 {{branch_name}} {{room_name}} 계약 연장 신청이 아래 사유로 반려되었습니다.
+
+사유: {{reject_reason}}
+---
+[WELCOME_MESSAGE] offset: 0
+안녕하세요 {{사용자명}}님, 이룸스튜디오입니다.
+
+홈페이지가 오픈되어 회원정보를 보다 편리하게 관리하실 수 있습니다.
+기존 이용 고객님의 정보는 사전 등록되어 있습니다.
+
+아래 링크를 통해 접속하신 후
+계약 내용 확인 및 계약서 서명 부탁드립니다.
+
+[홈페이지]
+https://eroom-studio.co.kr
+
+[{{사용자명}}님 계정정보]
+아이디: {{사용자 id}}
+비밀번호: {{사용자 pw}}
+
+※ 아이디와 비밀번호는 임시 생성된 정보입니다.
+로그인 후 마이페이지에서 반드시 변경해주시기 바랍니다.
+---
+[AUTO_EXTEND_PRE_NOTICE] offset: -15
+안녕하세요 {{user_name}}님,
+{{branch_name}} {{room_name}} 계약이 {{end_date}} 만료 후 동일 조건으로 자동 연장될 예정입니다.
+퇴실을 원하실 경우 홈페이지에서 퇴실 신청을 해주세요.
+---
+[AUTO_EXTEND_COMPLETED] offset: 0
+안녕하세요 {{user_name}}님,
+{{branch_name}} {{room_name}} 계약이 자동으로 연장되었습니다.
+새 계약 종료일: {{end_date}}
+문의사항은 고객센터로 연락해 주세요.
+---

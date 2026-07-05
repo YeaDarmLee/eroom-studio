@@ -8,18 +8,52 @@ from playwright.sync_api import sync_playwright
 
 import sys
 
+# --- Logging Setup ---
+import logging
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger('mule_crawler')
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    log_path = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__)), 'mule_crawler.log')
+    fh = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8')
+    fh.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter('%(message)s'))
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+import builtins
+def custom_print(*args, **kwargs):
+    msg = " ".join(str(a) for a in args)
+    if "[오류]" in msg or "Exception" in msg or "Error" in msg or "WARNING" in msg or "✖" in msg:
+        logger.error(msg)
+    else:
+        logger.info(msg)
+builtins.print = custom_print
+# ---------------------
+
 # .env 파일 로드 (PyInstaller 배포 환경을 고려한 절대 경로화)
 if getattr(sys, 'frozen', False):
-    BASE_DIR = os.path.dirname(sys.executable)
+    BUNDLE_DIR = sys._MEIPASS
+    USER_DIR = os.path.dirname(sys.executable)
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+    USER_DIR = BUNDLE_DIR
 
-env_path = os.path.join(BASE_DIR, ".env")
+env_path = os.path.join(USER_DIR, ".env")
 load_dotenv(dotenv_path=env_path)
 
 # 상수 정의
-TEMPLATE_DIR = os.path.join(BASE_DIR, "template")
-RESULT_DIR = os.path.join(BASE_DIR, "result")
+TEMPLATE_DIR = os.path.join(BUNDLE_DIR, "template")
+HTML_OUT_DIR = os.path.join(BUNDLE_DIR, "result") # HTML은 임시 폴더에 저장 (상대경로 img 참조 위함)
+RESULT_DIR = os.path.join(USER_DIR, "result")     # 최종 결과물은 사용자 폴더에 저장
+
+if not os.path.exists(HTML_OUT_DIR):
+    os.makedirs(HTML_OUT_DIR, exist_ok=True)
+if not os.path.exists(RESULT_DIR):
+    os.makedirs(RESULT_DIR, exist_ok=True)
+
 API_BASE_URL = os.getenv("API_BASE_URL", "https://eroom-studio.co.kr")
 
 # MULE_TARGET_BRANCHES 환경변수 로드 및 정제
@@ -73,9 +107,9 @@ MOCK_DATA = {
     },
     "bucheon": {
         "available_rooms": [
-            {"floor": "5층", "name": "A", "area_pyung": 4.23, "price": 600000, "description": "보컬, 미디, 개인 악기 연습 권장 (A room)"},
-            {"floor": "5층", "name": "B", "area_pyung": 4.23, "price": 800000, "description": "보컬, 미디, 개인 악기 연습 권장 (B room)"},
-            {"floor": "5층", "name": "H", "area_pyung": 4.23, "price": 350000, "description": "보컬, 미디, 개인 악기 연습 권장 (H room)"}
+            {"floor": "5층", "name": "A", "area_pyung": 14.0, "price": 600000, "description": "보컬, 미디, 개인 악기 연습 권장 (A room)"},
+            {"floor": "5층", "name": "B", "area_pyung": 14.0, "price": 800000, "description": "보컬, 미디, 개인 악기 연습 권장 (B room)"},
+            {"floor": "5층", "name": "H", "area_pyung": 14.0, "price": 350000, "description": "보컬, 미디, 개인 악기 연습 권장 (H room)"}
         ],
         "is_fully_occupied": False,
         "next_available_date": None
@@ -169,7 +203,7 @@ def build_templates():
     
     for branch in BRANCHES:
         source_path = os.path.join(TEMPLATE_DIR, f"source_template_{branch}.html")
-        dest_path = os.path.join(RESULT_DIR, f"template_{branch}.html")
+        dest_path = os.path.join(HTML_OUT_DIR, f"template_{branch}.html")
         
         if not os.path.exists(source_path):
             print(f"[ERROR] 소스 템플릿 파일을 찾을 수 없습니다: {source_path}")
@@ -214,8 +248,30 @@ def generate_images(generated_files):
     print("\nPlaywright를 구동하여 이미지 캡처 작업을 시작합니다...")
     
     with sync_playwright() as p:
-        # 브라우저 구동
-        browser = p.chromium.launch()
+        # 로컬 구글 크롬 설치 경로 자동 탐색
+        chrome_path = None
+        import sys
+        if sys.platform == "win32":
+            username = os.environ.get("USERNAME", "")
+            candidates = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                rf"C:\Users\{username}\AppData\Local\Google\Chrome\Application\chrome.exe"
+            ]
+            for c in candidates:
+                if os.path.exists(c):
+                    chrome_path = c
+                    break
+        elif sys.platform == "darwin":
+            mac_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            if os.path.exists(mac_path):
+                chrome_path = mac_path
+        
+        # 브라우저 구동 (로컬 크롬이 있으면 그것을 실행하여 내장 브라우저 바이너리 종속성 해소)
+        if chrome_path:
+            browser = p.chromium.launch(executable_path=chrome_path, headless=True)
+        else:
+            browser = p.chromium.launch(headless=True)
         
         # 뷰포트 크기를 설정하고 device_scale_factor=2를 주어 고해상도로 캡처
         page = browser.new_page(

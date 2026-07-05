@@ -506,7 +506,34 @@
         </div>
 
         <div style="text-align: right; margin-top: 20px; font-weight: bold;">{{ current_date }}</div>
+
+        {% if history_list %}
+        <div class="section-title" style="margin-top: 30px; page-break-before: auto;">계약 이력 및 자동연장 내역</div>
+        <table style="font-size: 12px;">
+            <thead>
+                <tr style="background-color: #f1f5f9;">
+                    <th style="width: 140px; white-space: nowrap;">일시</th>
+                    <th style="width: 80px;">변경 전</th>
+                    <th style="width: 80px;">변경 후</th>
+                    <th style="width: 80px;">처리 주체</th>
+                    <th style="text-align: left; padding-left: 10px;">사유</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in history_list %}
+                <tr {% if h.is_auto_extend %}style="background-color: #eff6ff;"{% endif %}>
+                    <td style="white-space: nowrap; font-size: 11px;">{{ h.changed_at }}</td>
+                    <td style="font-size: 11px;">{{ h.old_status }}</td>
+                    <td style="font-size: 11px; {% if h.is_auto_extend %}font-weight: bold; color: #2563eb;{% endif %}">{{ h.new_status }}</td>
+                    <td style="font-size: 11px;">{{ h.actor_type }}</td>
+                    <td style="text-align: left; padding-left: 10px; font-size: 11px; {% if h.is_auto_extend %}color: #2563eb;{% endif %}">{{ h.reason }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p style="font-size: 10px; color: #94a3b8; margin-top: 4px;">※ 파란색 행은 시스템 자동연장 처리 내역입니다.</p>
+        {% endif %}
     </div>
 </body>
 
-</html>
+</html>

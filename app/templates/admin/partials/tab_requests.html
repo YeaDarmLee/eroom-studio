@@ -26,8 +26,30 @@
             </div>
         </div>
         <ul class="divide-y divide-gray-100">
-            <template x-for="req in requests" :key="req.id">
-                <li class="px-4 md:px-6 py-4 md:py-6 hover:bg-gray-50/50 transition-colors">
+            <!-- Skeleton Rows -->
+            <template x-if="loading">
+                <template x-for="i in 5">
+                    <li class="px-4 md:px-6 py-4 md:py-6 animate-pulse">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-xl bg-gray-200"></div>
+                            <div class="flex-1 space-y-3 py-1">
+                                <div class="flex items-center gap-2">
+                                    <div class="h-4 w-24 bg-gray-200 rounded"></div>
+                                    <div class="h-4 w-12 bg-gray-200 rounded-full"></div>
+                                </div>
+                                <div class="h-12 w-full bg-gray-200 rounded-lg"></div>
+                                <div class="flex justify-between items-center mt-2">
+                                    <div class="h-3 w-32 bg-gray-200 rounded"></div>
+                                    <div class="h-6 w-16 bg-gray-200 rounded-lg"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </template>
+            <!-- Data Rows -->
+            <template x-for="req in paginatedRequests" :key="req.id">
+                <li class="px-4 md:px-6 py-4 md:py-6 hover:bg-gray-50/50 transition-colors" x-show="!loading">
                     <div class="flex items-start gap-3">
                         <!-- Icon -->
                         <div class="flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center text-xl shadow-sm"
@@ -107,12 +129,43 @@
                     </div>
                 </li>
             </template>
-            <template x-if="requests.length === 0">
+            <template x-if="!loading && requests.length === 0">
                 <li class="px-6 py-16 text-center text-gray-500">
                     <i class="ri-inbox-line text-4xl block mb-2 opacity-20"></i>
                     현재 처리할 요청 내역이 없습니다.
                 </li>
             </template>
         </ul>
+    </div>
+
+    <!-- Pagination -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4 flex items-center justify-between" x-show="totalRequestsPages > 1 && !loading">
+        <div class="text-sm text-gray-500 hidden sm:block">
+            총 <span class="font-bold text-gray-900" x-text="requests.length"></span>건 중 
+            <span class="font-bold text-gray-900" x-text="(requestsCurrentPage - 1) * itemsPerPage + 1"></span> - 
+            <span class="font-bold text-gray-900" x-text="Math.min(requestsCurrentPage * itemsPerPage, requests.length)"></span>
+        </div>
+        <div class="flex flex-1 justify-between sm:justify-end items-center gap-2">
+            <button @click="prevRequestsPage()" :disabled="requestsCurrentPage === 1" 
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                :class="requestsCurrentPage === 1 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'">
+                이전
+            </button>
+            <div class="flex items-center gap-1">
+                <template x-for="page in totalRequestsPages" :key="page">
+                    <button @click="goToRequestsPage(page)"
+                        x-show="Math.abs(page - requestsCurrentPage) <= 2 || page === 1 || page === totalRequestsPages"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors"
+                        :class="requestsCurrentPage === page ? 'bg-primary/10 text-primary border border-primary/20' : 'text-gray-600 hover:bg-gray-50'">
+                        <span x-text="page"></span>
+                    </button>
+                </template>
+            </div>
+            <button @click="nextRequestsPage()" :disabled="requestsCurrentPage === totalRequestsPages"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                :class="requestsCurrentPage === totalRequestsPages ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'">
+                다음
+            </button>
+        </div>
     </div>
 </div>

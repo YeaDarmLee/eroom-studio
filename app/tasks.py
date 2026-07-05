@@ -105,9 +105,9 @@ def process_daily_sms_tasks(app):
  
         expiry_contracts = Contract.query.filter(
             Contract.status == 'active',
-            Contract.end_date == target_expiry_date,
+            Contract.end_date <= target_expiry_date,  # == → <= : 배치 누락시에도 처리
             Contract.is_indefinite == False,
-            Contract.auto_extend_status.in_(['none', None])  # 아직 대기 상태가 아닌 계약만
+            db.or_(Contract.auto_extend_status.in_(['none']), Contract.auto_extend_status.is_(None))
         ).all()
         
         for contract in expiry_contracts:
@@ -172,26 +172,35 @@ def process_daily_sms_tasks(app):
             context = build_sms_context(contract, 'WELCOME_MESSAGE')
             sms_service.send_sms(contract.id, 'WELCOME_MESSAGE', context, related_date=target_start_date)
 
-        # 7. AUTO_EXTEND_PROCESS (15일 전 즉시 연장 처리)
+        # 7. AUTO_EXTEND_PROCESS (7일 대기 후 연장 처리, 즉 만료 23일 전 실행)
         # notified(30일 전 알림 수신) 또는 none(알림 미수신 엣지케이스) 모두 연장
         # will_terminate(퇴실 확정) 상태는 제외하여 만료일에 정상 종료되도록 함
         template = sms_service.get_template('AUTO_EXTEND_PRE_NOTICE')
-        offset = template.schedule_offset if template else -15
+        offset = template.schedule_offset if template else -23
         target_extend_date = today - timedelta(days=offset)
 
         from app.models.contract import ContractStatusHistory
         from dateutil.relativedelta import relativedelta
+        import calendar
 
         auto_extend_contracts = Contract.query.filter(
             Contract.status == 'active',
-            Contract.end_date == target_extend_date,
+            Contract.end_date <= target_extend_date,  # == → <= : 배치 누락시에도 처리
             Contract.is_indefinite == False,
-            Contract.auto_extend_status.in_(['notified', 'none', None])
+            db.or_(Contract.auto_extend_status.in_(['notified', 'none']), Contract.auto_extend_status.is_(None))
         ).all()
 
         for contract in auto_extend_contracts:
-            extend_months = contract.months or 1
-            new_end_date = contract.end_date + relativedelta(months=extend_months)
+            # months가 0 또는 None이면 기본값 1 (안전장치)
+            extend_months = contract.months if contract.months and contract.months > 0 else 1
+            original_end = contract.end_date
+            new_end_date = original_end + relativedelta(months=extend_months)
+
+            # 말일 보정 로직: 기존 계약 종료일이 해당 월의 마지막 날짜였다면, 연장되는 월의 마지막 날짜로 맞춤
+            original_last_day = calendar.monthrange(original_end.year, original_end.month)[1]
+            if original_end.day == original_last_day:
+                new_last_day = calendar.monthrange(new_end_date.year, new_end_date.month)[1]
+                new_end_date = new_end_date.replace(day=new_last_day)
 
             # 이력 기록
             history = ContractStatusHistory(
@@ -208,8 +217,9 @@ def process_daily_sms_tasks(app):
             contract.end_date = new_end_date
             contract.auto_extend_status = 'none'  # 초기화
 
+            # related_date를 original_end로 설정해 같은 계약 중복 발송 방지
             context = build_sms_context(contract, 'AUTO_EXTEND_COMPLETED')
-            sms_service.send_sms(contract.id, 'AUTO_EXTEND_COMPLETED', context, related_date=today)
+            sms_service.send_sms(contract.id, 'AUTO_EXTEND_COMPLETED', context, related_date=original_end)
 
         db.session.commit()
 

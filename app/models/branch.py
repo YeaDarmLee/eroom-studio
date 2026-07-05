@@ -71,7 +71,7 @@ class Room(db.Model):
     height = db.Column(db.Float, default=10)
     
     contracts = db.relationship('Contract', backref='room', lazy='dynamic')
-    images = db.relationship('RoomImage', backref='room', lazy='dynamic', cascade='all, delete-orphan')
+    images = db.relationship('RoomImage', backref='room', lazy='dynamic', cascade='all, delete-orphan', order_by='RoomImage.order_index')
 
     def get_next_available_date(self):
         """
@@ -117,6 +117,7 @@ class RoomImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
     image_url = db.Column(db.String(255), nullable=False)
+    order_index = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

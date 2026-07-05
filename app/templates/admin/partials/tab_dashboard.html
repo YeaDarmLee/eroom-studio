@@ -567,12 +567,6 @@
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 점유율</th>
                             <th scope="col"
-                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                만료 예정</th>
-                            <th scope="col"
-                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                승인 대기</th>
-                            <th scope="col"
                                 class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 월세 합계</th>
                             <th scope="col"
@@ -646,14 +640,6 @@
                                             x-text="branch.total_monthly_rooms > 0 ? Math.round(branch.occupied_rooms / branch.total_monthly_rooms * 100) + '%' : '0%'"></span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span
-                                        :class="branch.expiring_contracts > 0 ? 'px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-orange-100 text-orange-800' : 'text-sm text-gray-400'">
-                                        <span x-text="branch.expiring_contracts"></span><span
-                                            x-show="branch.expiring_contracts > 0">개</span>
-                                        <span x-show="branch.expiring_contracts === 0">-</span>
-                                    </span>
-                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-blue-600">
                                     ₩<span x-text="Number(branch.monthly_revenue).toLocaleString()"></span>
                                 </td>
@@ -710,14 +696,6 @@
                                         x-text="stats.totalMonthlyRooms > 0 ? Math.round(stats.occupiedRooms / stats.totalMonthlyRooms * 100) + '%' : '0%'"></span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span
-                                    :class="stats.expiringContracts > 0 ? 'px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-orange-100 text-orange-800' : 'text-sm text-gray-400'">
-                                    <span x-text="stats.expiringContracts"></span><span
-                                        x-show="stats.expiringContracts > 0">개</span>
-                                    <span x-show="stats.expiringContracts === 0">-</span>
-                                </span>
-                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-blue-600">
                                 ₩<span x-text="Number(stats.monthlyRevenue).toLocaleString()"></span>
                             </td>
@@ -749,10 +727,6 @@
                                 </div>
                                 <div class="font-black text-gray-900 text-base" x-text="branch.name"></div>
                             </div>
-                            <span
-                                :class="branch.expiring_contracts > 0 ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400'"
-                                class="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider"
-                                x-text="branch.expiring_contracts > 0 ? `만료 ${branch.expiring_contracts}건` : '안정적'"></span>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4 pt-2">

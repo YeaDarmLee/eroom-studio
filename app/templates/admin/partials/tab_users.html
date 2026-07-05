@@ -60,8 +60,26 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    <template x-for="user in filteredUsers" :key="user.id">
-                        <tr class="hover:bg-gray-50 transition-colors">
+                    <!-- Skeleton Rows -->
+                    <template x-if="loading">
+                        <template x-for="i in 5">
+                            <tr class="animate-pulse">
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-4 w-12 bg-gray-200 rounded"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="h-4 w-24 bg-gray-200 rounded mb-2"></div>
+                                    <div class="h-3 w-32 bg-gray-200 rounded"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-6 w-16 bg-gray-200 rounded-full"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-4 w-16 bg-gray-200 rounded"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-4 w-20 bg-gray-200 rounded"></div></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><div class="h-4 w-16 bg-gray-200 rounded ml-auto"></div></td>
+                            </tr>
+                        </template>
+                    </template>
+                    <!-- Data Rows -->
+                    <template x-for="user in paginatedUsers" :key="user.id">
+                        <tr class="hover:bg-gray-50 transition-colors" x-show="!loading">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="'#' + user.id"></td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900" x-text="user.name"></div>
@@ -93,8 +111,25 @@
 
         <!-- Mobile Card List -->
         <div class="block md:hidden divide-y divide-gray-100">
-            <template x-for="user in filteredUsers" :key="user.id">
-                <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50/60 transition-colors">
+            <!-- Skeleton Rows -->
+            <template x-if="loading">
+                <template x-for="i in 5">
+                    <div class="flex items-center gap-3 px-4 py-3 animate-pulse">
+                        <div class="w-9 h-9 rounded-full bg-gray-200 shrink-0"></div>
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-3.5 w-24 bg-gray-200 rounded"></div>
+                            <div class="h-3 w-32 bg-gray-200 rounded"></div>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <div class="w-8 h-8 rounded-lg bg-gray-200"></div>
+                            <div class="w-8 h-8 rounded-lg bg-gray-200"></div>
+                        </div>
+                    </div>
+                </template>
+            </template>
+            <!-- Data Cards -->
+            <template x-for="user in paginatedUsers" :key="user.id">
+                <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50/60 transition-colors" x-show="!loading">
                     <div class="flex items-center gap-3 min-w-0">
                         <!-- Avatar -->
                         <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -123,12 +158,43 @@
                     </div>
                 </div>
             </template>
-            <template x-if="filteredUsers.length === 0">
+            <template x-if="!loading && filteredUsers.length === 0">
                 <div class="py-16 text-center text-gray-400">
                     <i class="ri-user-line text-4xl block mb-2 opacity-20"></i>
                     회원이 없습니다
                 </div>
             </template>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4 flex items-center justify-between" x-show="totalPages > 1 && !loading">
+        <div class="text-sm text-gray-500 hidden sm:block">
+            총 <span class="font-bold text-gray-900" x-text="filteredUsers.length"></span>건 중 
+            <span class="font-bold text-gray-900" x-text="(currentPage - 1) * itemsPerPage + 1"></span> - 
+            <span class="font-bold text-gray-900" x-text="Math.min(currentPage * itemsPerPage, filteredUsers.length)"></span>
+        </div>
+        <div class="flex flex-1 justify-between sm:justify-end items-center gap-2">
+            <button @click="prevPage()" :disabled="currentPage === 1" 
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                :class="currentPage === 1 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'">
+                이전
+            </button>
+            <div class="flex items-center gap-1">
+                <template x-for="page in totalPages" :key="page">
+                    <button @click="goToPage(page)"
+                        x-show="Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors"
+                        :class="currentPage === page ? 'bg-primary/10 text-primary border border-primary/20' : 'text-gray-600 hover:bg-gray-50'">
+                        <span x-text="page"></span>
+                    </button>
+                </template>
+            </div>
+            <button @click="nextPage()" :disabled="currentPage === totalPages"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                :class="currentPage === totalPages ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'">
+                다음
+            </button>
         </div>
     </div>
 
