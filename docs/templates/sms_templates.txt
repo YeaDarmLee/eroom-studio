@@ -3,6 +3,7 @@
 ---
 [CONTRACT_APPROVED] offset: 0
 {{user_name}}님 {{branch_name}} {{room_name}} 계약이 승인되었습니다.
+결제 계좌: {{bank_account}}
 ---
 [PAYMENT_REMINDER] offset: -3
 {{due_date}} 납부일 입니다.

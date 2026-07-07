@@ -52,10 +52,10 @@
             },
             { 
                 label: '공실 현황', 
-                value: `${stats.availableRooms}/${stats.totalRooms}`, 
+                value: `${stats.availableRooms}/${stats.monthlyRooms}`, 
                 icon: 'ri-door-open-line', 
                 color: 'bg-blue-500',
-                tooltip: '현재 즉시 입주 가능 방 / 전체 방',
+                tooltip: '현재 즉시 입주 가능 방 / 전체 월결제 방',
                 actionType: 'vacant'
             },
             { 
@@ -113,6 +113,52 @@
             loadingDetail: false,
             selectedBranch: '전체',
             uniqueBranches: [],
+            currentMonthStr: (() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            })(),
+            
+            isPaid(item) {
+                return item.paid_months && item.paid_months.includes(this.currentMonthStr);
+            },
+            
+            async togglePayment(item) {
+                const currentlyPaid = this.isPaid(item);
+                const newStatus = !currentlyPaid;
+                
+                // Optimistic Update
+                if (newStatus) {
+                    item.paid_months.push(this.currentMonthStr);
+                } else {
+                    item.paid_months = item.paid_months.filter(m => m !== this.currentMonthStr);
+                }
+
+                try {
+                    const response = await fetch(`/admin/api/contracts/${item.id}/rent-payment`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({
+                            month: this.currentMonthStr,
+                            is_paid: newStatus
+                        })
+                    });
+                    if (!response.ok) throw new Error('업데이트 실패');
+                    const data = await response.json();
+                    item.paid_months = data.paid_months;
+                } catch (e) {
+                    console.error(e);
+                    window.showAlert?.('오류', '상태 변경에 실패했습니다.', 'error');
+                    // Revert
+                    if (newStatus) {
+                        item.paid_months = item.paid_months.filter(m => m !== this.currentMonthStr);
+                    } else {
+                        item.paid_months.push(this.currentMonthStr);
+                    }
+                }
+            },
             
             getFilteredList(list) {
                 if (this.selectedBranch === '전체') return list;
@@ -423,10 +469,17 @@
                                 <div class="flex flex-col items-end gap-1">
                                     <div class="text-sm font-black text-blue-600"
                                         x-text="`₩${item.price.toLocaleString()}`"></div>
-                                    <button @click.stop="sendOverdueSms(item.id, item.user_phone)"
-                                        class="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200 transition-colors">
-                                        미납안내
-                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button @click.stop="togglePayment(item)"
+                                            class="px-2 py-1 rounded text-[10px] font-bold transition-colors border"
+                                            :class="isPaid(item) ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'">
+                                            <span x-text="isPaid(item) ? '납부완료' : '납부 확인'"></span>
+                                        </button>
+                                        <button x-show="!isPaid(item)" @click.stop="sendOverdueSms(item.id, item.user_phone)"
+                                            class="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200 transition-colors">
+                                            미납안내
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -471,10 +524,17 @@
                                 <div class="flex flex-col items-end gap-1">
                                     <div class="text-sm font-black text-green-600"
                                         x-text="`₩${item.price.toLocaleString()}`"></div>
-                                    <button @click.stop="sendOverdueSms(item.id, item.user_phone)"
-                                        class="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200 transition-colors">
-                                        미납안내
-                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button @click.stop="togglePayment(item)"
+                                            class="px-2 py-1 rounded text-[10px] font-bold transition-colors border"
+                                            :class="isPaid(item) ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'">
+                                            <span x-text="isPaid(item) ? '납부완료' : '납부 확인'"></span>
+                                        </button>
+                                        <button x-show="!isPaid(item)" @click.stop="sendOverdueSms(item.id, item.user_phone)"
+                                            class="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200 transition-colors">
+                                            미납안내
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -499,12 +559,21 @@
                         <template x-for="item in getFilteredList(monthlyPayments.others)" :key="item.id">
                             <div @click="openContractModal(item.id)"
                                 class="p-2.5 bg-white border border-gray-100 rounded-xl flex items-center gap-2.5 hover:border-primary cursor-pointer transition-colors">
-                                <div class="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-[10px]"
+                                <div class="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-[10px] shrink-0"
                                     x-text="item.payment_day"></div>
-                                <div>
+                                <div class="flex-1">
                                     <div class="text-xs font-bold text-gray-900" x-text="item.user_name"></div>
                                     <div class="text-[10px] text-gray-400"
                                         x-text="`${item.room_name} (${item.branch_name})`"></div>
+                                </div>
+                                <div class="flex flex-col items-end gap-1 shrink-0">
+                                    <div class="flex items-center gap-1">
+                                        <button @click.stop="togglePayment(item)"
+                                            class="px-2 py-1 rounded text-[10px] font-bold transition-colors border"
+                                            :class="isPaid(item) ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'">
+                                            <span x-text="isPaid(item) ? '납부완료' : '납부 확인'"></span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -689,11 +758,11 @@
                                 <div class="flex items-center">
                                     <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
                                         <div class="bg-blue-600 h-2 rounded-full transition-all"
-                                            :style="`width: ${stats.totalMonthlyRooms > 0 ? (stats.occupiedRooms / stats.totalMonthlyRooms * 100) : 0}%`">
+                                            :style="`width: ${stats.monthlyRooms > 0 ? (stats.occupiedRooms / stats.monthlyRooms * 100) : 0}%`">
                                         </div>
                                     </div>
                                     <span class="text-xs font-medium"
-                                        x-text="stats.totalMonthlyRooms > 0 ? Math.round(stats.occupiedRooms / stats.totalMonthlyRooms * 100) + '%' : '0%'"></span>
+                                        x-text="stats.monthlyRooms > 0 ? Math.round(stats.occupiedRooms / stats.monthlyRooms * 100) + '%' : '0%'"></span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-blue-600">

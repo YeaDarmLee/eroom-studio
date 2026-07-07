@@ -14,6 +14,10 @@ def index():
     branches = Branch.query.all()
     return render_template('public/index.html', branches=branches)
 
+@main_bp.route('/about')
+def about():
+    return render_template('public/about.html')
+
 @main_bp.route('/branches/<int:branch_id>')
 @db_retry(max_retries=3, delay=1)
 def branch_detail(branch_id):

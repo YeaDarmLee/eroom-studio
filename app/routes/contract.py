@@ -29,8 +29,6 @@ def calculate_coupon_discount(room, months, coupon_code):
         monthly_promo_discount = 50000
     elif months >= 6:
         monthly_promo_discount = 30000
-    elif months >= 3:
-        monthly_promo_discount = 20000
 
     # 3. Initialize values
     coupon_discount = 0

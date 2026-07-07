@@ -30,6 +30,10 @@ class Branch(db.Model):
 
     images = db.relationship('BranchImage', backref='branch', lazy='dynamic', cascade='all, delete-orphan')
 
+    @property
+    def available_rooms_count(self):
+        return self.rooms.filter_by(status='available', room_type='monthly').count()
+
     def __repr__(self):
         return f'<Branch {self.name}>'
 

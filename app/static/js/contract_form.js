@@ -86,7 +86,6 @@ function contractForm() {
             const m = parseInt(this.months);
             if (m >= 12) return 50000;
             if (m >= 6) return 30000;
-            if (m >= 3) return 20000;
             return 0;
         },
 

@@ -245,6 +245,8 @@ def get_stats(current_user):
             'occupiedRooms': occupied_monthly_all + reserved_monthly_all + maintenance_monthly_all, # All non-vacant monthly
             'availableRooms': available_monthly_all, # Truly available monthly
             'monthlyRooms': total_monthly_all,
+            'timeBasedRooms': global_time,
+            'managerRooms': global_manager,
             'maintenanceRooms': maintenance_monthly_all
         },
         'branchData': branch_data,
@@ -324,8 +326,16 @@ def get_rent_management_contracts(current_user):
             'payment_day': c.payment_day,
             'paid_months': paid_list
         })
-    # Sort by payment_day ascending
-    result.sort(key=lambda x: (x['payment_day'] or 1))
+    # Sort by payment_day ascending, then by branch and natural room name
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', str(s))]
+    
+    result.sort(key=lambda x: (
+        x['payment_day'] or 1,
+        x['branch_name'],
+        natural_sort_key(x['room_name'])
+    ))
     return jsonify(result)
 
 @admin_bp.route('/api/contracts', methods=['GET'])
@@ -624,6 +634,16 @@ def get_monthly_payments(current_user):
     
     for c in active_contracts:
         user_info = c.get_user_info()
+        
+        paid_list = c.paid_months or []
+        if isinstance(paid_list, str):
+            try:
+                paid_list = json.loads(paid_list)
+            except:
+                paid_list = []
+        if not isinstance(paid_list, list):
+            paid_list = list(paid_list) if paid_list else []
+
         item = {
             'id': c.id,
             'user_name': user_info['name'] or c.temp_user_name or '알 수 없음',
@@ -631,6 +651,7 @@ def get_monthly_payments(current_user):
             'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
             'price': c.price if c.price is not None else (c.room.price if c.room else 0),
             'payment_day': c.payment_day,
+            'paid_months': paid_list,
             'user_phone': user_info.get('phone') or ''
         }
         
@@ -641,8 +662,17 @@ def get_monthly_payments(current_user):
         else:
             others.append(item)
             
-    # Sort others by payment day
-    others.sort(key=lambda x: (x['payment_day'] or 0))
+    # Sort by payment day (for others), then branch and natural room name
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', str(s))]
+
+    def sort_func(x):
+        return (x['branch_name'], natural_sort_key(x['room_name']))
+
+    day1.sort(key=sort_func)
+    day15.sort(key=sort_func)
+    others.sort(key=lambda x: (x['payment_day'] or 0, x['branch_name'], natural_sort_key(x['room_name'])))
     
     return jsonify({
         'day1': day1,

@@ -1,6 +1,23 @@
 from datetime import datetime, timedelta
 from app.models.sms import get_kst_now
 
+def get_bank_account_for_branch(branch_name):
+    if not branch_name:
+        return '기업은행 123-456-7890 김훈태(지점미상)'
+    if '삼성' in branch_name:
+        return '25920104501003 국민은행 김훈태(이룸스튜디오삼성)'
+    elif '부천' in branch_name:
+        return '55702989401010 기업은행 김훈태(이룸스튜디오부천)'
+    elif '목동' in branch_name:
+        return '55703033301010 기업은행 김훈태(이룸스튜디오목동)'
+    elif '홍대' in branch_name:
+        return '55703053101019 기업은행 김훈태(이룸스튜디오홍대)'
+    elif '봉천' in branch_name:
+        return '05493704006319 국민은행 김훈태(이룸스튜디오봉천)'
+    elif '인천' in branch_name:
+        return '21230104365356 국민은행 김훈태(이룸 스튜디오 인천)'
+    return '기업은행 123-456-7890 김훈태(지점미상)'
+
 def build_sms_context(contract, msg_type, **kwargs):
     """
     계약 객체와 SMS 타입에 기반하여 템플릿 치환을 위한 컨텍스트 변수 사전을 생성합니다.
@@ -22,6 +39,7 @@ def build_sms_context(contract, msg_type, **kwargs):
     # 타입별 특화 로직
     if msg_type == 'CONTRACT_APPROVED':
         context['due_date'] = f"매월 {contract.payment_day}일"
+        context['bank_account'] = get_bank_account_for_branch(context['branch_name'])
 
     elif msg_type in ['PAYMENT_REMINDER', 'PAYMENT_OVERDUE_STAGE1', 'PAYMENT_OVERDUE_STAGE2']:
         base_amount = int(contract.price or 0)

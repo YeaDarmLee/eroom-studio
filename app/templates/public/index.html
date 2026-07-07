@@ -110,8 +110,17 @@
                 </div>
                 {% endif %}
                 <div class="p-6">
-                    <h3 class="text-xl font-bold mb-4 text-gray-900 group-hover:text-primary transition-colors">{{
+                    <h3 class="text-xl font-bold mb-1 text-gray-900 group-hover:text-primary transition-colors">{{
                         branch.name }}</h3>
+                        
+                    {% if branch.address %}
+                    <p class="text-xs text-gray-500 mb-4 flex items-center">
+                        <i class="ri-map-pin-line mr-1 text-gray-400"></i>
+                        {{ branch.address }}
+                    </p>
+                    {% else %}
+                    <div class="mb-4"></div>
+                    {% endif %}
 
                     {% if branch.description %}
                     <p
@@ -120,10 +129,19 @@
                     </p>
                     {% endif %}
 
-                    <div
-                        class="flex items-center text-xs font-bold text-primary mb-5 bg-primary/5 w-fit px-3 py-1 rounded-full">
-                        <i class="ri-history-line mr-1.5"></i>
-                        24시간 연중무휴
+                    <div class="flex flex-wrap gap-2 mb-5">
+                        <div class="flex items-center text-xs font-bold text-primary bg-primary/5 px-3 py-1 rounded-full">
+                            <i class="ri-history-line mr-1.5"></i>
+                            24시간
+                        </div>
+                        <div class="flex items-center text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                            <i class="ri-building-4-line mr-1.5"></i>
+                            총 {{ branch.floors.count() }}개 층
+                        </div>
+                        <div class="flex items-center text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                            <i class="ri-door-line mr-1.5"></i>
+                            방 {{ branch.rooms.count() }}개
+                        </div>
                     </div>
                     <a href="/branches/{{ branch.id }}" class="block">
                         <button
@@ -142,4 +160,55 @@
         </div>
     </div>
 </section>
+
+<!-- Floating Vacancy Sidebar (Remote Control Style) -->
+<div class="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 transition-all duration-300 hover:-translate-x-1" id="vacancy-sidebar">
+    <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 p-3 md:p-5 w-40 md:w-56 overflow-hidden relative">
+        <!-- Decorative background glow -->
+        <div class="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
+        <div class="absolute -bottom-10 -left-10 w-24 h-24 bg-secondary/10 rounded-full blur-2xl"></div>
+        
+        <div class="relative z-10">
+            <h3 class="font-bold text-gray-800 mb-2 md:mb-4 text-xs md:text-sm flex items-center border-b border-gray-100 pb-2 md:pb-3">
+                <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/10 flex items-center justify-center mr-1.5 md:mr-2">
+                    <i class="ri-building-4-line text-primary text-[10px] md:text-xs"></i>
+                </div>
+                지점별 공실
+            </h3>
+            
+            <div class="space-y-2 md:space-y-3">
+                {% if branches %}
+                    {% for branch in branches %}
+                    <a href="/branches/{{ branch.id }}" class="group block">
+                        <div class="flex justify-between items-center text-xs md:text-sm transition-all p-1.5 md:p-2 -mx-1.5 md:-mx-2 rounded-lg hover:bg-gray-50">
+                            <span class="text-gray-600 truncate mr-1 md:mr-2 font-medium group-hover:text-gray-900 transition-colors">{{ branch.name }}</span>
+                            {% set available_count = branch.available_rooms_count %}
+                            {% if available_count > 0 %}
+                            <span class="flex items-center">
+                                <span class="flex h-1.5 w-1.5 md:h-2 md:w-2 relative mr-1 md:mr-1.5">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-green-500"></span>
+                                </span>
+                                <span class="font-bold text-green-600 bg-green-50 px-1.5 md:px-2 py-0 md:py-0.5 rounded md:rounded-md text-[10px] md:text-xs border border-green-100 shadow-sm">{{ available_count }}개</span>
+                            </span>
+                            {% else %}
+                            <span class="font-medium text-gray-400 bg-gray-50 px-1.5 md:px-2 py-0 md:py-0.5 rounded md:rounded-md text-[10px] md:text-xs border border-gray-100">만실</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-[10px] md:text-xs text-gray-400 text-center py-1 md:py-2">등록된 지점이 없습니다.</div>
+                {% endif %}
+            </div>
+            
+            <div class="mt-2 md:mt-4 pt-2 md:pt-3 border-t border-gray-100 text-center">
+                <a href="#locations" class="text-[10px] md:text-[11px] text-gray-400 hover:text-primary transition-colors flex items-center justify-center">
+                    자세히 보기 <i class="ri-arrow-right-s-line ml-0.5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

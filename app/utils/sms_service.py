@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # --- Source of Truth: 타입별 허용 변수 목록 ---
 SMS_VARIABLE_SCHEMA = {
     'CONTRACT_APPLIED': ['user_name', 'branch_name', 'room_name'],
-    'CONTRACT_APPROVED': ['user_name', 'branch_name', 'room_name', 'start_date', 'due_date'],
+    'CONTRACT_APPROVED': ['user_name', 'branch_name', 'room_name', 'start_date', 'due_date', 'bank_account'],
     'PAYMENT_REMINDER': ['user_name', 'branch_name', 'room_name', 'due_date', 'amount'],
     'AUTO_RENEW_NOTICE': ['user_name', 'branch_name', 'room_name', 'end_date', 'renew_deadline'],
     'MOVEOUT_APPLIED': ['user_name', 'branch_name', 'room_name', 'moveout_date'],
