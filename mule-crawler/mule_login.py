@@ -112,11 +112,15 @@ def generate_seo_text(branch, data):
     if is_occupied:
         room_list_html = f"<li>현재 모든 룸이 만실 상태입니다. (가장 빠른 입실 가능 예정일: {next_date})</li>"
     else:
-        room_list_html = ""
         for r in rooms:
             desc = r.get('description', '') or '쾌적한 연습 공간'
             desc = desc.replace('\n', ' • ').strip()
-            room_list_html += f"<li>{r['floor']} {r['name']} (실평수: 약 {r['area_pyung']:.2f}평) - {desc}</li>"
+            area_val = r.get('area', r.get('area_pyung', 0.0))
+            if isinstance(area_val, (int, float)):
+                area_str = f"{area_val:.2f}".rstrip('0').rstrip('.') if area_val % 1 != 0 else f"{int(area_val)}"
+            else:
+                area_str = str(area_val)
+            room_list_html += f"<li>{r['floor']} {r['name']} (약 {area_str}㎡) - {desc}</li>"
             
     # 인천점 특별 프로모션 문구 (조건부)
     incheon_promo = ""

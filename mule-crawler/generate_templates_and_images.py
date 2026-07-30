@@ -68,34 +68,34 @@ else:
 MOCK_DATA = {
     "samsung": {
         "available_rooms": [
-            {"floor": "3층", "name": "7호", "area_pyung": 1.74, "price": 500000, "description": "보컬 및 미디 작업 추천"},
-            {"floor": "3층", "name": "14호", "area_pyung": 1.03, "price": 420000, "description": "보컬 및 미디 작업 추천"},
-            {"floor": "3층", "name": "15호", "area_pyung": 1.03, "price": 420000, "description": "보컬 및 미디 작업 추천"},
-            {"floor": "3층", "name": "16호", "area_pyung": 1.03, "price": 420000, "description": "보컬 및 미디 작업 추천"},
-            {"floor": "3층", "name": "19호", "area_pyung": 1.80, "price": 550000, "description": "보컬 및 미디 작업 추천"}
+            {"floor": "3층", "name": "7호", "area": 5.75, "area_pyung": 5.75, "price": 500000, "description": "보컬 및 미디 작업 추천"},
+            {"floor": "3층", "name": "14호", "area": 3.4, "area_pyung": 3.4, "price": 420000, "description": "보컬 및 미디 작업 추천"},
+            {"floor": "3층", "name": "15호", "area": 3.4, "area_pyung": 3.4, "price": 420000, "description": "보컬 및 미디 작업 추천"},
+            {"floor": "3층", "name": "16호", "area": 3.4, "area_pyung": 3.4, "price": 420000, "description": "보컬 및 미디 작업 추천"},
+            {"floor": "3층", "name": "19호", "area": 5.95, "area_pyung": 5.95, "price": 550000, "description": "보컬 및 미디 작업 추천"}
         ],
         "is_fully_occupied": False,
         "next_available_date": None
     },
     "hongdae": {
         "available_rooms": [
-            {"floor": "4층", "name": "403호", "area_pyung": 2.50, "price": 600000, "description": "보컬 및 미디 작업 추천"},
-            {"floor": "4층", "name": "409호", "area_pyung": 2.50, "price": 600000, "description": "보컬 및 미디 작업 추천"}
+            {"floor": "4층", "name": "403호", "area": 8.25, "area_pyung": 8.25, "price": 600000, "description": "보컬 및 미디 작업 추천"},
+            {"floor": "4층", "name": "409호", "area": 8.25, "area_pyung": 8.25, "price": 600000, "description": "보컬 및 미디 작업 추천"}
         ],
         "is_fully_occupied": False,
         "next_available_date": None
     },
     "incheon": {
         "available_rooms": [
-            {"floor": "4층", "name": "401호", "area_pyung": 2.20, "price": 450000, "description": "보컬, 미디, 개인 작업 권장"},
-            {"floor": "4층", "name": "403호", "area_pyung": 2.50, "price": 500000, "description": "보컬 및 미디 작업 추천"}
+            {"floor": "4층", "name": "401호", "area": 7.26, "area_pyung": 7.26, "price": 450000, "description": "보컬, 미디, 개인 작업 권장"},
+            {"floor": "4층", "name": "403호", "area": 8.25, "area_pyung": 8.25, "price": 500000, "description": "보컬 및 미디 작업 추천"}
         ],
         "is_fully_occupied": False,
         "next_available_date": None
     },
     "mokdong": {
         "available_rooms": [
-            {"floor": "3층", "name": "316호", "area_pyung": 2.13, "price": 530000, "description": "보컬 및 미디 작업 추천"}
+            {"floor": "3층", "name": "316호", "area": 7.04, "area_pyung": 7.04, "price": 530000, "description": "보컬 및 미디 작업 추천"}
         ],
         "is_fully_occupied": False,
         "next_available_date": None
@@ -107,9 +107,9 @@ MOCK_DATA = {
     },
     "bucheon": {
         "available_rooms": [
-            {"floor": "5층", "name": "A", "area_pyung": 14.0, "price": 600000, "description": "보컬, 미디, 개인 악기 연습 권장 (A room)"},
-            {"floor": "5층", "name": "B", "area_pyung": 14.0, "price": 800000, "description": "보컬, 미디, 개인 악기 연습 권장 (B room)"},
-            {"floor": "5층", "name": "H", "area_pyung": 14.0, "price": 350000, "description": "보컬, 미디, 개인 악기 연습 권장 (H room)"}
+            {"floor": "5층", "name": "A", "area": 15, "area_pyung": 15, "price": 600000, "description": "보컬, 미디, 개인 악기 연습 권장 (A room)"},
+            {"floor": "5층", "name": "B", "area": 15, "area_pyung": 15, "price": 800000, "description": "보컬, 미디, 개인 악기 연습 권장 (B room)"},
+            {"floor": "5층", "name": "H", "area": 15, "area_pyung": 15, "price": 350000, "description": "보컬, 미디, 개인 악기 연습 권장 (H room)"}
         ],
         "is_fully_occupied": False,
         "next_available_date": None
@@ -148,6 +148,12 @@ def generate_rooms_html(rooms):
         desc = r.get('description', '') or '쾌적한 개인 연습 공간'
         desc = desc.replace('\n', ' • ').strip()
         
+        area_val = r.get('area', r.get('area_pyung', 0.0))
+        if isinstance(area_val, (int, float)):
+            area_str = f"{area_val:.2f}".rstrip('0').rstrip('.') if area_val % 1 != 0 else f"{int(area_val)}"
+        else:
+            area_str = str(area_val)
+            
         cards.append(f"""
           <div
             style="background-color: #FAF8F5; border: 1px solid #EBE7E0; border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 2px 8px rgba(42, 66, 58, 0.03); text-align: left;">
@@ -157,7 +163,7 @@ def generate_rooms_html(rooms):
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #F3EFE9; border-bottom: 1px solid #F3EFE9; padding: 14px 0;">
               <div style="display: flex; align-items: center; font-size: 13.5px; color: #6E675F;">
-                <span>실평수: <strong style="color: #2A423A;">약 {r['area_pyung']:.2f}평</strong></span>
+                <span>면적: <strong style="color: #2A423A;">약 {area_str}㎡</strong></span>
               </div>
               <div style="display: flex; align-items: center; font-size: 13.5px; color: #6E675F;">
                 <span>추천 용도: <strong style="color: #2A423A;">{desc}</strong></span>
