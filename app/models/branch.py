@@ -94,7 +94,7 @@ class Room(db.Model):
             from app.models.contract import Contract
             from datetime import date, timedelta
             active_contract = self.contracts.filter(
-                Contract.status.in_(['active', 'waiting_signature', 'approved', 'requested'])
+                Contract.status.in_(['active', 'waiting_signature', 'approved', 'requested', 'terminate_requested'])
             ).order_by(Contract.end_date.desc()).first()
             
             if active_contract:
@@ -102,12 +102,9 @@ class Room(db.Model):
                 if active_contract.termination_effective_date:
                     return active_contract.termination_effective_date + timedelta(days=1)
                 
-                # 2. automatic expiration for fixed-term contracts (is_indefinite=False)
-                # Matches admin UI "Expiring Soon" logic (within 30 days)
-                if not active_contract.is_indefinite and active_contract.end_date:
-                    today = date.today()
-                    diff = active_contract.end_date - today
-                    if 0 <= diff.days <= 30:
+                # 2. Show as expiring soon only when termination requested or confirmed (will_terminate)
+                if (active_contract.status == 'terminate_requested' or active_contract.auto_extend_status == 'will_terminate'):
+                    if not active_contract.is_indefinite and active_contract.end_date:
                         return active_contract.end_date + timedelta(days=1)
         
         return None

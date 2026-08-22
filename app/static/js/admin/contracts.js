@@ -9,6 +9,7 @@ document.addEventListener('alpine:init', () => {
         filterSignature: 'all', // 'all', 'signed', 'unsigned'
         sortKey: 'room_name', // 'room_name', 'created_at', 'signed_at'
         sortOrder: 'asc', // 'asc', 'desc'
+        searchQuery: '', // 이름 검색어
         
         // Pagination
         currentPage: 1,
@@ -69,6 +70,7 @@ document.addEventListener('alpine:init', () => {
             this.$watch('filterSignature', () => this.currentPage = 1);
             this.$watch('sortKey', () => this.currentPage = 1);
             this.$watch('sortOrder', () => this.currentPage = 1);
+            this.$watch('searchQuery', () => this.currentPage = 1);
 
             // Lazy load when tab is active
             this.$watch('activeTab', (value) => {
@@ -281,6 +283,16 @@ document.addEventListener('alpine:init', () => {
 
         get filteredContracts() {
             let list = this.contracts;
+
+            // Search Filter
+            if (this.searchQuery && this.searchQuery.trim() !== '') {
+                const q = this.searchQuery.trim().toLowerCase();
+                list = list.filter(c => 
+                    (c.user_name && c.user_name.toLowerCase().includes(q)) ||
+                    (c.user_email && c.user_email.toLowerCase().includes(q)) ||
+                    (c.user_phone && c.user_phone.includes(q))
+                );
+            }
 
             // Branch Filter
             if (this.filterBranchId !== 'all') {

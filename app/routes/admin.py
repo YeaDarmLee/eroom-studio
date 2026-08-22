@@ -103,6 +103,7 @@ def get_stats(current_user):
     # Subquery for branch stats from contracts
     contract_stats = db.session.query(
         Room.branch_id,
+        func.count(Contract.id).label('active_count'),
         func.sum(
             case((Contract.price != None, Contract.price), else_=Room.price)
         ).label('revenue'),
@@ -125,17 +126,26 @@ def get_stats(current_user):
         func.count(Contract.id).label('pending')
     ).select_from(Contract).join(Room).filter(Contract.status == 'requested').group_by(Room.branch_id).all()
     pending_branch_map = {r.branch_id: r.pending for r in pending_branch_stats}
+
+    # NEW: Get waiting_signature contracts per branch
+    waiting_sig_stats = db.session.query(
+        Room.branch_id,
+        func.count(Contract.id).label('waiting_sig')
+    ).select_from(Contract).join(Room).filter(Contract.status == 'waiting_signature').group_by(Room.branch_id).all()
+    waiting_sig_map = {r.branch_id: r.waiting_sig for r in waiting_sig_stats}
     
     # Get all rooms to calculate occupancy per branch
     # Group by branch_id and room_type (active/monthly/etc) isn't direct on Room
     # easier to fetch all rooms (lighter than contracts) or aggregate rooms
     
-    # Count total rooms per branch
+    # Total Overall Room Stats
     total_rooms_per_branch = db.session.query(
         Room.branch_id, 
-        func.count(Room.id).label('total')
+        func.count(Room.id).label('total'),
+        func.count(case((Room.room_type == 'time_based', 1))).label('time_based'),
+        func.count(case((Room.room_type == 'manager', 1))).label('manager')
     ).group_by(Room.branch_id).all()
-    
+
     # 3. Room Occupancy Statistics (Focused on Monthly for vacancy)
     # Using Room.status for consistency (it's sync'd during contract lifecycle)
     monthly_stats = db.session.query(
@@ -145,14 +155,6 @@ def get_stats(current_user):
         func.count(case(((Room.room_type == 'monthly') & (Room.status == 'reserved'), 1))).label('reserved_monthly'),
         func.count(case(((Room.room_type == 'monthly') & (Room.status == 'available'), 1))).label('available_monthly'),
         func.count(case(((Room.room_type == 'monthly') & (Room.status == 'maintenance'), 1))).label('maintenance_monthly')
-    ).group_by(Room.branch_id).all()
-
-    # Total Overall Room Stats
-    total_rooms_per_branch = db.session.query(
-        Room.branch_id, 
-        func.count(Room.id).label('total'),
-        func.count(case((Room.room_type == 'time_based', 1))).label('time_based'),
-        func.count(case((Room.room_type == 'manager', 1))).label('manager')
     ).group_by(Room.branch_id).all()
 
     # Maps for easy lookup
@@ -178,6 +180,7 @@ def get_stats(current_user):
         m_stats = monthly_stats_map.get(bid)
         t_stats = total_rooms_map.get(bid)
         
+        b_active_contracts = stats.active_count if stats and hasattr(stats, 'active_count') and stats.active_count else 0
         b_revenue = stats.revenue if stats and stats.revenue else 0
         b_deposit = stats.deposit if stats and stats.deposit else 0
         b_expiring = stats.expiring if stats and stats.expiring else 0
@@ -211,6 +214,9 @@ def get_stats(current_user):
             'available_rooms_list': available_rooms_list,
             'expiring_contracts': b_expiring,
             'pending_contracts': pending_branch_map.get(bid, 0),
+            'active_contracts': b_active_contracts,
+            'waiting_signature': waiting_sig_map.get(bid, 0),
+            'maintenance_rooms': b_monthly_maintenance,
             'monthly_rooms': b_monthly_total,
             'time_based_rooms': b_time_rooms,
             'manager_rooms': b_manager_rooms,
@@ -350,7 +356,13 @@ def get_contracts(current_user):
     ).all()
     result = []
     
+    today_date = date.today()
     for c in contracts:
+        # 데이터 보정: 만약 auto_extend_status가 'notified'이지만 종료일이 오늘 기준 30일 초과 남아있는 경우 'none'으로 정정
+        if c.auto_extend_status == 'notified' and c.end_date and not c.is_indefinite and (c.end_date - today_date).days > 30:
+            c.auto_extend_status = 'none'
+            db.session.add(c)
+
         user_info = c.get_user_info()
         contract_data = {
             'id': c.id,
@@ -383,6 +395,11 @@ def get_contracts(current_user):
             'has_signature': bool(c.signature_data)
         }
         result.append(contract_data)
+    
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     
     return jsonify(result)
 
@@ -542,6 +559,11 @@ def update_contract(current_user, id):
         contract.end_date = date(2099, 12, 31)
     elif 'end_date' in data and data['end_date']:
         contract.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+        
+    # 만약 end_date가 오늘 기준 30일 초과 남아있는데 auto_extend_status가 notified 상태인 경우 none으로 리셋
+    if contract.auto_extend_status == 'notified' and contract.end_date and not contract.is_indefinite:
+        if (contract.end_date - date.today()).days > 30:
+            contract.auto_extend_status = 'none'
         
     if 'price' in data:
         contract.price = data['price']

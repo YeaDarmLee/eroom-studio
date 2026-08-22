@@ -86,7 +86,7 @@ def process_daily_sms_tasks(app):
         
         # 1. PAYMENT_REMINDER
         template = sms_service.get_template('PAYMENT_REMINDER')
-        offset = template.schedule_offset if template else -3
+        offset = template.schedule_offset if template else 0
         target_payment_date = today - timedelta(days=offset)
         
         reminder_contracts = Contract.query.filter(
@@ -94,7 +94,11 @@ def process_daily_sms_tasks(app):
             Contract.payment_day == target_payment_date.day
         ).all()
         
+        target_reminder_month_str = target_payment_date.strftime('%Y-%m')
         for contract in reminder_contracts:
+            paid_list = contract.paid_months or []
+            if target_reminder_month_str in paid_list:
+                continue  # 이미 납부 완료된 달 → 발송 건너뜀
             context = build_sms_context(contract, 'PAYMENT_REMINDER', due_date=target_payment_date.strftime('%Y-%m-%d'))
             sms_service.send_sms(contract.id, 'PAYMENT_REMINDER', context, related_date=target_payment_date)
  
@@ -117,20 +121,35 @@ def process_daily_sms_tasks(app):
                 # 발송 성공 시 자동연장 대기 상태로 전환
                 contract.auto_extend_status = 'notified'
         
+        # 보정: 계약 연장 등으로 만료일이 30일 초과로 늘어난 경우 notified -> none 초기화
+        mismatched_contracts = Contract.query.filter(
+            Contract.status == 'active',
+            Contract.auto_extend_status == 'notified',
+            Contract.end_date > today + timedelta(days=30),
+            Contract.is_indefinite == False
+        ).all()
+        for mc in mismatched_contracts:
+            mc.auto_extend_status = 'none'
+
         db.session.commit()
             
-        # 3. PAYMENT_OVERDUE_STAGE1 (Disabled: Manual sending only)
-        # template = sms_service.get_template('PAYMENT_OVERDUE_STAGE1')
-        # offset = template.schedule_offset if template else 1
-        # target_overdue1_date = today - timedelta(days=offset)
-        # 
-        # overdue1_contracts = Contract.query.filter(
-        #     Contract.status == 'active',
-        #     Contract.payment_day == target_overdue1_date.day
-        # ).all()
-        # for contract in overdue1_contracts:
-        #     context = build_sms_context(contract, 'PAYMENT_OVERDUE_STAGE1', due_date=target_overdue1_date.strftime('%Y-%m-%d'))
-        #     sms_service.send_sms(contract.id, 'PAYMENT_OVERDUE_STAGE1', context, related_date=target_overdue1_date)
+        # 3. PAYMENT_OVERDUE_STAGE1 (5 days after)
+        template = sms_service.get_template('PAYMENT_OVERDUE_STAGE1')
+        offset = template.schedule_offset if template else 5
+        target_overdue1_date = today - timedelta(days=offset)
+        
+        overdue1_contracts = Contract.query.filter(
+            Contract.status == 'active',
+            Contract.payment_day == target_overdue1_date.day
+        ).all()
+        
+        target_month_str = target_overdue1_date.strftime('%Y-%m')
+        
+        for contract in overdue1_contracts:
+            paid_list = contract.paid_months or []
+            if target_month_str not in paid_list:
+                context = build_sms_context(contract, 'PAYMENT_OVERDUE_STAGE1', due_date=target_overdue1_date.strftime('%Y-%m-%d'))
+                sms_service.send_sms(contract.id, 'PAYMENT_OVERDUE_STAGE1', context, related_date=target_overdue1_date)
  
         # 4. PAYMENT_OVERDUE_STAGE2 (Disabled: Manual sending only)
         # template = sms_service.get_template('PAYMENT_OVERDUE_STAGE2')

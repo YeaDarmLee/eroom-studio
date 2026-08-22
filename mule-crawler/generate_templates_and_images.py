@@ -188,7 +188,7 @@ def generate_rooms_html(rooms):
 
 def generate_occupied_html(next_date):
     """만실 시 노출할 미니멀 메시지 박스 마크업"""
-    date_str = next_date if next_date else "2026-07-01"
+    date_str = next_date if next_date else "미정 (대기 문의)"
     return f"""
           <div
             style="background-color: #FAF8F5; border: 1px solid #EBE7E0; border-radius: 16px; padding: 35px 24px; text-align: center; color: #7A7267; margin: 0; box-shadow: 0 2px 8px rgba(42, 66, 58, 0.03); display: flex; flex-direction: column; align-items: center; gap: 10px;">

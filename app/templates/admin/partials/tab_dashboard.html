@@ -1,5 +1,33 @@
 <!-- Dashboard Tab -->
 <div x-show="activeTab === 'dashboard'" x-data="dashboardTab" class="space-y-6 animate-fade-in">
+    <!-- KPI Branch Selector Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100">
+        <div>
+            <div class="flex items-center gap-2">
+                <h2 class="text-lg md:text-xl font-black text-gray-900 tracking-tight">대시보드 KPI</h2>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold"
+                    x-text="selectedBranch === '전체' ? '전체 지점 통합' : `${selectedBranch}`"></span>
+            </div>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">지점별 주요 현황 및 KPI 지표를 확인합니다.</p>
+        </div>
+
+        <!-- Branch Filter Buttons -->
+        <div class="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0 custom-scrollbar">
+            <button @click="selectedBranch = '전체'"
+                :class="selectedBranch === '전체' ? 'bg-primary text-white shadow-md shadow-primary/20 font-black' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold'"
+                class="px-3.5 py-1.5 rounded-xl text-xs transition-all whitespace-nowrap cursor-pointer">
+                전체 지점
+            </button>
+            <template x-for="branch in branchData" :key="branch.id">
+                <button @click="selectedBranch = branch.name"
+                    :class="selectedBranch === branch.name ? 'bg-primary text-white shadow-md shadow-primary/20 font-black' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold'"
+                    class="px-3.5 py-1.5 rounded-xl text-xs transition-all whitespace-nowrap cursor-pointer"
+                    x-text="branch.name">
+                </button>
+            </template>
+        </div>
+    </div>
+
     <!-- Stats Grid Skeleton -->
     <div class="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-6" x-show="loading">
         <template x-for="i in 6">
@@ -19,60 +47,7 @@
     <div class="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-6" x-show="!loading"
         x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 transform scale-95"
         x-transition:enter-end="opacity-100 transform scale-100">
-        <template x-for="(stat, key) in [
-            { 
-                label: '총 방 개수', 
-                value: stats.totalRooms, 
-                icon: 'ri-door-line', 
-                color: 'bg-blue-500',
-                tooltip: `이용중: ${stats.activeContracts}개\n서명대기: ${stats.waitingSignature}개\n공실: ${stats.availableRooms}개\n점검중: ${stats.maintenanceRooms}개`
-            },
-            { 
-                label: '점유 중 / 예약', 
-                value: stats.occupiedRooms, 
-                icon: 'ri-file-text-line', 
-                color: 'bg-green-500',
-                tooltip: `이용 중(활성): ${stats.activeContracts}개\n서명/입금 대기: ${stats.waitingSignature}개\n점검 중: ${stats.maintenanceRooms || 0}개`
-            },
-            { 
-                label: '만료 예정', 
-                value: stats.expiringContracts, 
-                icon: 'ri-alarm-warning-line', 
-                color: 'bg-orange-500',
-                tooltip: `1개월 이내 종료 예정 계약`,
-                actionType: 'expiring'
-            },
-            { 
-                label: '승인 대기', 
-                value: stats.pendingRequests, 
-                icon: 'ri-question-answer-line', 
-                color: 'bg-indigo-500',
-                tooltip: '문의/승인 대기 건',
-                actionType: 'requests'
-            },
-            { 
-                label: '공실 현황', 
-                value: `${stats.availableRooms}/${stats.monthlyRooms}`, 
-                icon: 'ri-door-open-line', 
-                color: 'bg-blue-500',
-                tooltip: '현재 즉시 입주 가능 방 / 전체 월결제 방',
-                actionType: 'vacant'
-            },
-            { 
-                label: '월세 합계', 
-                value: '₩' + Number(stats.monthlyRevenue || 0).toLocaleString(), 
-                icon: 'ri-wallet-3-line', 
-                color: 'bg-purple-500',
-                tooltip: `현재 활성 계약의 총 월세 수입 예측`
-            },
-            { 
-                label: '보증금 합계', 
-                value: '₩' + Number(stats.totalDeposit || 0).toLocaleString(), 
-                icon: 'ri-safe-2-line', 
-                color: 'bg-indigo-500',
-                tooltip: `현재 활성 계약의 총 보증금 합계`
-            }
-        ]">
+        <template x-for="(stat, key) in statCards">
             <div
                 class="bg-white rounded-2xl p-3 md:p-6 shadow-sm border border-gray-100 transition-all relative group"
                 :class="stat.actionType ? 'cursor-pointer hover:shadow-lg hover:border-primary/30 hover:bg-blue-50/10' : 'hover:shadow-md'"
@@ -91,7 +66,7 @@
                     </div>
                 </div>
                 <!-- Action Indicator if clickable -->
-                <template x-if="stat.action">
+                <template x-if="stat.actionType">
                     <div class="absolute top-2 right-2 text-[8px] font-black text-primary/40 uppercase tracking-widest md:hidden">Click</div>
                 </template>
                 <!-- Tooltip -->
@@ -112,6 +87,7 @@
             selectedContract: null,
             loadingDetail: false,
             selectedBranch: '전체',
+            searchQuery: '',
             uniqueBranches: [],
             currentMonthStr: (() => {
                 const d = new Date();
@@ -161,8 +137,16 @@
             },
             
             getFilteredList(list) {
-                if (this.selectedBranch === '전체') return list;
-                return list.filter(item => item.branch_name === this.selectedBranch);
+                if (!list) return [];
+                let result = list;
+                if (this.selectedBranch !== '전체') {
+                    result = result.filter(item => item.branch_name === this.selectedBranch);
+                }
+                if (this.searchQuery && this.searchQuery.trim() !== '') {
+                    const q = this.searchQuery.trim().toLowerCase();
+                    result = result.filter(item => (item.user_name || '').toLowerCase().includes(q));
+                }
+                return result;
             },
 
             async fetchMonthlyPayments() {
@@ -390,26 +374,38 @@
                 </button>
             </div>
 
-            <!-- Branch Filter Redesign -->
-            <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto"
+            <!-- Branch Filter & Search Redesign -->
+            <div class="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto"
                 x-show="currentSubTab === 'monthly'">
-                <label class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">지점
-                    필터</label>
-                <div class="flex items-center gap-2 overflow-x-auto w-full pb-2 md:pb-0 custom-scrollbar">
-                    <!-- '전체' Button -->
-                    <button @click="selectedBranch = '전체'"
-                        :class="selectedBranch === '전체' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'"
-                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap">
-                        전체 지점
-                    </button>
-                    <!-- Branch Buttons -->
-                    <template x-for="branch in uniqueBranches" :key="branch">
-                        <button @click="selectedBranch = branch"
-                            :class="selectedBranch === branch ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'"
-                            class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap"
-                            x-text="branch">
+                <!-- Name Search Filter -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <span class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">이름 검색</span>
+                    <div class="relative">
+                        <input type="text" x-model="searchQuery" placeholder="결제자 이름..."
+                            class="w-36 md:w-44 pl-8 pr-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-medium focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm">
+                        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Branch Filter -->
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">지점 필터</label>
+                    <div class="flex items-center gap-2 overflow-x-auto w-full pb-2 md:pb-0 custom-scrollbar">
+                        <!-- '전체' Button -->
+                        <button @click="selectedBranch = '전체'"
+                            :class="selectedBranch === '전체' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap">
+                            전체 지점
                         </button>
-                    </template>
+                        <!-- Branch Buttons -->
+                        <template x-for="branch in uniqueBranches" :key="branch">
+                            <button @click="selectedBranch = branch"
+                                :class="selectedBranch === branch ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'"
+                                class="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap"
+                                x-text="branch">
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
 
@@ -893,7 +889,7 @@
                 </div>
 
                 <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <template x-if="expiringContracts.length === 0">
+                    <template x-if="filteredExpiringContracts.length === 0">
                         <div class="py-12 flex flex-col items-center justify-center text-center space-y-3">
                             <div
                                 class="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-2">
@@ -904,9 +900,9 @@
                         </div>
                     </template>
 
-                    <template x-if="expiringContracts.length > 0">
+                    <template x-if="filteredExpiringContracts.length > 0">
                         <div class="space-y-3">
-                            <template x-for="item in expiringContracts" :key="item.id">
+                            <template x-for="item in filteredExpiringContracts" :key="item.id">
                                 <div @click="isDashboardExpiringModalVisible = false; openContractModal(item.id)"
                                     class="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-orange-500 hover:shadow-md cursor-pointer transition-all group">
                                     <div class="flex items-center gap-4">

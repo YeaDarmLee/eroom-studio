@@ -189,10 +189,7 @@ def get_branch_rooms_status(branch_name):
                 dates.append(d)
         if dates:
             next_available_date_str = min(dates).strftime('%Y-%m-%d')
-        else:
-            # 기본값 설정
-            from datetime import date, timedelta
-            next_available_date_str = (date.today() + timedelta(days=14)).strftime('%Y-%m-%d')
+        # 퇴실 예정자가 없는 만실일 경우 None 유지
             
     return jsonify({
         'branch_name': branch.name,

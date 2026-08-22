@@ -26,6 +26,15 @@
                     </button>
                 </div>
             </div>
+            <!-- Name Search Filter -->
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">이름 검색</span>
+                <div class="relative flex-1 max-w-xs">
+                    <input type="text" x-model="searchQuery" placeholder="계약자 이름 검색..."
+                        class="w-full pl-8 pr-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-medium focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm">
+                    <i class="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                </div>
+            </div>
             <!-- Branch Filter -->
             <div class="flex items-center gap-2">
                 <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">지점 필터</span>
@@ -217,8 +226,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <template x-if="contract.room_type !== 'time_based'">
-                                <div class="flex items-center gap-1">
-                                    <span x-text="contract.start_date"></span>
+                                <div class="flex items-center gap-1 font-medium">
+                                    <span class="font-bold text-gray-800" x-text="contract.start_date"></span>
                                     <span class="text-gray-300">~</span>
                                     <template x-if="contract.is_indefinite">
                                         <span
@@ -238,7 +247,7 @@
                                             </template>
                                             <template
                                                 x-if="contract.status !== 'terminate_requested' || !contract.termination_effective_date">
-                                                <span x-text="contract.end_date"></span>
+                                                <span class="font-bold text-gray-800" x-text="contract.end_date"></span>
                                             </template>
                                         </div>
                                     </template>
@@ -375,6 +384,24 @@
                             <template x-if="contract.room_type === 'time_based'">
                                 <span
                                     class="ml-1 px-1 py-0.5 bg-purple-50 text-purple-600 text-[8px] font-bold rounded">시간제</span>
+                            </template>
+                        </div>
+                        <div class="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <i class="ri-calendar-line text-gray-400"></i>
+                            <span class="font-bold text-gray-800" x-text="contract.start_date"></span>
+                            <span class="text-gray-300">~</span>
+                            <template x-if="contract.is_indefinite">
+                                <span class="px-1 bg-gray-100 text-gray-500 rounded text-[9px] font-bold">한달 전 통보</span>
+                            </template>
+                            <template x-if="!contract.is_indefinite">
+                                <span>
+                                    <template x-if="contract.status === 'terminate_requested' && contract.termination_effective_date">
+                                        <span class="text-red-600 font-bold" x-text="contract.termination_effective_date"></span>
+                                    </template>
+                                    <template x-if="contract.status !== 'terminate_requested' || !contract.termination_effective_date">
+                                        <span class="font-bold text-gray-800" x-text="contract.end_date"></span>
+                                    </template>
+                                </span>
                             </template>
                         </div>
                         <div class="text-[11px] text-blue-600 font-bold mt-0.5"

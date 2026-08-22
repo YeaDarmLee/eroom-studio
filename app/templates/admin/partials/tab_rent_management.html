@@ -32,6 +32,13 @@
             </h2>
             
             <div class="flex flex-wrap items-center gap-3">
+                <!-- Name Search Filter -->
+                <div class="relative min-w-[160px]">
+                    <input type="text" x-model="searchQuery" placeholder="이름 검색..."
+                        class="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:ring-emerald-500 focus:border-emerald-500 shadow-sm outline-none">
+                    <i class="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                </div>
+                
                 <!-- Branch Filter -->
                 <select x-model="filterBranch" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:ring-emerald-500 focus:border-emerald-500 min-w-[120px] shadow-sm">
                     <option value="all">전체 지점</option>
@@ -252,6 +259,7 @@ document.addEventListener('alpine:init', () => {
         // Filters
         filterBranch: 'all',
         filterPaymentStatus: 'all',
+        searchQuery: '',
         
         // Pagination
         currentPage: 1,
@@ -267,6 +275,7 @@ document.addEventListener('alpine:init', () => {
             });
             this.$watch('filterBranch', () => { this.currentPage = 1; });
             this.$watch('filterPaymentStatus', () => { this.currentPage = 1; });
+            this.$watch('searchQuery', () => { this.currentPage = 1; });
         },
 
         updateMonthDisplay() {
@@ -300,6 +309,13 @@ document.addEventListener('alpine:init', () => {
         
         get filteredContracts() {
             return this.contracts.filter(c => {
+                // Name Search filter
+                if (this.searchQuery && this.searchQuery.trim() !== '') {
+                    const q = this.searchQuery.trim().toLowerCase();
+                    const userName = (c.user_name || '').toLowerCase();
+                    if (!userName.includes(q)) return false;
+                }
+
                 // Branch filter
                 if (this.filterBranch !== 'all' && c.branch_name !== this.filterBranch) return false;
                 
