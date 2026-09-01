@@ -112,11 +112,17 @@ document.addEventListener('alpine:init', () => {
             ];
         },
 
+        searchQuery: '',
+
         get filteredExpiringContracts() {
-            if (this.selectedBranch === '전체' || !this.selectedBranch) {
-                return this.expiringContracts;
+            let list = this.expiringContracts;
+            if (this.selectedBranch !== '전체' && this.selectedBranch) {
+                list = list.filter(c => c.branch_name === this.selectedBranch);
             }
-            return this.expiringContracts.filter(c => c.branch_name === this.selectedBranch);
+            if (this.searchQuery && this.searchQuery.trim() !== '') {
+                list = list.filter(c => window.matchSearchFields([c.user_name, c.room_name, c.branch_name, c.user_phone], this.searchQuery));
+            }
+            return list;
         },
 
         toggleExpiringModalManual() {

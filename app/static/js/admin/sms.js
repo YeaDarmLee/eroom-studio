@@ -104,11 +104,29 @@ document.addEventListener('alpine:init', () => {
             this.manualMsgType = 'MANUAL';
             this.manualContent = '';
             this.searchPerformed = false;
+            this.isSearchingRecipient = false;
+        },
+
+        isSearchingRecipient: false,
+        searchTimer: null,
+
+        onRecipientInput() {
+            if (this.searchTimer) clearTimeout(this.searchTimer);
+            if (!this.recipientSearchQuery || this.recipientSearchQuery.trim().length < 1) {
+                this.recipientSearchResults = [];
+                this.searchPerformed = false;
+                this.isSearchingRecipient = false;
+                return;
+            }
+            this.searchTimer = setTimeout(() => {
+                this.searchRecipient();
+            }, 300);
         },
 
         async searchRecipient() {
-            if (this.recipientSearchQuery.length < 2) return;
+            if (!this.recipientSearchQuery || this.recipientSearchQuery.trim().length < 1) return;
             this.searchPerformed = true;
+            this.isSearchingRecipient = true;
             try {
                 const response = await fetch(`/admin/api/contracts/search?q=${encodeURIComponent(this.recipientSearchQuery)}`, {
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
@@ -117,6 +135,8 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 console.error('Error searching recipient:', error);
                 this.recipientSearchResults = [];
+            } finally {
+                this.isSearchingRecipient = false;
             }
         },
 

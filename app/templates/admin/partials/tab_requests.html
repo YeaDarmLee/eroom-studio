@@ -106,7 +106,8 @@
                             </div>
                             <div class="flex items-center justify-between mt-2">
                                 <p class="text-[11px] text-gray-500">
-                                    <span class="font-medium text-gray-700" x-text="req.user_name"></span> •
+                                    <span class="font-medium text-gray-700" x-text="req.user_name"></span>
+                                    <span class="text-emerald-600 font-semibold ml-1" x-show="req.start_date && req.end_date" x-text="'(' + req.start_date + ' ~ ' + req.end_date + ')'"></span> •
                                     <span x-text="req.created_at"></span>
                                 </p>
                                 <!-- Action buttons -->

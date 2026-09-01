@@ -265,7 +265,7 @@
                                                                     보증금 임대료 포함</p>
                                                             </div>
                                                             <p class="text-xl font-black text-secondary text-right break-words min-w-0"
-                                                                x-text="'₩' + ((contract.discount_details.first_month_total || (contract.price + contract.deposit)) - (contract.deposit || 0)).toLocaleString() + ((contract.deposit || 0) > 0 ? ' + ₩' + (contract.deposit || 0).toLocaleString() : '')">
+                                                                x-text="'₩' + (contract.discount_details?.first_month_rent !== undefined ? contract.discount_details.first_month_rent : (contract.discount_details?.first_month_total && contract.discount_details?.deposit !== undefined ? contract.discount_details.first_month_total - contract.discount_details.deposit : contract.price || 0)).toLocaleString() + ((contract.deposit || 0) > 0 ? ' + ₩' + (contract.deposit || 0).toLocaleString() : '')">
                                                             </p>
                                                         </div>
                                                         <!-- 이후 월 납부 금액 -->

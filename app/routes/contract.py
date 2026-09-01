@@ -285,8 +285,10 @@ def create_contract(current_user):
     # breakdown 업데이트 (프론트엔드 표시용)
     breakdown['proration_adjustment'] = proration_adjustment
     breakdown['tax_invoice_requested'] = tax_invoice_requested
+    actual_deposit = data.get('deposit', room.deposit) if room.room_type != 'time_based' else 0
+    breakdown['deposit'] = actual_deposit
     breakdown['first_month_rent'] = final_price # 일할 계산 + VAT 적용된 첫 달 임대료 부분
-    breakdown['first_month_total'] = final_price + (room.deposit if room.room_type != 'time_based' else 0)
+    breakdown['first_month_total'] = final_price + actual_deposit
 
     # --- Evidence Capture (New) ---
     terms_version = data.get('terms_version')

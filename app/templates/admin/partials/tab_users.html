@@ -83,6 +83,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="'#' + user.id"></td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900" x-text="user.name"></div>
+                                <div class="text-xs text-emerald-600 font-semibold mt-0.5" x-show="user.start_date && user.end_date" x-text="'계약: ' + user.start_date + ' ~ ' + user.end_date"></div>
                                 <div class="text-xs text-gray-500" x-text="user.email"></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="user.phone || '-'">
@@ -142,6 +143,7 @@
                                     :class="user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'"
                                     x-text="getRoleLabel(user.role)"></span>
                             </div>
+                            <div class="text-[11px] text-emerald-600 font-semibold mt-0.5" x-show="user.start_date && user.end_date" x-text="'계약: ' + user.start_date + ' ~ ' + user.end_date"></div>
                             <div class="text-[11px] text-gray-400 truncate" x-text="user.email"></div>
                             <div class="text-[11px] text-gray-500 mt-0.5" x-text="user.phone || '-'"></div>
                         </div>

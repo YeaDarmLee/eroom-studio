@@ -386,12 +386,13 @@
                             class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">수신자
                             검색</label>
                         <div class="flex gap-2">
-                            <input type="text" x-model="recipientSearchQuery" @keyup.enter="searchRecipient()"
-                                placeholder="이름 또는 전화번호 입력"
+                            <input type="text" x-model="recipientSearchQuery" @input="onRecipientInput()" @keyup.enter="searchRecipient()"
+                                placeholder="이름 또는 초성(예: ㅇㄱ) 입력..."
                                 class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-primary focus:border-primary text-sm font-bold placeholder-gray-400">
                             <button @click="searchRecipient()"
-                                class="px-4 bg-gray-100 rounded-xl text-gray-600 hover:bg-gray-200 transition-colors">
-                                <i class="ri-search-line"></i>
+                                class="px-4 bg-gray-100 rounded-xl text-gray-600 hover:bg-gray-200 transition-colors flex items-center justify-center min-w-[48px]">
+                                <i x-show="!isSearchingRecipient" class="ri-search-line"></i>
+                                <i x-show="isSearchingRecipient" class="ri-loader-4-line animate-spin text-primary"></i>
                             </button>
                         </div>
 
@@ -404,6 +405,8 @@
                                     <div>
                                         <div class="text-sm font-bold text-gray-900"
                                             x-text="r.user_name + ' (' + r.user_phone + ')'"></div>
+                                        <div class="text-xs text-emerald-600 font-semibold" x-show="r.start_date && r.end_date"
+                                            x-text="r.start_date + ' ~ ' + r.end_date"></div>
                                         <div class="text-xs text-gray-500" x-text="r.branch_name + ' ' + r.room_name">
                                         </div>
                                     </div>
@@ -424,6 +427,9 @@
                             <div class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">받는 사람</div>
                             <div class="text-sm font-bold text-gray-900"
                                 x-text="manualSelectedRecipient?.user_name + ' (' + manualSelectedRecipient?.user_phone + ')'">
+                            </div>
+                            <div class="text-xs text-emerald-600 font-semibold" x-show="manualSelectedRecipient?.start_date && manualSelectedRecipient?.end_date"
+                                x-text="manualSelectedRecipient?.start_date + ' ~ ' + manualSelectedRecipient?.end_date">
                             </div>
                             <div class="text-xs text-gray-500"
                                 x-text="manualSelectedRecipient?.branch_name + ' ' + manualSelectedRecipient?.room_name">

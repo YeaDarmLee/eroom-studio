@@ -111,6 +111,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="font-bold text-slate-700" x-text="c.user_name"></div>
+                                <div class="text-xs text-slate-400 font-medium mt-0.5" x-show="c.start_date && c.end_date" x-text="c.start_date + ' ~ ' + c.end_date"></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right">
                                 <div class="font-black text-emerald-600" x-text="'₩' + Number(c.price).toLocaleString()"></div>
@@ -183,7 +184,8 @@
                         </div>
                         <div class="text-right">
                             <div class="font-bold text-slate-700 text-sm" x-text="c.user_name"></div>
-                            <span class="px-2 py-0.5 mt-1.5 inline-block bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold" x-text="'결제일: ' + getPaymentDayDisplay(c.payment_day)"></span>
+                            <div class="text-[11px] text-slate-400 mt-0.5" x-show="c.start_date && c.end_date" x-text="c.start_date + ' ~ ' + c.end_date"></div>
+                            <span class="px-2 py-0.5 mt-1 inline-block bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold" x-text="'결제일: ' + getPaymentDayDisplay(c.payment_day)"></span>
                         </div>
                     </div>
                     
@@ -311,9 +313,7 @@ document.addEventListener('alpine:init', () => {
             return this.contracts.filter(c => {
                 // Name Search filter
                 if (this.searchQuery && this.searchQuery.trim() !== '') {
-                    const q = this.searchQuery.trim().toLowerCase();
-                    const userName = (c.user_name || '').toLowerCase();
-                    if (!userName.includes(q)) return false;
+                    if (!window.matchSearchFields([c.user_name, c.room_name, c.branch_name, c.user_phone], this.searchQuery)) return false;
                 }
 
                 // Branch filter

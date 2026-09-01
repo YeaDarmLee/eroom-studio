@@ -143,8 +143,7 @@
                     result = result.filter(item => item.branch_name === this.selectedBranch);
                 }
                 if (this.searchQuery && this.searchQuery.trim() !== '') {
-                    const q = this.searchQuery.trim().toLowerCase();
-                    result = result.filter(item => (item.user_name || '').toLowerCase().includes(q));
+                    result = result.filter(item => window.matchSearchFields([item.user_name, item.room_name, item.branch_name, item.user_phone], this.searchQuery));
                 }
                 return result;
             },
@@ -278,6 +277,8 @@
                                             class="text-[10px] uppercase font-black text-gray-400 tracking-wider">이름</label>
                                         <div class="text-lg font-bold text-gray-900"
                                             x-text="selectedContract.user_name"></div>
+                                        <div class="text-xs text-emerald-600 font-semibold" x-show="selectedContract.start_date && selectedContract.end_date"
+                                            x-text="`${selectedContract.start_date} ~ ${selectedContract.end_date}`"></div>
                                     </div>
                                     <div class="space-y-1 text-right">
                                         <label
@@ -458,6 +459,8 @@
                                     <div>
                                         <div class="text-sm font-bold text-gray-900 leading-tight"
                                             x-text="item.user_name"></div>
+                                        <div class="text-[10px] text-emerald-600 font-semibold" x-show="item.start_date && item.end_date"
+                                            x-text="`${item.start_date} ~ ${item.end_date}`"></div>
                                         <div class="text-[11px] text-gray-400"
                                             x-text="`${item.room_name} (${item.branch_name})`"></div>
                                     </div>
@@ -513,6 +516,8 @@
                                     <div>
                                         <div class="text-sm font-bold text-gray-900 leading-tight"
                                             x-text="item.user_name"></div>
+                                        <div class="text-[10px] text-emerald-600 font-semibold" x-show="item.start_date && item.end_date"
+                                            x-text="`${item.start_date} ~ ${item.end_date}`"></div>
                                         <div class="text-[11px] text-gray-400"
                                             x-text="`${item.room_name} (${item.branch_name})`"></div>
                                     </div>
@@ -559,6 +564,8 @@
                                     x-text="item.payment_day"></div>
                                 <div class="flex-1">
                                     <div class="text-xs font-bold text-gray-900" x-text="item.user_name"></div>
+                                    <div class="text-[10px] text-emerald-600 font-semibold" x-show="item.start_date && item.end_date"
+                                        x-text="`${item.start_date} ~ ${item.end_date}`"></div>
                                     <div class="text-[10px] text-gray-400"
                                         x-text="`${item.room_name} (${item.branch_name})`"></div>
                                 </div>
@@ -912,6 +919,8 @@
                                         </div>
                                         <div>
                                             <div class="text-sm font-black text-gray-900" x-text="item.user_name"></div>
+                                            <div class="text-[10px] text-emerald-600 font-semibold" x-show="item.start_date && item.end_date"
+                                                x-text="`${item.start_date} ~ ${item.end_date}`"></div>
                                             <div class="text-[11px] text-gray-500 font-bold"
                                                 x-text="`${item.branch_name} · ${item.room_name}`"></div>
                                         </div>

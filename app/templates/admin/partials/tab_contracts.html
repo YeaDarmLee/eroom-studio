@@ -210,6 +210,7 @@
                                             class="px-1 py-0.5 bg-gray-50 text-gray-400 text-[9px] font-black rounded border border-gray-100 uppercase tracking-tighter">임시</span>
                                     </template>
                                 </div>
+                                <div class="text-xs text-emerald-600 font-semibold mt-0.5" x-show="contract.start_date && contract.end_date" x-text="contract.start_date + ' ~ ' + contract.end_date"></div>
                                 <div class="text-[10px] text-gray-400" x-text="contract.user_email"></div>
                             </div>
                         </td>
@@ -362,22 +363,25 @@
                                     class="px-1 py-0.5 bg-gray-50 text-gray-400 text-[8px] font-black rounded border border-gray-100 uppercase tracking-tighter">임시</span>
                             </template>
                             <span class="text-[10px] text-gray-400" x-text="'#' + contract.id"></span>
-                            <template x-if="isExpiringSoon(contract)">
-                                <span
-                                    class="px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-black rounded-full border border-red-200 animate-pulse">만료예정</span>
-                            </template>
-                            <!-- Signature Status Badge -->
-                            <template x-if="contract.has_signature">
-                                <span
-                                    class="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded border border-blue-100 uppercase">서명완료</span>
-                            </template>
-                            <!-- Tax Invoice Requested Badge -->
-                            <template x-if="contract.tax_invoice_requested">
-                                <span
-                                    class="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-[9px] font-black rounded border border-orange-100 uppercase">VAT</span>
-                            </template>
                         </div>
-                        <div class="text-[11px] text-gray-500 truncate">
+                        <!-- Status Badges Row -->
+                        <template x-if="isExpiringSoon(contract) || contract.has_signature || contract.tax_invoice_requested">
+                            <div class="flex items-center gap-1 mt-0.5 flex-wrap">
+                                <template x-if="isExpiringSoon(contract)">
+                                    <span
+                                        class="px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-black rounded-full border border-red-200 animate-pulse shrink-0">만료예정</span>
+                                </template>
+                                <template x-if="contract.has_signature">
+                                    <span
+                                        class="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded border border-blue-100 uppercase shrink-0">서명완료</span>
+                                </template>
+                                <template x-if="contract.tax_invoice_requested">
+                                    <span
+                                        class="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-[9px] font-black rounded border border-orange-100 uppercase shrink-0">VAT</span>
+                                </template>
+                            </div>
+                        </template>
+                        <div class="text-[11px] text-gray-500 truncate mt-0.5">
                             <span x-text="contract.branch_name"></span>
                             <span class="text-gray-300 mx-1">·</span>
                             <span x-text="contract.room_name"></span>
@@ -386,7 +390,7 @@
                                     class="ml-1 px-1 py-0.5 bg-purple-50 text-purple-600 text-[8px] font-bold rounded">시간제</span>
                             </template>
                         </div>
-                        <div class="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <div class="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5 flex-wrap">
                             <i class="ri-calendar-line text-gray-400"></i>
                             <span class="font-bold text-gray-800" x-text="contract.start_date"></span>
                             <span class="text-gray-300">~</span>
@@ -405,7 +409,7 @@
                             </template>
                         </div>
                         <div class="text-[11px] text-blue-600 font-bold mt-0.5"
-                            x-text="'₩' + contract.price.toLocaleString()"></div>
+                            x-text="'₩' + (contract.price || 0).toLocaleString()"></div>
                     </div>
                     <!-- Status + Arrow -->
                     <div class="flex flex-col items-end gap-1 shrink-0">
@@ -792,7 +796,7 @@
                                         <p class="text-[9px] text-primary/60 font-medium mt-0.5">보증금 임대료 포함</p>
                                     </div>
                                     <span class="text-sm font-black text-gray-900 text-right whitespace-nowrap"
-                                        x-text="formatPrice((selectedContract?.discount_details?.first_month_total || (selectedContract?.price + selectedContract?.deposit)) - (selectedContract?.deposit || 0)) + ((selectedContract?.deposit || 0) > 0 ? ' + ' + formatPrice(selectedContract?.deposit) : '')"></span>
+                                        x-text="formatPrice(selectedContract?.discount_details?.first_month_rent !== undefined ? selectedContract.discount_details.first_month_rent : (selectedContract?.discount_details?.first_month_total && selectedContract?.discount_details?.deposit !== undefined ? selectedContract.discount_details.first_month_total - selectedContract.discount_details.deposit : selectedContract?.price || 0)) + ((selectedContract?.deposit || 0) > 0 ? ' + ' + formatPrice(selectedContract?.deposit) : '')"></span>
                                 </div>
                                 <!-- 이후 월세가 아래로 -->
                                 <div

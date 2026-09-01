@@ -25,6 +25,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, case
+from app.utils.korean_utils import match_search_fields
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -90,7 +91,8 @@ def get_stats(current_user):
             'user_name': user_info['name'] or '알 수 없음',
             'room_name': c.room.name if c.room else '알 수 없음',
             'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
-            'end_date': c.end_date.strftime('%Y-%m-%d')
+            'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else '',
+            'end_date': c.end_date.strftime('%Y-%m-%d') if c.end_date else ''
         })
 
 
@@ -330,7 +332,9 @@ def get_rent_management_contracts(current_user):
             'room_name': c.room.name if c.room else '알 수 없음',
             'price': c.price if c.price is not None else (c.room.price if c.room else 0),
             'payment_day': c.payment_day,
-            'paid_months': paid_list
+            'paid_months': paid_list,
+            'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else '',
+            'end_date': c.end_date.strftime('%Y-%m-%d') if c.end_date else ''
         })
     # Sort by payment_day ascending, then by branch and natural room name
     import re
@@ -674,7 +678,9 @@ def get_monthly_payments(current_user):
             'price': c.price if c.price is not None else (c.room.price if c.room else 0),
             'payment_day': c.payment_day,
             'paid_months': paid_list,
-            'user_phone': user_info.get('phone') or ''
+            'user_phone': user_info.get('phone') or '',
+            'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else '',
+            'end_date': c.end_date.strftime('%Y-%m-%d') if c.end_date else ''
         }
         
         if c.payment_day == 1:
@@ -731,7 +737,9 @@ def get_requests(current_user):
             'details': details_data,
             'created_at': r.created_at.strftime('%Y-%m-%d %H:%M'),
             'room_name': r.contract.room.name if r.contract and r.contract.room else (details_data.get('room_name') or 'N/A'),
-            'branch_id': branch_id
+            'branch_id': branch_id,
+            'start_date': r.contract.start_date.strftime('%Y-%m-%d') if r.contract and r.contract.start_date else '',
+            'end_date': r.contract.end_date.strftime('%Y-%m-%d') if r.contract and r.contract.end_date else ''
         })
     return jsonify(results)
 
@@ -1719,7 +1727,9 @@ def get_users(current_user):
     result = []
     
     for u in users:
-        active_branch_ids = [c.room.branch_id for c in u.contracts if c.status == 'active' and c.room]
+        active_contracts = [c for c in u.contracts if c.status == 'active']
+        latest_contract = active_contracts[-1] if active_contracts else None
+        active_branch_ids = [c.room.branch_id for c in active_contracts if c.room]
         result.append({
             'id': u.id,
             'name': u.name,
@@ -1730,7 +1740,9 @@ def get_users(current_user):
             'onboarding_status': u.onboarding_status,
             'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '',
             'contract_count': len(active_branch_ids),
-            'branch_ids': list(set(active_branch_ids))
+            'branch_ids': list(set(active_branch_ids)),
+            'start_date': latest_contract.start_date.strftime('%Y-%m-%d') if latest_contract and latest_contract.start_date else '',
+            'end_date': latest_contract.end_date.strftime('%Y-%m-%d') if latest_contract and latest_contract.end_date else ''
         })
     
     return jsonify(result)
@@ -2177,50 +2189,6 @@ def send_manual_sms(current_user):
     else:
         return jsonify({'error': message}), 500
 
-@admin_bp.route('/api/contracts/search', methods=['GET'])
-@admin_required
-def search_contracts(current_user):
-    """Search contracts by user name or phone"""
-    q = request.args.get('q', '').strip()
-    if len(q) < 2:
-        return jsonify([])
-
-    # Mapped contracts (Active Only for now, or all?)
-    # User might want to send SMS to 'terminated' users too (e.g. deposit refund).
-    # So let's include terminated.
-    mapped = Contract.query.join(User).filter(
-        (User.name.ilike(f'%{q}%')) | (User.phone.ilike(f'%{q}%'))
-    ).limit(20).all()
-
-    # Unmapped contracts
-    unmapped = Contract.query.filter(
-        Contract.user_id == None,
-        (Contract.temp_user_name.ilike(f'%{q}%')) | (Contract.temp_user_phone.ilike(f'%{q}%'))
-    ).limit(20).all()
-
-    results = []
-    # Deduplicate by ID just in case, though unlikely
-    seen_ids = set()
-    
-    for c in mapped + unmapped:
-        if c.id in seen_ids:
-            continue
-        seen_ids.add(c.id)
-        
-        user_info = c.get_user_info()
-        results.append({
-            'id': c.id,
-            'user_name': user_info['name'],
-            'user_phone': user_info['phone'],
-            'room_name': c.room.name if c.room else 'N/A',
-            'branch_name': c.room.branch.name if c.room and c.room.branch else 'N/A',
-            'status': c.status,
-            'start_date': c.start_date.strftime('%Y-%m-%d'),
-            'end_date': c.end_date.strftime('%Y-%m-%d')
-        })
-    
-    return jsonify(results[:20])
-
 # ============================================================
 # 특정 월 추가 할인 (Custom Discount) API
 # ============================================================
@@ -2284,4 +2252,53 @@ def delete_custom_discount(current_user, contract_id, target_month):
     db.session.delete(discount)
     db.session.commit()
     return jsonify({'message': '할인 내역이 삭제되었습니다.'})
+
+@admin_bp.route('/api/contracts/search', methods=['GET'])
+@admin_required
+def search_contracts(current_user):
+    """Search contracts by user name, phone, email, room using Hangul Choseong & hybrid search (P0 Pagination Pipeline)"""
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify([])
+
+    limit = int(request.args.get('limit', 20))
+    offset = int(request.args.get('offset', 0))
+
+    # 1. Fetch all candidate contracts from DB with joinedload (Eager fetch to avoid N+1 queries)
+    all_contracts = Contract.query.options(
+        joinedload(Contract.user),
+        joinedload(Contract.room).joinedload(Room.branch)
+    ).order_by(Contract.id.desc()).all()
+
+    # 2. Filter using Python match_search_fields (Choseong, Normalization, Substring)
+    matching_contracts = []
+    seen_ids = set()
+
+    for c in all_contracts:
+        if c.id in seen_ids:
+            continue
+
+        user_info = c.get_user_info()
+        name = user_info.get('name', '')
+        phone = user_info.get('phone', '')
+        email = user_info.get('email', '')
+        room_name = c.room.name if c.room else ''
+        branch_name = c.room.branch.name if c.room and c.room.branch else ''
+
+        if match_search_fields([name, phone, email, c.id, room_name, branch_name], q):
+            seen_ids.add(c.id)
+            matching_contracts.append({
+                'id': c.id,
+                'user_name': name,
+                'user_phone': phone,
+                'room_name': room_name,
+                'branch_name': branch_name,
+                'status': c.status,
+                'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else '',
+                'end_date': c.end_date.strftime('%Y-%m-%d') if c.end_date else ''
+            })
+
+    # 3. Apply Pagination Slicing
+    results = matching_contracts[offset:offset + limit]
+    return jsonify(results)
 

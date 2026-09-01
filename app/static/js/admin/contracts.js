@@ -165,12 +165,7 @@ document.addEventListener('alpine:init', () => {
 
         get filteredUsers() {
             if (!this.searchUserQuery) return this.users;
-            const lower = this.searchUserQuery.toLowerCase();
-            return this.users.filter(u =>
-                u.name.toLowerCase().includes(lower) ||
-                u.email.toLowerCase().includes(lower) ||
-                (u.phone && u.phone.includes(lower))
-            );
+            return this.users.filter(u => window.matchSearchFields([u.name, u.email, u.phone, u.id], this.searchUserQuery));
         },
 
         openCreateModal() {
@@ -286,12 +281,7 @@ document.addEventListener('alpine:init', () => {
 
             // Search Filter
             if (this.searchQuery && this.searchQuery.trim() !== '') {
-                const q = this.searchQuery.trim().toLowerCase();
-                list = list.filter(c => 
-                    (c.user_name && c.user_name.toLowerCase().includes(q)) ||
-                    (c.user_email && c.user_email.toLowerCase().includes(q)) ||
-                    (c.user_phone && c.user_phone.includes(q))
-                );
+                list = list.filter(c => window.matchSearchFields([c.user_name, c.user_email, c.user_phone, c.id, c.room_name, c.branch_name], this.searchQuery));
             }
 
             // Branch Filter

@@ -135,12 +135,7 @@ document.addEventListener('alpine:init', () => {
             }
 
             if (!this.searchQuery) return list;
-            const lowerQuery = this.searchQuery.toLowerCase();
-            return list.filter(u =>
-                (u.name && u.name.toLowerCase().includes(lowerQuery)) ||
-                (u.email && u.email.toLowerCase().includes(lowerQuery)) ||
-                (u.phone && u.phone.includes(lowerQuery))
-            );
+            return list.filter(u => window.matchSearchFields([u.name, u.email, u.phone, u.id], this.searchQuery));
         },
 
         get totalPages() {
