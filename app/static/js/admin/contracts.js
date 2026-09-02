@@ -316,6 +316,17 @@ document.addEventListener('alpine:init', () => {
                 if (this.sortKey === 'room_name') {
                     // 1. Branch Name first (Secondary sort)
                     if (a.branch_name !== b.branch_name) {
+                        const PREFERRED_BRANCH_ORDER = ["봉천", "인천", "홍대", "부천", "목동", "삼성"];
+                        const getBranchIdx = (name) => {
+                            if (!name) return 999;
+                            const idx = PREFERRED_BRANCH_ORDER.findIndex(t => name.includes(t));
+                            return idx !== -1 ? idx : 999;
+                        };
+                        const idxA = getBranchIdx(a.branch_name);
+                        const idxB = getBranchIdx(b.branch_name);
+                        if (idxA !== idxB) {
+                            return (idxA - idxB) * (this.sortOrder === 'asc' ? 1 : -1);
+                        }
                         return a.branch_name.localeCompare(b.branch_name) * (this.sortOrder === 'asc' ? 1 : -1);
                     }
                     // 2. Room Name Natural Sort

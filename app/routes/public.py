@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from app.models.branch import Branch, Room
 from app.models.contract import Contract
 from app.utils.db_utils import db_retry
+from app.utils.branch_utils import sort_branches
 from datetime import datetime
 
 public_bp = Blueprint('public', __name__, url_prefix='/api/public')
@@ -9,7 +10,7 @@ public_bp = Blueprint('public', __name__, url_prefix='/api/public')
 @public_bp.route('/branches', methods=['GET'])
 @db_retry(max_retries=3, delay=1)
 def get_branches():
-    branches = Branch.query.all()
+    branches = sort_branches(Branch.query.all())
     result = []
     for branch in branches:
         result.append({

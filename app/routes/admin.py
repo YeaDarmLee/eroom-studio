@@ -26,6 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, case
 from app.utils.korean_utils import match_search_fields
+from app.utils.branch_utils import sort_branches, get_branch_sort_key
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -163,7 +164,7 @@ def get_stats(current_user):
     monthly_stats_map = {r.branch_id: r for r in monthly_stats}
     total_rooms_map = {r.branch_id: r for r in total_rooms_per_branch}
 
-    branches = Branch.query.all()
+    branches = sort_branches(Branch.query.all())
     branch_data = []
     
     # Global accumulators for Monthly logic
@@ -343,7 +344,7 @@ def get_rent_management_contracts(current_user):
     
     result.sort(key=lambda x: (
         x['payment_day'] or 1,
-        x['branch_name'],
+        get_branch_sort_key(x['branch_name']),
         natural_sort_key(x['room_name'])
     ))
     return jsonify(result)
@@ -696,11 +697,11 @@ def get_monthly_payments(current_user):
         return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', str(s))]
 
     def sort_func(x):
-        return (x['branch_name'], natural_sort_key(x['room_name']))
+        return (get_branch_sort_key(x['branch_name']), natural_sort_key(x['room_name']))
 
     day1.sort(key=sort_func)
     day15.sort(key=sort_func)
-    others.sort(key=lambda x: (x['payment_day'] or 0, x['branch_name'], natural_sort_key(x['room_name'])))
+    others.sort(key=lambda x: (x['payment_day'] or 0, get_branch_sort_key(x['branch_name']), natural_sort_key(x['room_name'])))
     
     return jsonify({
         'day1': day1,
@@ -1050,7 +1051,7 @@ def update_request_status(current_user, id):
 @db_retry(max_retries=3, delay=1)
 def get_branches(current_user):
     """Get all branches"""
-    branches = Branch.query.all()
+    branches = sort_branches(Branch.query.all())
     return jsonify([{
         'id': b.id,
         'name': b.name,

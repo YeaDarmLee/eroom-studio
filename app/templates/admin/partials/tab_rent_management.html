@@ -306,7 +306,7 @@ document.addEventListener('alpine:init', () => {
             this.contracts.forEach(c => {
                 if (c.branch_name) branches.add(c.branch_name);
             });
-            return Array.from(branches).sort();
+            return Array.from(branches).sort((a, b) => window.getBranchSortIndex(a) - window.getBranchSortIndex(b));
         },
         
         get filteredContracts() {

@@ -1,3 +1,13 @@
+<script>
+if (!window.getBranchSortIndex) {
+    window.getBranchSortIndex = function(name) {
+        if (!name) return 999;
+        const order = ["봉천", "인천", "홍대", "부천", "목동", "삼성"];
+        const idx = order.findIndex(t => name.includes(t));
+        return idx !== -1 ? idx : 999;
+    };
+}
+</script>
 <!-- Dashboard Tab -->
 <div x-show="activeTab === 'dashboard'" x-data="dashboardTab" class="space-y-6 animate-fade-in">
     <!-- KPI Branch Selector Header -->
@@ -161,7 +171,7 @@
                         ...this.monthlyPayments.day15, 
                         ...this.monthlyPayments.others
                     ];
-                    this.uniqueBranches = [...new Set(allItems.map(item => item.branch_name))].sort();
+                    this.uniqueBranches = [...new Set(allItems.map(item => item.branch_name))].sort((a, b) => window.getBranchSortIndex(a) - window.getBranchSortIndex(b));
                     
                 } catch (e) {
                     console.error('Failed to fetch monthly payments', e);
