@@ -40,8 +40,15 @@ def terminate_expired_contracts(app):
                 db.session.add(history)
                 contract.status = 'terminated'
                 if contract.room:
-                    # 방 상태를 계약 가능 상태로 변경
-                    contract.room.status = 'available'
+                    other_active = Contract.query.filter(
+                        Contract.room_id == contract.room_id,
+                        Contract.id != contract.id,
+                        Contract.status == 'active'
+                    ).first()
+                    if other_active:
+                        contract.room.status = 'occupied'
+                    else:
+                        contract.room.status = 'available'
             
             db.session.commit()
             print(f"[{get_kst_now()}] Auto-terminated {expired_count} expired contracts and updated room statuses.")
@@ -56,7 +63,7 @@ def terminate_expired_contracts(app):
         
         if expired_waiting_count > 0:
             for contract in expired_waiting_contracts:
-                reason = '미체결 상태(서명대기/승인대기/서명거절)에서 계약 종료일 경과로 인한 자동 취소'
+                reason = '미체결 상태(서명대기/서명거절)에서 계약 종료일 경과로 인한 자동 취소'
                 history = ContractStatusHistory(
                     contract_id=contract.id,
                     old_status=contract.status,
@@ -68,8 +75,15 @@ def terminate_expired_contracts(app):
                 db.session.add(history)
                 contract.status = 'cancelled'
                 if contract.room:
-                    # 방 상태를 계약 가능 상태로 변경
-                    contract.room.status = 'available'
+                    other_active = Contract.query.filter(
+                        Contract.room_id == contract.room_id,
+                        Contract.id != contract.id,
+                        Contract.status == 'active'
+                    ).first()
+                    if other_active:
+                        contract.room.status = 'occupied'
+                    else:
+                        contract.room.status = 'available'
             
             db.session.commit()
             print(f"[{get_kst_now()}] Auto-cancelled {expired_waiting_count} expired waiting contracts and updated room statuses.")

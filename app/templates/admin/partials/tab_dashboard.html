@@ -39,8 +39,8 @@ if (!window.getBranchSortIndex) {
     </div>
 
     <!-- Stats Grid Skeleton -->
-    <div class="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-6" x-show="loading">
-        <template x-for="i in 6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-8 gap-3 md:gap-4" x-show="loading">
+        <template x-for="i in 8">
             <div class="bg-white rounded-2xl p-3 md:p-6 shadow-sm border border-gray-100 animate-pulse">
                 <div class="flex items-center justify-between">
                     <div class="space-y-2">
@@ -54,7 +54,7 @@ if (!window.getBranchSortIndex) {
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-6" x-show="!loading"
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-8 gap-3 md:gap-4" x-show="!loading"
         x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 transform scale-95"
         x-transition:enter-end="opacity-100 transform scale-100">
         <template x-for="(stat, key) in statCards">

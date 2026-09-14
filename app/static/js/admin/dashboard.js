@@ -6,6 +6,7 @@ document.addEventListener('alpine:init', () => {
             activeContracts: 0,
             expiringContracts: 0,
             pendingRequests: 0,
+            terminateRequested: 0,
             monthlyRevenue: 0,
             totalDeposit: 0,
             totalRooms: 0,
@@ -46,6 +47,7 @@ document.addEventListener('alpine:init', () => {
                 occupiedRooms: (b.occupied_rooms || 0) + (b.maintenance_rooms || 0),
                 expiringContracts: b.expiring_contracts || 0,
                 pendingRequests: b.pending_contracts || 0,
+                terminateRequested: b.terminate_requested || 0,
                 availableRooms: b.available_rooms || 0,
                 monthlyRooms: b.monthly_rooms || 0,
                 monthlyRevenue: b.monthly_revenue || 0,
@@ -86,6 +88,14 @@ document.addEventListener('alpine:init', () => {
                     color: 'bg-indigo-500',
                     tooltip: '문의/승인 대기 건',
                     actionType: 'requests'
+                },
+                { 
+                    label: '해지 신청', 
+                    value: s.terminateRequested, 
+                    icon: 'ri-logout-box-r-line', 
+                    color: 'bg-amber-500',
+                    tooltip: '퇴실 / 해지 신청 건수',
+                    actionType: 'terminate_requests'
                 },
                 { 
                     label: '공실 현황', 
@@ -151,6 +161,12 @@ document.addEventListener('alpine:init', () => {
                 this.activeTab = 'contracts';
                 window.dispatchEvent(new CustomEvent('set-contract-filter', { 
                     detail: { status: 'requested' } 
+                }));
+            } else if (stat.actionType === 'terminate_requests') {
+                // Navigate to contracts tab and set filter to 'terminate_requested'
+                this.activeTab = 'contracts';
+                window.dispatchEvent(new CustomEvent('set-contract-filter', { 
+                    detail: { status: 'terminate_requested' } 
                 }));
             }
         },

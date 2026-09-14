@@ -136,6 +136,13 @@ def get_stats(current_user):
         func.count(Contract.id).label('waiting_sig')
     ).select_from(Contract).join(Room).filter(Contract.status == 'waiting_signature').group_by(Room.branch_id).all()
     waiting_sig_map = {r.branch_id: r.waiting_sig for r in waiting_sig_stats}
+
+    # NEW: Get terminate_requested contracts per branch
+    terminate_req_stats = db.session.query(
+        Room.branch_id,
+        func.count(Contract.id).label('terminate_req')
+    ).select_from(Contract).join(Room).filter(Contract.status == 'terminate_requested').group_by(Room.branch_id).all()
+    terminate_req_map = {r.branch_id: r.terminate_req for r in terminate_req_stats}
     
     # Get all rooms to calculate occupancy per branch
     # Group by branch_id and room_type (active/monthly/etc) isn't direct on Room
@@ -219,6 +226,7 @@ def get_stats(current_user):
             'pending_contracts': pending_branch_map.get(bid, 0),
             'active_contracts': b_active_contracts,
             'waiting_signature': waiting_sig_map.get(bid, 0),
+            'terminate_requested': terminate_req_map.get(bid, 0),
             'maintenance_rooms': b_monthly_maintenance,
             'monthly_rooms': b_monthly_total,
             'time_based_rooms': b_time_rooms,
@@ -240,6 +248,7 @@ def get_stats(current_user):
     global_manager = Room.query.filter_by(room_type='manager').count()
     
     waiting_signature_count = Contract.query.filter_by(status='waiting_signature').count()
+    terminate_requested_count = Contract.query.filter_by(status='terminate_requested').count()
     
     return jsonify({
         'stats': {
@@ -247,6 +256,7 @@ def get_stats(current_user):
             'activeContracts': active_contracts_count,
             'pendingRequests': pending_requests,
             'waitingSignature': waiting_signature_count,
+            'terminateRequested': terminate_requested_count,
             'expiringContracts': expiring_count,
             'monthlyRevenue': total_monthly_revenue,
             'totalDeposit': total_deposit,
@@ -898,8 +908,24 @@ def update_contract_status(current_user, id):
                 else:
                     contract.room.status = 'reserved'
             elif effective_status in ['terminated', 'cancelled']:
-                # Set back to available when contract ends or is cancelled
-                contract.room.status = 'available'
+                # Set back to available ONLY if no other active/reserved contract exists for this room
+                other_active = Contract.query.filter(
+                    Contract.room_id == contract.room_id,
+                    Contract.id != contract.id,
+                    Contract.status == 'active'
+                ).first()
+                if other_active:
+                    contract.room.status = 'occupied'
+                else:
+                    other_reserved = Contract.query.filter(
+                        Contract.room_id == contract.room_id,
+                        Contract.id != contract.id,
+                        Contract.status.in_(['approved', 'waiting_signature'])
+                    ).first()
+                    if other_reserved:
+                        contract.room.status = 'reserved'
+                    else:
+                        contract.room.status = 'available'
             elif effective_status == 'terminate_requested':
                 # Ensure it stays occupied if it's a future termination
                 contract.room.status = 'occupied'
@@ -1008,7 +1034,15 @@ def update_request_status(current_user, id):
                     
                     # Sync room status
                     if req.contract.room:
-                        req.contract.room.status = 'available'
+                        other_active = Contract.query.filter(
+                            Contract.room_id == req.contract.room_id,
+                            Contract.id != req.contract.id,
+                            Contract.status == 'active'
+                        ).first()
+                        if other_active:
+                            req.contract.room.status = 'occupied'
+                        else:
+                            req.contract.room.status = 'available'
                     
                     # Log contract status change
                     log_contract_status_change(
