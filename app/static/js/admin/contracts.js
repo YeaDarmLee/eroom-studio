@@ -18,6 +18,7 @@ document.addEventListener('alpine:init', () => {
         // Detailed Modal state
         detailModalOpen: false,
         selectedContract: null,
+        terminationDate: '',
         submittingUpdate: false,
 
         // Custom Discount state
@@ -386,6 +387,7 @@ document.addEventListener('alpine:init', () => {
         async openDetailModal(contract) {
             // 먼저 목록 데이터로 모달을 열어 즉각적인 UI 반응을 제공
             this.selectedContract = { ...contract, history: [] };
+            this.terminationDate = contract.termination_effective_date || contract.end_date || '';
             this.detailModalOpen = true;
 
             // 상세 API를 호출하여 history 포함된 전체 데이터로 업데이트
@@ -397,6 +399,7 @@ document.addEventListener('alpine:init', () => {
                 if (response.ok) {
                     const detail = await response.json();
                     this.selectedContract = detail;
+                    this.terminationDate = detail.termination_effective_date || detail.end_date || '';
                 }
             } catch (error) {
                 console.error('Error loading contract detail:', error);
@@ -524,7 +527,21 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async updateStatus(id, newStatus) {
+        async updateStatus(id, newStatus, immediate = false) {
+            const payload = { status: newStatus };
+            if (newStatus === 'terminated') {
+                if (this.selectedContract?.status === 'terminate_requested' && !immediate) {
+                    if (!this.terminationDate) {
+                        window.showAlert?.('해지일 필요', '확정할 해지일을 선택해주세요.', 'warning');
+                        return;
+                    }
+                    payload.termination_date = this.terminationDate;
+                    if (!confirm(`${this.terminationDate}까지 사용 후 해지하도록 승인하시겠습니까?`)) return;
+                } else {
+                    if (!confirm('오늘 날짜로 계약을 즉시 종료하시겠습니까?')) return;
+                    payload.immediate = true;
+                }
+            }
             // Validation: Ensure phone number exists for signature requests
             if (newStatus === 'waiting_signature' && !this.selectedContract?.user_phone) {
                 window.showAlert?.('연락처 누락', '연락처(전화번호)가 없습니다. 계약 수정 메뉴에서 연락처를 먼저 입력해 주세요.', 'warning');
@@ -542,7 +559,7 @@ document.addEventListener('alpine:init', () => {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ status: newStatus })
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
@@ -552,7 +569,8 @@ document.addEventListener('alpine:init', () => {
                         window.showAlert?.('성공', '계약 상태가 업데이트되었습니다.', 'success');
                     }
                 } else {
-                    window.showAlert?.('업데이트 실패', '계약 상태 변경에 실패했습니다.', 'error');
+                    const error = await response.json();
+                    window.showAlert?.('업데이트 실패', error.error || '계약 상태 변경에 실패했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('Error updating status:', error);

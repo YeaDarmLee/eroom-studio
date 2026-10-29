@@ -109,6 +109,32 @@ class Room(db.Model):
         
         return None
 
+    def sync_status(self):
+        """방 상태를 현재 진행 중인 계약 상태에 따라 자동으로 결정 및 업데이트"""
+        if self.status == 'maintenance':
+            return self.status
+            
+        from app.models.contract import Contract
+        
+        active_contract = self.contracts.filter(
+            Contract.status.in_(['active', 'terminate_requested'])
+        ).first()
+        
+        if active_contract:
+            self.status = 'occupied'
+            return self.status
+
+        reserved_contract = self.contracts.filter(
+            Contract.status.in_(['approved', 'waiting_signature', 'requested'])
+        ).first()
+
+        if reserved_contract:
+            self.status = 'reserved'
+            return self.status
+
+        self.status = 'available'
+        return self.status
+
     def __repr__(self):
         return f'<Room {self.name}>'
 

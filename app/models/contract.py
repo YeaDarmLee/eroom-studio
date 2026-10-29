@@ -121,6 +121,57 @@ class Contract(db.Model):
                 'is_mapped': False
             }
 
+    def apply_termination_request(self, termination_date, confirmation_checked=False):
+        """해지 신청 처리 (단일 트랜잭션 플로우)"""
+        from datetime import datetime
+        self.termination_requested_at = datetime.utcnow()
+        self.termination_confirmation_checked = confirmation_checked
+        self.status = 'terminate_requested'
+        if termination_date:
+            if isinstance(termination_date, str):
+                self.termination_effective_date = datetime.strptime(termination_date, '%Y-%m-%d').date()
+            else:
+                self.termination_effective_date = termination_date
+        if self.room:
+            self.room.sync_status()
+
+    def cancel_termination(self):
+        """해지 신청 취소/철회/반려 처리 (단일 트랜잭션 플로우)"""
+        self.status = 'active'
+        self.termination_effective_date = None
+        self.termination_requested_at = None
+        self.remaining_months_at_termination = None
+        self.penalty_amount_snapshot = None
+        self.termination_confirmation_text_snapshot = None
+        if self.auto_extend_status == 'will_terminate':
+            self.auto_extend_status = 'none'
+        if self.room:
+            self.room.sync_status()
+
+    def approve_termination(self, termination_date=None, immediate=False):
+        """해지 신청 승인 처리 (미래 해지 vs 즉시 종료 분기 처리)"""
+        from datetime import datetime
+        from datetime import timezone, timedelta
+        today = datetime.now(timezone(timedelta(hours=9))).date()
+        target_date = termination_date or self.termination_effective_date or self.end_date
+        
+        if isinstance(target_date, str):
+            target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
+
+        if immediate or (target_date and target_date < today):
+            self.status = 'terminated'
+            self.end_date = today if immediate else target_date
+            self.termination_effective_date = self.end_date
+        else:
+            self.status = 'active'
+            self.auto_extend_status = 'will_terminate'
+            if target_date:
+                self.end_date = target_date
+                self.termination_effective_date = target_date
+
+        if self.room:
+            self.room.sync_status()
+
     def __repr__(self):
         return f'<Contract {self.id} - {self.status}>'
 
