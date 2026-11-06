@@ -121,6 +121,8 @@ class SmsService:
 
     def get_balance(self):
         """통합 잔액 조회 인터페이스"""
+        if not current_app.config.get('SMS_ENABLED', True):
+            return {'SMS_CNT': 0, 'LMS_CNT': 0, 'MMS_CNT': 0, 'disabled': True}
         provider, provider_name = self._get_provider()
         if provider_name == "Aligo":
             return provider.get_balance()
@@ -154,6 +156,9 @@ class SmsService:
         """
         문자 발송 통합 함수 (Idempotency & Validation 포함)
         """
+        from flask import current_app
+        if not current_app.config.get('SMS_ENABLED', True):
+            return True, 'Disabled(Local preview): 실제 문자 발송 차단'
         # 1. 템플릿 조회
         content_template = ""
         if content_override:
@@ -175,7 +180,7 @@ class SmsService:
 
         # 3. 중복 체크 (Decision 3: UNIQUE(dedup_key))
         existing_log = SmsLog.query.filter_by(dedup_key=dedup_key).first()
-        if existing_log:
+        if existing_log and existing_log.status.startswith('SENT'):
             logger.info(f"SMS Skipped (Duplicate): {dedup_key}")
             return True, "Skipped(Duplicate)"
 
@@ -236,6 +241,16 @@ class SmsService:
 
     def _create_log(self, **kwargs):
         """로그 생성 Helper"""
+        new_log = SmsLog.query.filter_by(dedup_key=kwargs.get('dedup_key')).first()
+        if new_log:
+            new_log.status = kwargs.get('status')
+            new_log.error_message = kwargs.get('error_message')
+            new_log.provider_info = kwargs.get('provider_info')
+            new_log.provider_message_id = kwargs.get('provider_message_id')
+            new_log.content_snapshot = kwargs.get('content')
+            new_log.context_snapshot = kwargs.get('context')
+            db.session.commit()
+            return new_log
         new_log = SmsLog(
             contract_id=kwargs.get('contract_id'),
             type=kwargs.get('msg_type'),

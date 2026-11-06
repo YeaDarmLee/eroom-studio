@@ -23,9 +23,7 @@ def upgrade():
         batch_op.add_column(sa.Column('is_corporate', sa.Boolean(), nullable=True))
         batch_op.add_column(sa.Column('registration_number', sa.String(length=50), nullable=True))
         batch_op.create_foreign_key('fk_branches_owner_user_id', 'users', ['owner_user_id'], ['id'])
-        # Drop old columns if they exist and are not in the model
-        batch_op.drop_column('contact_info')
-        batch_op.drop_column('transport_info')
+        # Retain legacy contact/transport fields; expansion must not erase data.
 
 def downgrade():
     with op.batch_alter_table('branches', schema=None) as batch_op:

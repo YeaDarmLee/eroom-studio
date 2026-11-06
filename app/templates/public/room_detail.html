@@ -1013,6 +1013,7 @@
                 },
 
                 get durationDiscount() {
+                    if (this.couponApplied && this.couponData) return this.couponData.monthly_promo_discount || 0;
                     const m = parseInt(this.months);
                     if (m >= 12) return 50000;
                     if (m >= 6) return 30000;
@@ -1025,7 +1026,7 @@
 
                 get recurringPrice() {
                     let price = this.basePrice - this.durationDiscount;
-                    if (this.couponApplied && this.couponData && this.couponData.cycle === 'every_month') {
+                    if (this.couponApplied && this.couponData && this.couponData.cycle === 'monthly') {
                         price -= this.couponDiscount;
                     }
                     return Math.max(0, price);
@@ -1058,7 +1059,7 @@
 
                 get finalFirstPayment() {
                     // 첫 결제액 = 첫 달 고정비용 + 일할 정산분(추가/차감) + 보증금
-                    let price = this.firstMonthPrice + this.proratedAmount;
+                    let price = Math.max(0, this.firstMonthPrice + this.proratedAmount);
                     if (this.taxInvoiceRequested) price = Math.round(price * 1.1);
                     return price + window.contractFormConfig.roomDeposit;
                 },
@@ -1327,7 +1328,7 @@
                                 type: 'inquiry',
                                 details: {
                                     message: this.inquiryMessage,
-                                    room_name: '{{ room.branch.name }} - {{ room.name }}'
+                                    room_id: window.contractFormConfig.roomId
                                 }
                             })
                         });

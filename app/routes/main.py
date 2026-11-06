@@ -42,13 +42,17 @@ def register():
 @main_bp.route('/my/room')
 def dashboard():
     return render_template('user/dashboard.html')
+@main_bp.route('/onboarding/link')
+def onboarding_link():
+    return redirect('/my/room#requests')
+
 @main_bp.route('/onboarding')
 def onboarding():
     return render_template('user/onboarding.html')
 
 @main_bp.route('/requests/new')
 def new_request():
-    return render_template('user/request_form.html')
+    return redirect('/my/room#requests')
 
 @main_bp.route('/terms')
 def terms():

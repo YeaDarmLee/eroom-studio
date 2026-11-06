@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, redirect
+from flask import Blueprint, request, jsonify, redirect, abort
 from app.services.auth_service import AuthService
 from functools import wraps
 from sqlalchemy.exc import IntegrityError
@@ -16,34 +16,25 @@ def token_required(f):
         token = None
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
-            print(f"[TOKEN CHECK] Authorization header: {auth_header[:50]}...")
             token = auth_header.split(" ")[1] if " " in auth_header else None
         
         if not token:
-            print("[TOKEN CHECK] Token is missing!")
             return jsonify({'message': 'Token is missing!'}), 401
         
         try:
-            print(f"[TOKEN CHECK] Decoding token: {token[:30]}...")
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            print(f"[TOKEN CHECK] Token decoded successfully. User ID: {data.get('sub')}")
             
             # sub는 문자열이므로 정수로 변환
             user_id = int(data['sub'])
             current_user = User.query.get(user_id)
             
             if not current_user:
-                print(f"[TOKEN CHECK] User not found for ID: {user_id}")
                 return jsonify({'message': 'User not found!'}), 401
-            print(f"[TOKEN CHECK] User found: {current_user.email} (Role: {current_user.role})")
         except jwt.ExpiredSignatureError:
-            print("[TOKEN CHECK] Token has expired!")
             return jsonify({'message': 'Token has expired!'}), 401
         except jwt.InvalidTokenError as e:
-            print(f"[TOKEN CHECK] Invalid token: {str(e)}")
             return jsonify({'message': 'Token is invalid!'}), 401
         except Exception as e:
-            print(f"[TOKEN CHECK] Unexpected error: {str(e)}")
             return jsonify({'message': 'Token is invalid!'}), 401
         
         return f(current_user, *args, **kwargs)
@@ -55,7 +46,8 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]
+            parts = request.headers['Authorization'].split()
+            token = parts[1] if len(parts) == 2 and parts[0].lower() == 'bearer' else None
         
         if not token:
             return jsonify({'message': 'Token is missing!'}), 401
@@ -76,64 +68,6 @@ def admin_required(f):
         return f(current_user, *args, **kwargs)
     
     return decorated
-
-@auth_bp.route('/mock-login', methods=['POST'])
-def mock_login():
-    """Mock login for test user (id=1)"""
-    user = User.query.get(1)
-    if not user:
-        user = User(
-            id=1,
-            kakao_id='kakao_test_user_001',
-            email='user@test.com',
-            name='테스트유저',
-            role='user',
-            onboarding_status='existing_linked'
-        )
-        db.session.add(user)
-        db.session.commit()
-    
-    access_token = AuthService.generate_token(user.id)
-    return jsonify({
-        'access_token': access_token,
-        'token': access_token,  # For backward compatibility
-        'user': {
-            'id': user.id,
-            'name': user.name,
-            'email': user.email,
-            'role': user.role,
-            'onboarding_status': user.onboarding_status
-        }
-    })
-
-@auth_bp.route('/mock-admin-login', methods=['POST'])
-def mock_admin_login():
-    """Mock login for admin user (id=2)"""
-    admin = User.query.get(2)
-    if not admin:
-        admin = User(
-            id=2,
-            kakao_id='kakao_admin_001',
-            email='admin@test.com',
-            name='관리자',
-            role='admin',
-            onboarding_status='new_user_done'
-        )
-        db.session.add(admin)
-        db.session.commit()
-    
-    access_token = AuthService.generate_token(admin.id)
-    return jsonify({
-        'access_token': access_token,
-        'token': access_token,  # For backward compatibility
-        'user': {
-            'id': admin.id,
-            'name': admin.name,
-            'email': admin.email,
-            'role': admin.role,
-            'onboarding_status': admin.onboarding_status
-        }
-    })
 
 @auth_bp.route('/email-register', methods=['POST'])
 def email_register():
@@ -156,16 +90,17 @@ def email_register():
         
     # Check if phone already exists
     existing_phone = User.query.filter_by(phone=phone).first()
-    if existing_phone:
+    placeholder = existing_phone if existing_phone and (existing_phone.email or '').startswith('temp_') else None
+    if existing_phone and not placeholder:
         return jsonify({'message': '이미 사용 중인 휴대폰 번호입니다.'}), 400
     
     # Create new user
     user = User(
         email=email,
-        phone=phone,
+        phone=None if placeholder else phone,
         name=name,
         role='user',
-        onboarding_status='new_user_done'
+        onboarding_status='existing_pending' if placeholder else 'new_user_done'
     )
     user.set_password(password)
     
@@ -174,7 +109,18 @@ def email_register():
     
     # 🔗 새 사용자 생성 시 미매핑 계약 자동 매핑 시도
     from app.services.contract_mapping_service import ContractMappingService
-    ContractMappingService.map_contracts_to_user(user)
+    from app.models.request import Request
+    import json
+    from app.models.contract import Contract
+    candidates = ContractMappingService.get_unmapped_contracts(phone=phone, email=email)
+    if placeholder or candidates:
+        db.session.add(Request(user_id=user.id, type='account_link', status='submitted', details=json.dumps({
+            'message': '기존 계약 연결 요청: 관리자의 본인 확인이 필요합니다.',
+            'phone': phone, 'legacy_user_id': placeholder.id if placeholder else None,
+            'contract_ids': [c.id for c in candidates]
+        })))
+        user.onboarding_status = 'existing_pending'
+        db.session.commit()
     
     # Generate token
     access_token = AuthService.generate_token(user.id)
@@ -213,8 +159,6 @@ def email_login():
     access_token = AuthService.generate_token(user.id)
     
     # Debug logging
-    print(f"[EMAIL LOGIN] User {user.email} (ID: {user.id}, Role: {user.role}) logged in")
-    print(f"[EMAIL LOGIN] Token generated: {access_token[:30]}...")
     
     return jsonify({
         'access_token': access_token,
@@ -316,6 +260,8 @@ def update_onboarding(current_user):
 @auth_bp.route('/kakao/login', methods=['GET'])
 def kakao_login():
     """Redirect to Kakao Login Page"""
+    if current_app.config.get('APP_MODE') in ('local', 'testing'):
+        return jsonify({'message': '로컬 검증에서는 외부 카카오 인증이 차단됩니다.'}), 503
     client_id = os.environ.get('KAKAO_CLIENT_ID')
     redirect_uri = os.environ.get('KAKAO_REDIRECT_URI', 'http://localhost:5000/api/auth/kakao/callback')
     
@@ -328,6 +274,8 @@ def kakao_login():
 @auth_bp.route('/kakao/callback', methods=['GET'])
 def kakao_callback():
     """Handle Kakao OAuth Callback"""
+    if current_app.config.get('APP_MODE') in ('local', 'testing'):
+        return jsonify({'message': '로컬 검증에서는 외부 카카오 인증이 차단됩니다.'}), 503
     code = request.args.get('code')
     
     if not code:

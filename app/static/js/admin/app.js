@@ -15,7 +15,7 @@ document.addEventListener('alpine:init', () => {
 
             // Handle URL hash for deep linking
             const hash = window.location.hash.substring(1);
-            if (['dashboard', 'contracts', 'requests', 'branches'].includes(hash)) {
+            if (['dashboard', 'users', 'contracts', 'rent-management', 'coupons', 'sms', 'requests', 'inquiries', 'branches'].includes(hash)) {
                 this.activeTab = hash;
             }
 

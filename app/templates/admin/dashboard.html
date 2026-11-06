@@ -80,6 +80,8 @@
 
 
     <!-- Alpine.js MUST be loaded AFTER custom components -->
+    <script src="{{ url_for('static', filename='js/session.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dialogs.js') }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     <script>
@@ -123,6 +125,7 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800 font-sans" x-data="adminApp" x-cloak>
+    {% if local_preview %}<div role="status" class="bg-amber-100 text-amber-950 px-4 py-2 text-center text-sm font-bold">로컬 검증 전용 · SQLite 테스트 데이터 · 실제 문자 및 자동 배치 중지</div>{% endif %}
     <div class="flex h-screen overflow-hidden">
 
         <!-- Sidebar -->

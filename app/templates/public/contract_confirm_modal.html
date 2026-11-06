@@ -87,6 +87,7 @@
                 <!-- Pricing -->
                 <div class="pt-2 border-t-2 border-dashed border-gray-200 space-y-2">
                     <!-- Monthly Contract Pricing -->
+                    <template x-if="typeof applyItem !== 'undefined'">
                     <div class="space-y-2">
                         <!-- Standard Prices -->
                         <div class="flex items-center justify-between">
@@ -141,6 +142,7 @@
                         </div>
                     </div>
 
+                    </template>
                     <!-- Time-based Pricing -->
                     <template x-if="typeof finalFirstPayment === 'undefined'">
                         <div class="flex items-center justify-between py-1">

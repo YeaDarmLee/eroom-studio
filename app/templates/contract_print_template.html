@@ -315,6 +315,26 @@
                 <th>예 치 금</th>
                 <td colspan="3" style="text-align: left;">금 {{ deposit }} 원 정 (계약 만기 시 전액 환급하며, 계약 위반시엔 전액 차감한다.)</td>
             </tr>
+            {% if termination_settlement and termination_settlement.needs_review %}
+            <tr>
+                <th>퇴실 정산</th>
+                <td colspan="3" style="text-align: left;">기존 퇴실 승인 건은 원래 만기일 기록이 없어 보증금 정산 확인이 필요합니다.</td>
+            </tr>
+            {% elif termination_settlement %}
+            <tr>
+                <th>{{ '중도퇴실' if termination_settlement.is_early_termination else '퇴실 정산' }}</th>
+                <td colspan="3" style="text-align: left;">
+                    기존 만기일 {{ termination_settlement.original_end_date }} / 퇴실일 {{ termination_settlement.termination_date }}<br>
+                    보증금 {{ '{:,}'.format(termination_settlement.deposit) }}원 /
+                    <strong style="color: #b91c1c;">예상 차감 −{{ '{:,}'.format(termination_settlement.deposit_deduction) }}원</strong> /
+                    반환 예정 {{ '{:,}'.format(termination_settlement.deposit_refund) }}원
+                    {% if termination_settlement.additional_payment %}
+                    <br>보증금 초과 예상 위약금 {{ '{:,}'.format(termination_settlement.additional_payment) }}원
+                    {% endif %}
+                    <br><small>기존 위약금 규칙 기준 예상액이며, 미납금 등 최종 정산에 따라 달라질 수 있습니다.</small>
+                </td>
+            </tr>
+            {% endif %}
             <tr>
                 <th>정 가</th>
                 <td class="no-wrap">금 {{ price }} 원 정</td>

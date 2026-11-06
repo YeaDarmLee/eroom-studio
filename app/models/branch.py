@@ -113,6 +113,10 @@ class Room(db.Model):
         """방 상태를 현재 진행 중인 계약 상태에 따라 자동으로 결정 및 업데이트"""
         if self.status == 'maintenance':
             return self.status
+        if self.room_type == 'time_based':
+            # Individual time slots block reservations; the entire room stays bookable.
+            self.status = 'available'
+            return self.status
             
         from app.models.contract import Contract
         

@@ -8,6 +8,8 @@ from app.utils.evidence import log_contract_status_change, get_server_side_terms
 import datetime
 import json
 from sqlalchemy import func
+from app.services.contract_rules import positive_int, parse_date, time_hours, ensure_available
+from werkzeug.exceptions import BadRequest
 
 contract_bp = Blueprint('contract', __name__, url_prefix='/api/contracts')
 
@@ -67,20 +69,21 @@ def calculate_coupon_discount(room, months, coupon_code):
     # If EXCLUSIVE, remove monthly_promo_discount
     if stack_policy == 'EXCLUSIVE':
         monthly_promo_discount = 0
+    coupon_discount = min(coupon_discount, max(0, base_price - monthly_promo_discount))
     
     # 6. Calculate Prices
     # Recurring Monthly Price
     if discount_cycle == 'monthly':
-        final_monthly_price = base_price - monthly_promo_discount - coupon_discount
+        final_monthly_price = max(0, base_price - monthly_promo_discount - coupon_discount)
     else:
         # 'once' or No coupon
-        final_monthly_price = base_price - monthly_promo_discount
+        final_monthly_price = max(0, base_price - monthly_promo_discount)
 
     # First Month Price (Pre-proration)
     if discount_cycle == 'once':
         # Apply coupon to first month only
         # Base (with promo if stack) - Coupon
-        first_month_price = (base_price - monthly_promo_discount) - coupon_discount
+        first_month_price = max(0, (base_price - monthly_promo_discount) - coupon_discount)
     else:
         # 'monthly' or No coupon
         first_month_price = final_monthly_price
@@ -101,7 +104,7 @@ def calculate_coupon_discount(room, months, coupon_code):
 def validate_coupon(current_user):
     data = request.get_json()
     room_id = data.get('room_id')
-    months = data.get('months', 1)
+    months = positive_int(data.get('months', 1), '계약 개월 수')
     coupon_code = data.get('coupon_code')
     
     room = Room.query.get_or_404(room_id)
@@ -130,19 +133,16 @@ def create_contract(current_user):
     data = request.get_json()
     room_id = data.get('room_id')
     start_date_str = data.get('start_date')
-    months = data.get('months', 1)
+    months = positive_int(data.get('months', 1), '계약 개월 수')
     start_time = data.get('start_time')
     end_time = data.get('end_time')
     coupon_code = data.get('coupon_code')
     
-    room = Room.query.get_or_404(room_id)
+    room = Room.query.filter_by(id=room_id).with_for_update().first_or_404()
     
-    try:
-        start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'message': 'Invalid date format'}), 400
+    start_date = parse_date(start_date_str, '입주일')
 
-    payment_day = data.get('payment_day', 1)
+    payment_day = positive_int(data.get('payment_day', 1), '결제일', 28)
         
     # Calculate end date
     if room.room_type == 'time_based':
@@ -172,37 +172,12 @@ def create_contract(current_user):
 
     # --- Overlap Validation (New) ---
     is_time_based = room.room_type == 'time_based'
-    blocking_statuses = ['requested', 'approved', 'active', 'waiting_signature']
-    
-    overlap_query = Contract.query.filter(
-        Contract.room_id == room.id,
-        Contract.status.in_(blocking_statuses)
-    )
-    
-    if is_time_based:
-        # For time-based, check same day AND time overlap
-        overlap = overlap_query.filter(
-            Contract.start_date == start_date,
-            Contract.start_time < end_time,
-            Contract.end_time > start_time
-        ).first()
-    else:
-        # For monthly, check date range overlap
-        # Respect termination_effective_date if it exists
-        from sqlalchemy import case, or_
-        overlap = overlap_query.filter(
-            Contract.start_date <= end_date,
-            func.coalesce(Contract.termination_effective_date, Contract.end_date) >= start_date
-        ).first()
-        
-    if overlap:
-        if is_time_based:
-            return jsonify({'message': f'선택하신 시간대에 이미 예약이 존재합니다. ({overlap.start_time} ~ {overlap.end_time})'}), 400
-        else:
-            return jsonify({'message': f'해당 기간({overlap.start_date} ~ {overlap.end_date})에 이미 예약 또는 계약이 존재합니다.'}), 400
-    
+    hours = time_hours(start_time, end_time) if is_time_based else None
+    ensure_available(room, start_date, end_date, start_time, end_time)
     # --- Price Calculation with Coupon ---
     breakdown, coupon = calculate_coupon_discount(room, months, coupon_code)
+    if coupon_code and (not coupon or not breakdown['coupon_id']):
+        return jsonify({'message': '유효하지 않거나 계약 조건에 맞지 않는 쿠폰입니다.'}), 400
     
     # Verify Coupon Usage (Concurrency)
     if coupon:
@@ -217,7 +192,6 @@ def create_contract(current_user):
                 return jsonify({'error': 'Coupon usage limit exceeded'}), 400
         else:
              # Just increment if no limit, but still good to be atomic or just simple add
-             coupon.used_count += 1
              # Note: simple add is not race-free but for no-limit it's less critical.
              # Better: Coupon.query.filter_by(id=coupon.id).update({'used_count': Coupon.used_count + 1})
              db.session.query(Coupon).filter(Coupon.id == coupon.id).update({'used_count': Coupon.used_count + 1})
@@ -270,6 +244,11 @@ def create_contract(current_user):
         # cycle = monthly or None
         # recurring_price has the discount baked in.
         final_price = recurring_price + proration_adjustment
+
+    final_price = max(0, final_price)
+    if is_time_based:
+        final_price = int(room.price * hours)
+        proration_adjustment = 0
     
     # Apply VAT only if card or requested tax invoice
     payment_method = data.get('payment_method', 'bank')
@@ -285,7 +264,7 @@ def create_contract(current_user):
     # breakdown 업데이트 (프론트엔드 표시용)
     breakdown['proration_adjustment'] = proration_adjustment
     breakdown['tax_invoice_requested'] = tax_invoice_requested
-    actual_deposit = data.get('deposit', room.deposit) if room.room_type != 'time_based' else 0
+    actual_deposit = (room.deposit or 0) if room.room_type != 'time_based' else 0
     breakdown['deposit'] = actual_deposit
     breakdown['first_month_rent'] = final_price # 일할 계산 + VAT 적용된 첫 달 임대료 부분
     breakdown['first_month_total'] = final_price + actual_deposit
@@ -302,7 +281,7 @@ def create_contract(current_user):
 
     final_recurring_monthly = breakdown['final_monthly_price']
     if room.room_type == 'time_based':
-        final_recurring_monthly *= (data.get('hours', 1))
+        final_recurring_monthly = int(room.price * hours)
         
     if tax_invoice_requested:
         final_recurring_monthly = int(final_recurring_monthly * 1.1)
@@ -340,6 +319,7 @@ def create_contract(current_user):
     
     db.session.add(contract)
     db.session.flush() # Get ID for history
+    room.sync_status()
     
     # Audit History
     log_contract_status_change(
@@ -414,8 +394,9 @@ def get_my_contracts(current_user):
             'payment_day': c.payment_day,
             'payment_method': c.payment_method,
             'discount_details': json.loads(c.discount_details) if c.discount_details else None,
-            'coupon_name': c.coupon.name if c.coupon else None,
+            'coupon_name': c.coupon.code if c.coupon else None,
             'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
+            'termination_settlement': c.termination_settlement,
             'custom_discounts': custom_discounts_data
         })
     return jsonify(result)
@@ -459,7 +440,7 @@ def sign_contract(current_user, id):
     
     # Sync Room Status
     if contract.room:
-        contract.room.status = 'occupied'
+        contract.room.sync_status()
         
     log_contract_status_change(
         contract=contract,
@@ -494,6 +475,9 @@ def reject_contract(current_user, id):
     contract = Contract.query.get_or_404(id)
     if contract.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
+
+    if contract.status != 'waiting_signature':
+        return jsonify({'error': '서명 대기 중인 계약만 거절할 수 있습니다.'}), 409
         
     data = request.get_json()
     reason = data.get('reason')
@@ -503,6 +487,9 @@ def reject_contract(current_user, id):
     old_status = contract.status
     contract.status = 'signature_rejected'
     contract.rejection_reason = reason
+    db.session.flush()
+    if contract.room:
+        contract.room.sync_status()
     
     log_contract_status_change(
         contract=contract,
@@ -658,7 +645,8 @@ def get_contract_view(current_user, id):
         branch_name=branch.name if branch else '',
         branch_address=branch.address if branch else '',
         room_name=room.name if room else '',
-        deposit=f"{contract.deposit:,}" if contract.deposit else "0",
+        deposit=f"{(contract.deposit if contract.deposit is not None else (room.deposit or 0)):,}",
+        termination_settlement=contract.termination_settlement,
         price=f"{regular_price:,}",
         total_price=f"{display_price:,}",
         tax_invoice_requested=contract.tax_invoice_requested,

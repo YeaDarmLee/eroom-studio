@@ -117,6 +117,10 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.submittingResponse = true;
+            if (this.selectedRequest.type === 'account_link' && !confirm('신청자의 본인 확인을 완료했습니까? 승인하면 기존 계약이 연결됩니다.')) {
+                this.submittingResponse = false;
+                return;
+            }
             const token = localStorage.getItem('token');
             try {
                 const response = await fetch(`/admin/api/requests/${this.selectedRequest.id}/status`, {
@@ -127,6 +131,7 @@ document.addEventListener('alpine:init', () => {
                     },
                     body: JSON.stringify({
                         status: 'done',
+                        identity_verified: this.selectedRequest.type === 'account_link',
                         admin_response: this.adminResponseText
                     })
                 });
@@ -147,6 +152,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         async updateStatus(id, newStatus) {
+            const req = this.allData.find(r => r.id === id);
+            if (req?.type === 'account_link' && newStatus === 'done' && !confirm('신청자의 본인 확인을 완료했습니까? 승인하면 기존 계약이 연결됩니다.')) return;
             const token = localStorage.getItem('token');
             try {
                 const response = await fetch(`/admin/api/requests/${id}/status`, {
@@ -155,7 +162,7 @@ document.addEventListener('alpine:init', () => {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ status: newStatus })
+                    body: JSON.stringify({ status: newStatus, identity_verified: req?.type === 'account_link' && newStatus === 'done' })
                 });
 
                 if (response.ok) {
@@ -171,6 +178,7 @@ document.addEventListener('alpine:init', () => {
 
         getTypeLabel(type) {
             const labels = {
+                'account_link': '기존 계약 연결 (본인 확인 필요)',
                 'repair': '수리 요청',
                 'supplies': '비품 요청',
                 'extension': '연장 신청',

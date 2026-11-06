@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="bg-gray-50/50 min-h-screen pb-20" x-data="dashboardData()" x-init="init()">
+<div class="bg-gray-50/50 min-h-screen pb-20" x-data="dashboardData()">
     <div class="max-w-6xl mx-auto pt-6 md:pt-10 px-4 sm:px-6 lg:px-8">
         <!-- Dashboard Header -->
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-10 gap-4">
@@ -41,7 +41,7 @@
                         </span>
                         <i x-show="activeTab === 'dashboard'" class="ri-arrow-right-s-line hidden lg:block"></i>
                     </button>
-                    <!-- <button @click="activeTab = 'requests'"
+                    <button @click="activeTab = 'requests'"
                         :class="activeTab === 'requests' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
                         class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
                         <span class="flex items-center">
@@ -60,7 +60,7 @@
                             <span class="ml-2 whitespace-nowrap">문의 내역</span>
                         </span>
                         <i x-show="activeTab === 'inquiries'" class="ri-arrow-right-s-line hidden lg:block"></i>
-                    </button> -->
+                    </button>
                     <button @click="activeTab = 'profile'"
                         :class="activeTab === 'profile' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'"
                         class="shrink-0 lg:w-full text-left px-4 py-3 lg:px-5 lg:py-4 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 lg:justify-between lg:group">
@@ -170,6 +170,15 @@
                                                         <p class="text-sm md:text-base font-extrabold text-gray-800">
                                                             ₩<span x-text="contract.deposit?.toLocaleString()"></span>
                                                         </p>
+                                                        <p x-show="contract.termination_settlement?.needs_review" class="text-xs text-gray-800">보증금 정산은 관리자 확인이 필요합니다.</p>
+                                                        <template x-if="contract.termination_settlement && !contract.termination_settlement.needs_review">
+                                                            <div class="text-xs text-gray-800 space-y-1">
+                                                                <p class="text-red-700" x-text="'예상 차감 −' + contract.termination_settlement.deposit_deduction.toLocaleString() + '원'"></p>
+                                                                <p x-text="'반환 예정 ' + contract.termination_settlement.deposit_refund.toLocaleString() + '원'"></p>
+                                                                <p x-show="contract.termination_settlement.additional_payment > 0" x-text="'보증금 초과 예상 위약금 ' + contract.termination_settlement.additional_payment.toLocaleString() + '원'"></p>
+                                                                <p>최종 정산에 따라 달라질 수 있습니다.</p>
+                                                            </div>
+                                                        </template>
                                                     </div>
                                                 </div>
                                             </template>
@@ -459,8 +468,8 @@
                                                                         class="ri-logout-box-line text-gray-400 group-hover:text-red-500"></i>
                                                                 </div>
                                                                 <span
-                                                                    class="text-xs font-bold text-gray-700 group-hover:text-red-500">중도
-                                                                    해지 신청</span>
+                                                                    class="text-xs font-bold text-gray-700 group-hover:text-red-500">퇴실 / 해지
+                                                                    신청</span>
                                                             </button>
                                                         </template>
                                                     </div>
@@ -491,16 +500,22 @@
                     </template>
                 </div>
 
-                <!-- Service Requests Tab Content -->
-                <!-- <div x-show="activeTab === 'requests'" class="animate-in fade-in slide-in-from-right-4 duration-500">
-                    ... (content hidden) ...
-                </div> -->
-
-                <!-- Inquiries Tab Content -->
-                <!-- <div x-show="activeTab === 'inquiries'" class="animate-in fade-in slide-in-from-right-4 duration-500">
-                    ... (content hidden) ...
-                </div> -->
-
+                <!-- Requests and replies -->
+                <div x-show="activeTab === 'requests' || activeTab === 'inquiries'" class="space-y-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="text-xl font-bold" x-text="activeTab === 'inquiries' ? '문의 및 답변' : '서비스 요청 및 처리 결과'"></h2>
+                        <button @click="loadRequests()" class="px-4 py-2 bg-white border rounded-xl focus-visible:ring-2">새로고침</button>
+                    </div>
+                    <template x-for="req in requests.filter(r => activeTab === 'inquiries' ? r.type === 'inquiry' : r.type !== 'inquiry')" :key="req.id">
+                        <article class="p-5 bg-white border border-gray-200 rounded-2xl space-y-3">
+                            <div class="flex justify-between gap-3"><h3 class="font-bold" x-text="translateRequestType(req.type)"></h3><span x-text="req.status === 'done' ? '완료' : req.status === 'cancelled' ? '반려' : req.status === 'processing' ? '처리 중' : '접수됨'"></span></div>
+                            <p class="text-sm whitespace-pre-wrap break-words" x-text="req.details?.message || '계약 연결 확인 요청'"></p>
+                            <p class="text-xs text-gray-600" x-text="req.created_at"></p>
+                            <div x-show="req.details?.admin_response" class="border-t pt-3"><p class="font-bold text-sm">관리자 답변</p><p class="text-sm whitespace-pre-wrap break-words" x-text="req.details?.admin_response"></p></div>
+                        </article>
+                    </template>
+                    <p x-show="!requests.some(r => activeTab === 'inquiries' ? r.type === 'inquiry' : r.type !== 'inquiry')" class="p-6 bg-white rounded-2xl">접수된 요청이 없습니다.</p>
+                </div>
                 <!-- Profile Management Tab Content -->
                 <div x-show="activeTab === 'profile'" class="animate-in fade-in slide-in-from-right-4 duration-500">
                     <div class="space-y-6">
@@ -652,7 +667,7 @@
                             <div class="bg-red-50 rounded-2xl p-6 border border-red-100">
                                 <h4 class="text-red-900 font-black mb-2 flex items-center">
                                     <i class="ri-error-warning-line mr-2"></i>
-                                    중도 해지 안내사항
+                                    퇴실 및 해지 안내사항
                                 </h4>
                                 <div class="text-sm text-red-700 space-y-3 font-medium">
                                     <template x-if="terminationContract && !terminationContract.is_indefinite">
@@ -784,7 +799,7 @@
                             'bg-red-600 shadow-red-600/20': selectedServiceType === 'termination'
                         }">
                         <template x-if="!submittingService">
-                            <span x-text="selectedServiceType === 'termination' ? '해지 신청하기' : '요청 보내기'"></span>
+                            <span x-text="selectedServiceType === 'termination' ? '퇴실/해지 신청하기' : '요청 보내기'"></span>
                         </template>
                         <i x-show="submittingService" class="ri-loader-4-line animate-spin text-lg"></i>
                     </button>
@@ -801,7 +816,7 @@
 <script>
     function dashboardData() {
         return {
-            activeTab: 'dashboard',
+            activeTab: ['dashboard','requests','inquiries','profile'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dashboard',
             loading: true,
             userName: '',
             contracts: [],
@@ -975,7 +990,7 @@
 
                     if (response.ok) {
                         this.serviceModalOpen = false;
-                        await this.loadRequests();
+                        await this.init();
                         window.showAlert?.('성공', '요청이 성공적으로 접수되었습니다.', 'success');
                     } else {
                         const data = await response.json();
@@ -1251,10 +1266,11 @@
             translateRequestType(type) {
                 const map = {
                     'inquiry': '상담 문의',
+                    'account_link': '기존 계약 연결',
                     'repair': '시설 수리',
                     'supplies': '비품 요청',
                     'extension': '연장 신청',
-                    'termination': '중도 해지'
+                    'termination': '퇴실/해지'
                 };
                 return map[type] || type;
             },

@@ -27,6 +27,9 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import func, case
 from app.utils.korean_utils import match_search_fields
 from app.utils.branch_utils import sort_branches, get_branch_sort_key
+from app.services.contract_rules import ensure_available, positive_int, month_range, rent_amount, parse_date
+from werkzeug.exceptions import BadRequest, Conflict
+from app.utils.uploads import save_image, remove_image
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -276,7 +279,8 @@ def get_stats(current_user):
 @admin_required
 def rent_management(current_user):
     """Admin rent management page"""
-    return render_template('admin/rent_management.html')
+    from flask import redirect
+    return redirect('/admin#rent-management')
 
 @admin_bp.route('/api/contracts/<int:id>/rent-payment', methods=['POST'])
 @admin_required
@@ -288,6 +292,11 @@ def toggle_rent_payment(current_user, id):
     
     if not month_str:
         return jsonify({'error': 'Month is required'}), 400
+    first, last = month_range(month_str)
+    if contract.start_date > last or contract.end_date < first:
+        return jsonify({'error': '계약 기간에 해당하는 월만 납부 처리할 수 있습니다.'}), 400
+    if not isinstance(is_paid, bool):
+        return jsonify({'error': '납부 여부는 참/거짓 값이어야 합니다.'}), 400
         
     paid_list = contract.paid_months or []
     if isinstance(paid_list, str):
@@ -319,7 +328,10 @@ def toggle_rent_payment(current_user, id):
 @admin_bp.route('/api/rent-management-contracts', methods=['GET'])
 @admin_required
 def get_rent_management_contracts(current_user):
-    active_contracts = Contract.query.filter_by(status='active').options(
+    first, last = month_range(request.args.get('month'))
+    month = first.strftime('%Y-%m')
+    active_contracts = Contract.query.filter(Contract.status.in_(['active', 'terminate_requested', 'terminated']),
+        Contract.start_date <= last, Contract.end_date >= first).join(Room).filter(Room.room_type != 'time_based').options(
         joinedload(Contract.user),
         joinedload(Contract.room).joinedload(Room.branch)
     ).all()
@@ -341,7 +353,8 @@ def get_rent_management_contracts(current_user):
             'user_name': user_info['name'] or '알 수 없음',
             'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
             'room_name': c.room.name if c.room else '알 수 없음',
-            'price': c.price if c.price is not None else (c.room.price if c.room else 0),
+            'price': rent_amount(c, month)['amount_due'],
+            **rent_amount(c, month),
             'payment_day': c.payment_day,
             'paid_months': paid_list,
             'start_date': c.start_date.strftime('%Y-%m-%d') if c.start_date else '',
@@ -401,10 +414,11 @@ def get_contracts(current_user):
             'payment_method': c.payment_method,
             'status': c.status,
             'discount_details': json.loads(c.discount_details) if c.discount_details else None,
-            'coupon_name': c.coupon.name if c.coupon else None,
+            'coupon_name': c.coupon.code if c.coupon else None,
             'is_indefinite': c.is_indefinite,
             'auto_extend_status': c.auto_extend_status,
             'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
+            'termination_settlement': c.termination_settlement,
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
             'signed_at': c.signed_at.strftime('%Y-%m-%d %H:%M') if c.signed_at else None,
             'has_signature': bool(c.signature_data)
@@ -463,10 +477,11 @@ def get_contract_detail(current_user, id):
         'status': c.status,
         'registration_number': c.user_registration_number_snapshot or (c.user.registration_number if c.user else ''),
         'discount_details': json.loads(c.discount_details) if c.discount_details else None,
-        'coupon_name': c.coupon.name if c.coupon else None,
+        'coupon_name': c.coupon.code if c.coupon else None,
         'is_indefinite': c.is_indefinite,
         'auto_extend_status': c.auto_extend_status,
         'termination_effective_date': c.termination_effective_date.strftime('%Y-%m-%d') if c.termination_effective_date else None,
+        'termination_settlement': c.termination_settlement,
         'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
         'signed_at': c.signed_at.strftime('%Y-%m-%d %H:%M') if c.signed_at else None,
         'has_signature': bool(c.signature_data),
@@ -499,10 +514,13 @@ def create_contract(current_user):
         months = 0 # Or 1? Usually irrelevant for indefinite
     else:
         end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+
         # Calculate months roughly
         delta = end_date - start_date
         months = round(delta.days / 30)
+
         if months < 1: months = 1
+    ensure_available(room, start_date, end_date, data.get('start_time'), data.get('end_time'))
     
     contract = Contract(
         user_id=data.get('user_id') or None, # Optional: Ensure empty string becomes None
@@ -549,6 +567,14 @@ def update_contract(current_user, id):
     """계약 정보 수정"""
     contract = Contract.query.get_or_404(id)
     data = request.get_json()
+    prospective_room = Room.query.get_or_404(data.get('room_id', contract.room_id))
+    prospective_start = parse_date(data['start_date']) if data.get('start_date') else contract.start_date
+    prospective_end = parse_date(data['end_date']) if data.get('end_date') else contract.end_date
+    if data.get('is_indefinite', contract.is_indefinite):
+        prospective_end = date(2099, 12, 31)
+    if contract.status in ('active', 'requested', 'approved', 'waiting_signature', 'terminate_requested'):
+        ensure_available(prospective_room, prospective_start, prospective_end,
+                         data.get('start_time', contract.start_time), data.get('end_time', contract.end_time), exclude_id=id)
     
     if 'room_id' in data:
         room = Room.query.get(data['room_id'])
@@ -663,7 +689,9 @@ def update_contract(current_user, id):
 @admin_required
 def get_monthly_payments(current_user):
     """Get active contracts grouped by payment day"""
-    active_contracts = Contract.query.filter_by(status='active').all()
+    first, last = month_range(request.args.get('month'))
+    active_contracts = Contract.query.filter(Contract.status.in_(['active', 'terminate_requested', 'terminated']),
+        Contract.start_date <= last, Contract.end_date >= first).join(Room).filter(Room.room_type != 'time_based').all()
     
     day1 = []
     day15 = []
@@ -686,7 +714,7 @@ def get_monthly_payments(current_user):
             'user_name': user_info['name'] or c.temp_user_name or '알 수 없음',
             'room_name': c.room.name if c.room else '알 수 없음',
             'branch_name': c.room.branch.name if c.room and c.room.branch else '알 수 없음',
-            'price': c.price if c.price is not None else (c.room.price if c.room else 0),
+            'price': rent_amount(c, first.strftime('%Y-%m'))['amount_due'],
             'payment_day': c.payment_day,
             'paid_months': paid_list,
             'user_phone': user_info.get('phone') or '',
@@ -955,14 +983,10 @@ def update_contract_status(current_user, id):
                     r.status = 'cancelled'
             
             # Reset termination fields on contract
-            contract.termination_effective_date = None
-            contract.termination_requested_at = None
-            contract.remaining_months_at_termination = None
-            contract.penalty_amount_snapshot = None
-            contract.termination_confirmation_text_snapshot = None
-            if contract.auto_extend_status == 'will_terminate':
-                contract.auto_extend_status = 'none'
+            contract.cancel_termination()
 
+        if contract.room:
+            contract.room.sync_status()
         db.session.commit()
         return jsonify({'message': 'Contract status and room status updated'})
     return jsonify({'error': 'Status is required'}), 400
@@ -975,6 +999,13 @@ def update_request_status(current_user, id):
     data = request.get_json()
     
     if 'status' in data:
+        if data['status'] not in ('submitted', 'processing', 'done', 'cancelled'):
+            return jsonify({'error': '올바른 처리 상태를 선택해주세요.'}), 400
+        old_request_status = req.status
+        if old_request_status in ('done', 'cancelled') and data['status'] != old_request_status:
+            return jsonify({'error': '처리가 완료된 요청의 상태는 다시 변경할 수 없습니다.'}), 409
+        if req.type == 'account_link' and data['status'] == 'done' and old_request_status != 'done' and data.get('identity_verified') is not True:
+            return jsonify({'error': '신청자의 본인 확인 후 승인해주세요.'}), 400
         req.status = data['status']
         
         # Prepare details dict
@@ -996,12 +1027,38 @@ def update_request_status(current_user, id):
         from app.utils.sms_context import build_sms_context
 
         # Handle automatic actions for specific request types (Approval/Rejection)
-        if data.get('status') == 'done':
+        if data.get('status') == 'done' and old_request_status != 'done':
+            if req.type == 'account_link':
+                if data.get('identity_verified') is not True:
+                    return jsonify({'error': '신청자의 본인 확인 후 승인해주세요.'}), 400
+                legacy = User.query.get(details_dict.get('legacy_user_id')) if details_dict.get('legacy_user_id') else None
+                phone = details_dict.get('phone')
+                if legacy:
+                    if not (legacy.email or '').startswith('temp_') or legacy.phone != phone:
+                        raise Conflict('기존 계정 정보가 변경되어 다시 확인이 필요합니다.')
+                    for contract in legacy.contracts.all():
+                        contract.user_id = req.user_id
+                    for old_request in legacy.requests.all():
+                        old_request.user_id = req.user_id
+                    legacy.phone = None
+                    db.session.flush()
+                    req.user.phone = phone
+                for contract_id in details_dict.get('contract_ids', []):
+                    contract = Contract.query.get(contract_id)
+                    if contract and contract.user_id is None:
+                        contract.user_id = req.user_id
+                req.user.onboarding_status = 'existing_linked'
             if req.type == 'extension' and req.contract:
                 months = details_dict.get('extension_months')
                 if months:
+                    months = positive_int(months, '연장 개월 수', 36)
+                    if req.contract.status != 'active' or req.contract.auto_extend_status == 'will_terminate':
+                        raise Conflict('현재 계약 상태에서는 연장할 수 없습니다.')
+                    new_end = req.contract.end_date + relativedelta(months=months)
+                    ensure_available(req.contract.room, req.contract.start_date, new_end, exclude_id=req.contract.id)
                     # Extend the contract end date
-                    req.contract.end_date = req.contract.end_date + relativedelta(months=int(months))
+                    req.contract.end_date = new_end
+                    req.contract.auto_extend_status = 'none'
                     # Also update the request details to reflect it was processed
                     details_dict['processed_at'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                     req.details = json.dumps(details_dict)
@@ -1139,25 +1196,13 @@ def create_branch(current_user):
     if 'image' in request.files:
         file = request.files['image']
         if file and file.filename:
-            file_ext = os.path.splitext(file.filename)[1]
-            unique_filename = f"branch_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
-            os.makedirs(upload_folder, exist_ok=True)
-            file_path = os.path.join(upload_folder, unique_filename)
-            file.save(file_path)
-            branch.image_url = f"/static/uploads/branches/{unique_filename}"
+            branch.image_url = save_image(file, 'branches')
 
     # Handle owner seal image
     if 'owner_seal_image' in request.files:
         file = request.files['owner_seal_image']
         if file and file.filename:
-            file_ext = os.path.splitext(file.filename)[1]
-            unique_filename = f"seal_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'seals')
-            os.makedirs(upload_folder, exist_ok=True)
-            file_path = os.path.join(upload_folder, unique_filename)
-            file.save(file_path)
-            branch.owner_seal_image = f"/static/uploads/seals/{unique_filename}"
+            branch.owner_seal_image = save_image(file, 'seals')
     
     db.session.add(branch)
     db.session.commit()
@@ -1284,29 +1329,13 @@ def update_branch(current_user, id):
             file = request.files['image']
             if file and file.filename:
                 # Generate unique filename using UUID and timestamp
-                file_ext = os.path.splitext(file.filename)[1]
-                unique_filename = f"branch_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
-                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
-                os.makedirs(upload_folder, exist_ok=True)
-                
-                file_path = os.path.join(upload_folder, unique_filename)
-                file.save(file_path)
-                
-                branch.image_url = f"/static/uploads/branches/{unique_filename}"
+                branch.image_url = save_image(file, 'branches')
 
         # Handle owner seal image upload
         if 'owner_seal_image' in request.files:
             file = request.files['owner_seal_image']
             if file and file.filename:
-                file_ext = os.path.splitext(file.filename)[1]
-                unique_filename = f"seal_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}{file_ext}"
-                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'seals')
-                os.makedirs(upload_folder, exist_ok=True)
-                
-                file_path = os.path.join(upload_folder, unique_filename)
-                file.save(file_path)
-                
-                branch.owner_seal_image = f"/static/uploads/seals/{unique_filename}"
+                branch.owner_seal_image = save_image(file, 'seals')
     
     db.session.commit()
     return jsonify({'message': 'Branch updated'})
@@ -1324,14 +1353,7 @@ def upload_branch_images(current_user, id):
     
     for file in files:
         if file and file.filename:
-            filename = secure_filename(f"branch_{id}_{file.filename}")
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'branches')
-            os.makedirs(upload_folder, exist_ok=True)
-            
-            file_path = os.path.join(upload_folder, filename)
-            file.save(file_path)
-            
-            image_url = f"/static/uploads/branches/{filename}"
+            image_url = save_image(file, 'branches')
             
             # Create BranchImage record
             branch_image = BranchImage(branch_id=branch.id, image_url=image_url)
@@ -1350,14 +1372,12 @@ def upload_branch_images(current_user, id):
 def delete_branch_image(current_user, branch_id, image_id):
     image = BranchImage.query.filter_by(id=image_id, branch_id=branch_id).first_or_404()
     
-    # Optional: Delete file from filesystem
-    try:
-        file_path = os.path.join(current_app.root_path, image.image_url.lstrip('/'))
-        if os.path.exists(file_path):
-            os.remove(file_path)
-    except Exception as e:
-        print(f"Error deleting file: {e}")
-    
+    if BranchImage.query.filter_by(image_url=image.image_url).count() == 1:
+        remove_image(image.image_url)
+    branch = Branch.query.get(branch_id)
+    if branch and branch.image_url == image.image_url:
+        replacement = BranchImage.query.filter(BranchImage.branch_id == branch_id, BranchImage.id != image.id).first()
+        branch.image_url = replacement.image_url if replacement else None
     db.session.delete(image)
     db.session.commit()
     return jsonify({'message': 'Image deleted successfully'})
@@ -1371,6 +1391,8 @@ def delete_branch(current_user, id):
     
     # Convert to list to get the count
     rooms = list(branch.rooms)
+    if any(room.contracts.count() for room in rooms):
+        return jsonify({'error': '계약 이력이 있는 지점은 삭제할 수 없습니다.'}), 409
     room_count = len(rooms)
     
     # If branch has rooms and force is not true, return room count info
@@ -1386,6 +1408,8 @@ def delete_branch(current_user, id):
             db.session.delete(room)
     
     db.session.delete(branch)
+    for branch_floor in branch.floors.all():
+        db.session.delete(branch_floor)
     db.session.commit()
     return jsonify({'message': 'Branch deleted'})
 
@@ -1445,14 +1469,11 @@ def delete_room(current_user, id):
     room = Room.query.get_or_404(id)
     
     # Check if room has active contracts
-    active_contracts = Contract.query.filter_by(
-        room_id=id,
-        status='active'
-    ).count()
+    active_contracts = Contract.query.filter_by(room_id=id).count()
     
     if active_contracts > 0:
         return jsonify({
-            'error': '활성 계약이 있는 방은 삭제할 수 없습니다',
+            'error': '계약 이력이 있는 방은 삭제할 수 없습니다',
             'active_contracts': active_contracts
         }), 400
     
@@ -1472,14 +1493,7 @@ def upload_floor_plan(current_user, id, floor):
         return jsonify({'error': 'No selected file'}), 400
         
     if file:
-        filename = secure_filename(f"branch_{id}_{floor}_{file.filename}")
-        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'floor_plans')
-        os.makedirs(upload_folder, exist_ok=True)
-        
-        file_path = os.path.join(upload_folder, filename)
-        file.save(file_path)
-        
-        image_url = f"/static/uploads/floor_plans/{filename}"
+        image_url = save_image(file, 'floor_plans')
         
         # Update or create BranchFloor
         branch_floor = BranchFloor.query.filter_by(branch_id=id, floor=floor).first()
@@ -1568,14 +1582,7 @@ def upload_room_images(current_user, id):
     
     for file in files:
         if file and file.filename:
-            filename = secure_filename(f"room_{id}_{file.filename}")
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'rooms')
-            os.makedirs(upload_folder, exist_ok=True)
-            
-            file_path = os.path.join(upload_folder, filename)
-            file.save(file_path)
-            
-            image_url = f"/static/uploads/rooms/{filename}"
+            image_url = save_image(file, 'rooms')
             room_image = RoomImage(room_id=id, image_url=image_url, order_index=current_order)
             db.session.add(room_image)
             uploaded_images.append({'url': image_url})
@@ -1590,15 +1597,8 @@ def delete_room_image(current_user, room_id, image_id):
     """Delete a room image"""
     room_image = RoomImage.query.filter_by(id=image_id, room_id=room_id).first_or_404()
     
-    # Optionally delete the file from disk
-    try:
-        if room_image.image_url:
-            file_path = os.path.join(current_app.root_path, room_image.image_url.lstrip('/'))
-            if os.path.exists(file_path):
-                os.remove(file_path)
-    except Exception as e:
-        print(f"Error deleting file: {e}")
-    
+    if RoomImage.query.filter_by(image_url=room_image.image_url).count() == 1:
+        remove_image(room_image.image_url)
     db.session.delete(room_image)
     db.session.commit()
     return jsonify({'message': 'Image deleted'})
@@ -1663,6 +1663,10 @@ def create_unmapped_contract(current_user):
     room = Room.query.get(data['room_id'])
     if not room:
         return jsonify({'error': 'Room not found'}), 404
+
+    start_date = parse_date(data['start_date'], '시작일')
+    end_date = parse_date(data['end_date'], '종료일')
+    ensure_available(room, start_date, end_date, data.get('start_time'), data.get('end_time'))
     
     # 계약 생성 (user_id는 None)
     contract = Contract(
@@ -1671,14 +1675,17 @@ def create_unmapped_contract(current_user):
         temp_user_name=data.get('temp_user_name'),
         temp_user_phone=data['temp_user_phone'],
         temp_user_email=data.get('temp_user_email'),
-        start_date=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
-        end_date=datetime.strptime(data['end_date'], '%Y-%m-%d').date(),
+        start_date=start_date,
+        end_date=end_date,
         status=data.get('status', 'active'),  # 기본값: active
         months=data.get('months'),
-        total_price=data.get('total_price')
+        price=data.get('price', room.price),
+        deposit=data.get('deposit', room.deposit)
     )
     
     db.session.add(contract)
+    db.session.flush()
+    room.sync_status()
     db.session.commit()
     
     return jsonify({
@@ -1830,9 +1837,9 @@ def delete_user(current_user, id):
     user = User.query.get_or_404(id)
     
     # Check dependencies (active contracts?)
-    active_contracts = user.contracts.filter(Contract.status == 'active').count()
+    active_contracts = user.contracts.count() + user.requests.count() + user.link_requests.count()
     if active_contracts > 0:
-        return jsonify({'error': '활성 계약이 있는 회원은 삭제할 수 없습니다.', 'active_contracts': active_contracts}), 400
+        return jsonify({'error': '계약 또는 요청 이력이 있는 회원은 삭제할 수 없습니다.', 'active_contracts': active_contracts}), 409
         
     db.session.delete(user)
     db.session.commit()
@@ -2189,7 +2196,13 @@ def send_manual_sms(current_user):
     contract = Contract.query.get_or_404(contract_id)
     
     # 1. Build Context
-    context = build_sms_context(contract, msg_type)
+    context_args = {}
+    if msg_type.startswith('PAYMENT_'):
+        first, last = month_range(data.get('target_month'))
+        if contract.start_date > last or contract.end_date < first:
+            raise BadRequest('해당 월에 유효한 계약이 아닙니다.')
+        context_args['due_date'] = first.replace(day=min(contract.payment_day or 1, last.day)).isoformat()
+    context = build_sms_context(contract, msg_type, **context_args)
     
     # 2. Send SMS (Force Send = True)
     success, message = sms_service.send_sms(

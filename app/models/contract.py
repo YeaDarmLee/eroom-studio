@@ -121,9 +121,59 @@ class Contract(db.Model):
                 'is_mapped': False
             }
 
+    def calculate_termination_settlement(self, termination_date=None):
+        """Estimate using the move-out date, keeping the original deposit intact."""
+        from dateutil.relativedelta import relativedelta
+        snapshot = self.penalty_amount_snapshot or {}
+        original_end = snapshot.get('original_end_date')
+        original_end = datetime.strptime(original_end, '%Y-%m-%d').date() if original_end else self.end_date
+        target = termination_date or self.termination_effective_date
+        if isinstance(target, str):
+            target = datetime.strptime(target, '%Y-%m-%d').date()
+        early = bool(target and original_end and target < original_end and not self.is_indefinite)
+        diff = relativedelta(original_end, target) if early else None
+        months = diff.years * 12 + diff.months if diff else 0
+        penalty = max(0, self.price or 0) if early else 0
+        deposit = self.deposit if self.deposit is not None else (self.room.deposit if self.room else 0)
+        deposit = max(0, deposit or 0)
+        deduction = min(deposit, penalty)
+        return {
+            'original_end_date': original_end.isoformat() if original_end else None,
+            'termination_date': target.isoformat() if target else None,
+            'is_early_termination': early,
+            'needs_review': False,
+            'remaining_months': months,
+            'penalty_amount': penalty,
+            'deposit': deposit,
+            'deposit_deduction': deduction,
+            'deposit_refund': deposit - deduction,
+            'additional_payment': max(0, penalty - deposit),
+        }
+
+    @property
+    def termination_settlement(self):
+        if not self.termination_effective_date:
+            return None
+        settlement = self.calculate_termination_settlement()
+        # Older approvals overwrote end_date without preserving the original term.
+        if (not (self.penalty_amount_snapshot or {}).get('original_end_date')
+                and self.termination_effective_date == self.end_date
+                and (self.status == 'terminated' or self.auto_extend_status == 'will_terminate')):
+            settlement.update(needs_review=True, original_end_date=None,
+                              is_early_termination=None, remaining_months=None,
+                              penalty_amount=None, deposit_deduction=None,
+                              deposit_refund=None, additional_payment=None)
+        return settlement
+
+    def update_termination_settlement(self, termination_date):
+        settlement = self.calculate_termination_settlement(termination_date)
+        self.remaining_months_at_termination = settlement['remaining_months']
+        self.penalty_amount_snapshot = {**settlement, 'calculated_at': datetime.utcnow().isoformat()}
+
     def apply_termination_request(self, termination_date, confirmation_checked=False):
         """해지 신청 처리 (단일 트랜잭션 플로우)"""
         from datetime import datetime
+        self.update_termination_settlement(termination_date)
         self.termination_requested_at = datetime.utcnow()
         self.termination_confirmation_checked = confirmation_checked
         self.status = 'terminate_requested'
@@ -137,12 +187,16 @@ class Contract(db.Model):
 
     def cancel_termination(self):
         """해지 신청 취소/철회/반려 처리 (단일 트랜잭션 플로우)"""
+        original_end = (self.penalty_amount_snapshot or {}).get('original_end_date')
+        if original_end:
+            self.end_date = datetime.strptime(original_end, '%Y-%m-%d').date()
         self.status = 'active'
         self.termination_effective_date = None
         self.termination_requested_at = None
         self.remaining_months_at_termination = None
         self.penalty_amount_snapshot = None
         self.termination_confirmation_text_snapshot = None
+        self.termination_confirmation_checked = False
         if self.auto_extend_status == 'will_terminate':
             self.auto_extend_status = 'none'
         if self.room:
@@ -157,6 +211,13 @@ class Contract(db.Model):
         
         if isinstance(target_date, str):
             target_date = datetime.strptime(target_date, '%Y-%m-%d').date()
+
+        if immediate:
+            target_date = today
+        if target_date and target_date < self.start_date:
+            from werkzeug.exceptions import BadRequest
+            raise BadRequest('퇴실일은 계약 시작일보다 빠를 수 없습니다.')
+        self.update_termination_settlement(target_date)
 
         if immediate or (target_date and target_date < today):
             self.status = 'terminated'

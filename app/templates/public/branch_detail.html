@@ -101,8 +101,8 @@
     currentSlide: 0,
     images: [{% if branch.images %}{% for img in branch.images.all() %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}],
     init() {
-        if (this.images.length === 0 && '{{ branch.image_url }}') {
-            this.images.push({ id: 0, url: '{{ branch.image_url }}' });
+        if (this.images.length === 0 && {{ (branch.image_url or '')|tojson|forceescape }}) {
+            this.images.push({ id: 0, url: {{ (branch.image_url or '')|tojson|forceescape }} });
         }
         // Fallback images if no images at all
         if (this.images.length === 0) {
@@ -458,7 +458,7 @@
     </div>`;
             document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-            document.getElementById('contractBtn').addEventListener('click', () => {
+            document.getElementById('contractBtn')?.addEventListener('click', () => {
                 document.getElementById('contractModal').classList.remove('hidden');
             });
         });

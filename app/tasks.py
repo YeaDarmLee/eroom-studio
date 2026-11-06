@@ -39,16 +39,14 @@ def terminate_expired_contracts(app):
                 )
                 db.session.add(history)
                 contract.status = 'terminated'
+                db.session.flush()
                 if contract.room:
                     other_active = Contract.query.filter(
                         Contract.room_id == contract.room_id,
                         Contract.id != contract.id,
                         Contract.status == 'active'
                     ).first()
-                    if other_active:
-                        contract.room.status = 'occupied'
-                    else:
-                        contract.room.status = 'available'
+                    contract.room.sync_status()
             
             db.session.commit()
             print(f"[{get_kst_now()}] Auto-terminated {expired_count} expired contracts and updated room statuses.")
@@ -74,16 +72,14 @@ def terminate_expired_contracts(app):
                 )
                 db.session.add(history)
                 contract.status = 'cancelled'
+                db.session.flush()
                 if contract.room:
                     other_active = Contract.query.filter(
                         Contract.room_id == contract.room_id,
                         Contract.id != contract.id,
                         Contract.status == 'active'
                     ).first()
-                    if other_active:
-                        contract.room.status = 'occupied'
-                    else:
-                        contract.room.status = 'available'
+                    contract.room.sync_status()
             
             db.session.commit()
             print(f"[{get_kst_now()}] Auto-cancelled {expired_waiting_count} expired waiting contracts and updated room statuses.")

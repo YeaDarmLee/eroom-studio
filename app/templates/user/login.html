@@ -77,10 +77,18 @@
             const token = urlParams.get('token');
             if (token) {
                 localStorage.setItem('token', token);
-                window.location.href = '/my/room';
+                window.location.href = loginDestination();
             }
         });
 
+        function loginDestination(role) {
+            const next = new URLSearchParams(location.search).get('next') || sessionStorage.getItem('login_next');
+            sessionStorage.removeItem('login_next');
+            if (next) {
+                try { const target = new URL(next, location.origin); if (target.origin === location.origin && target.pathname !== '/login') return target.pathname + target.search + target.hash; } catch (_) {}
+            }
+            return role === 'admin' ? '/admin' : '/my/room';
+        }
         function loginPage() {
             return {
                 email: '',
@@ -90,6 +98,8 @@
 
                 // Kakao Real Login
                 kakaoLogin() {
+                    const next = new URLSearchParams(location.search).get('next');
+                    if (next) sessionStorage.setItem('login_next', next);
                     fetch('/api/auth/kakao/login')
                         .then(r => r.json())
                         .then(data => {
@@ -116,7 +126,7 @@
                         .then(response => response.json())
                         .then(data => {
                             localStorage.setItem('token', data.access_token);
-                            window.location.href = '/my/room';
+                            window.location.href = loginDestination();
                         })
                         .catch(error => {
                             console.error('Login error:', error);
@@ -158,10 +168,10 @@
                             // Auto-redirect based on user role
                             if (data.user.role === 'admin') {
                                 console.log('Redirecting to /admin...');
-                                window.location.href = '/admin';
+                                window.location.href = loginDestination('admin');
                             } else {
                                 console.log('Redirecting to /my/room...');
-                                window.location.href = '/my/room';
+                                window.location.href = loginDestination();
                             }
                         })
                         .catch(error => {

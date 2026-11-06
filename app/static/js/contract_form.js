@@ -97,7 +97,7 @@ function contractForm() {
         // Getters - 월요금 (기간 할인 + 쿠폰 할인 적용)
         get recurringPrice() {
             let price = this.basePrice - this.durationDiscount;
-            if (this.couponApplied && this.couponData && this.couponData.cycle === 'every_month') {
+            if (this.couponApplied && this.couponData && this.couponData.cycle === 'monthly') {
                 price -= this.couponDiscount;
             }
             return Math.max(0, price);

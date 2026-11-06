@@ -116,7 +116,8 @@ def get_room_reservations(room_id):
         return jsonify({'error': 'Invalid date format'}), 400
         
     # Get all non-cancelled reservations for this room on this date
-    blocking_statuses = ['requested', 'approved', 'active', 'extend_requested']
+    from app.services.contract_rules import BLOCKING_STATUSES
+    blocking_statuses = BLOCKING_STATUSES
     
     reservations = Contract.query.filter(
         Contract.room_id == room_id,

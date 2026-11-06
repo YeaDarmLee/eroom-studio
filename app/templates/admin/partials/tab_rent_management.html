@@ -291,11 +291,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         prevMonth() {
+            this.currentDate.setDate(1);
             this.currentDate.setMonth(this.currentDate.getMonth() - 1);
             this.updateMonthDisplay();
         },
 
         nextMonth() {
+            this.currentDate.setDate(1);
             this.currentDate.setMonth(this.currentDate.getMonth() + 1);
             this.updateMonthDisplay();
         },
@@ -351,7 +353,7 @@ document.addEventListener('alpine:init', () => {
         async loadContracts() {
             this.loading = true;
             try {
-                const response = await fetch('/admin/api/rent-management-contracts', {
+                const response = await fetch('/admin/api/rent-management-contracts?month=' + this.currentMonthStr, {
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
                 });
                 if (!response.ok) throw new Error('네트워크 오류');
@@ -418,7 +420,8 @@ document.addEventListener('alpine:init', () => {
                     },
                     body: JSON.stringify({
                         contract_id: contract.id,
-                        type: 'PAYMENT_OVERDUE_STAGE1'
+                        type: 'PAYMENT_OVERDUE_STAGE1',
+                        target_month: this.currentMonthStr
                     })
                 });
                 
@@ -426,7 +429,7 @@ document.addEventListener('alpine:init', () => {
                     window.showAlert?.('성공', '미납 안내 문자가 성공적으로 발송되었습니다.', 'success');
                 } else {
                     const err = await response.json();
-                    throw new Error(err.message || '문자 발송 실패');
+                    throw new Error(err.error || err.message || '문자 발송 실패');
                 }
             } catch (e) {
                 console.error('SMS 전송 에러:', e);

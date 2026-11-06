@@ -51,6 +51,7 @@ def get_termination_text_template(contract, remaining_months, penalty_amount):
     return f"""[중도해지 확인서]
 계약 번호: {contract.id}
 해지 요청일: {datetime.now().strftime('%Y-%m-%d')}
+퇴실 예정일: {contract.termination_effective_date}
 잔여 기간: {remaining_months}개월
 예상 위약금: {format(penalty_amount, ',')}원
 

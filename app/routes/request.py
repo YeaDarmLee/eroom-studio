@@ -5,7 +5,6 @@ from app.extensions import db
 from app.routes.auth import token_required
 from app.utils.evidence import log_contract_status_change, get_termination_text_template
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 import json
 
 request_bp = Blueprint('request', __name__, url_prefix='/api/requests')
@@ -17,50 +16,54 @@ def create_request(current_user):
     req_type = data.get('type')
     contract_id = data.get('contract_id')
     details = data.get('details', {})
+    if req_type not in ('repair', 'supplies', 'extension', 'termination', 'inquiry', 'complaint', 'other') or not isinstance(details, dict):
+        return jsonify({'message': '올바른 요청 유형과 내용을 입력해주세요.'}), 400
+    contract = None
     
     if contract_id:
         contract = Contract.query.get(contract_id)
         if not contract or contract.user_id != current_user.id:
             return jsonify({'message': 'Invalid contract'}), 400
             
+    if req_type == 'termination':
+        if not contract:
+            return jsonify({'message': '계약을 선택해주세요.'}), 400
+        try:
+            termination_date = datetime.strptime(details.get('termination_date'), '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return jsonify({'message': '퇴실일을 YYYY-MM-DD 형식으로 입력해주세요.'}), 400
+        if termination_date < contract.start_date:
+            return jsonify({'message': '퇴실일은 계약 시작일 이후여야 합니다.'}), 400
+        if contract.status != 'active' or contract.auto_extend_status == 'will_terminate':
+            return jsonify({'message': '현재 계약 상태에서는 퇴실을 다시 신청할 수 없습니다.'}), 409
+
+    if req_type == 'extension':
+        from app.services.contract_rules import positive_int
+        if not contract or contract.status != 'active' or contract.auto_extend_status == 'will_terminate':
+            return jsonify({'message': '연장 가능한 계약을 선택해주세요.'}), 400
+        details['extension_months'] = positive_int(details.get('extension_months'), '연장 개월 수', 36)
+
+    if req_type == 'inquiry' and details.get('room_id'):
+        from app.models.branch import Room
+        room = Room.query.get_or_404(details['room_id'])
+        details.update(room_id=room.id, room_name=room.name, branch_id=room.branch_id)
+
     # --- Termination Defense (New) ---
     if req_type == 'termination' and contract:
-        contract.termination_requested_at = datetime.utcnow()
-        contract.termination_confirmation_checked = data.get('termination_confirmation_checked', False)
-        
-        # Calculate Remaining Months & Penalty (Simplified Logic for Snapshot)
-        today = datetime.utcnow().date()
-        if contract.end_date > today:
-            diff = relativedelta(contract.end_date, today)
-            contract.remaining_months_at_termination = diff.years * 12 + diff.months
-        else:
-            contract.remaining_months_at_termination = 0
-            
-        # Example Penalty: 1 month rent if remaining > 0 (This should match the UI logic)
-        penalty_amount = contract.price if contract.remaining_months_at_termination > 0 else 0
-        contract.penalty_amount_snapshot = {
-            'remaining_months': contract.remaining_months_at_termination,
-            'penalty_amount': penalty_amount,
-            'calculated_at': datetime.utcnow().isoformat()
-        }
-        
-        # Server-rendered confirmation text
-        contract.termination_confirmation_text_snapshot = get_termination_text_template(
-            contract, 
-            contract.remaining_months_at_termination,
-            penalty_amount
-        )
-        
-        # Update Contract Status to 'terminate_requested'
         old_status = contract.status
-        contract.status = 'terminate_requested'
-        # Save termination date if provided
         termination_date_str = details.get('termination_date')
-        if termination_date_str:
-            try:
-                contract.termination_effective_date = datetime.strptime(termination_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                pass
+        
+        # Use single-transaction domain method
+        contract.apply_termination_request(
+            termination_date=termination_date_str,
+            confirmation_checked=data.get('termination_confirmation_checked', False)
+        )
+
+        contract.termination_confirmation_text_snapshot = get_termination_text_template(
+            contract,
+            contract.remaining_months_at_termination,
+            contract.penalty_amount_snapshot['penalty_amount']
+        )
 
         log_contract_status_change(
             contract=contract,

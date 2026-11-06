@@ -8,13 +8,13 @@ from sqlalchemy import or_
 
 class ContractMappingService:
     @staticmethod
-    def map_contracts_to_user(user):
+    def map_contracts_to_user(user, verified=False):
         """
         회원가입하거나 정보를 수정한 사용자에게 계약을 자동으로 매핑
         1. 미매핑 계약(user_id가 None) 중 전화번호나 이메일이 일치하는 건 매핑
         2. 임시 사용자(email이 'temp_'로 시작)에게 매핑된 계약 중 전화번호가 일치하는 건 현재 사용자로 재매핑
         """
-        if not user:
+        if not user or not verified:
             return 0
         
         mapped_count = 0

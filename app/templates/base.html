@@ -40,6 +40,8 @@
 
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo/eroom_logo.svg') }}">
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script src="{{ url_for('static', filename='js/session.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dialogs.js') }}"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
     <link rel="stylesheet" as="style" crossorigin
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -159,6 +161,7 @@
 </head>
 
 <body class="bg-white" x-data="headerData()">
+    {% if local_preview %}<div role="status" class="fixed bottom-0 inset-x-0 z-[9999] bg-amber-100 text-amber-950 px-4 py-2 text-center text-sm font-bold">로컬 검증 전용 · SQLite 테스트 데이터 · 실제 문자 및 자동 배치 중지</div>{% endif %}
     <!-- Header -->
     <header class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm z-50 border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

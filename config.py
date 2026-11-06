@@ -12,6 +12,9 @@ class Config:
     ALIGO_API_KEY = os.environ.get('ALIGO_API_KEY')
     ALIGO_USER_ID = os.environ.get('ALIGO_USER_ID')
     ALIGO_SENDER = os.environ.get('ALIGO_SENDER')
+    SMS_ENABLED = True
+    SCHEDULER_ENABLED = True
+    SCHEDULER_TIMEZONE = 'Asia/Seoul'
     
     # MySQL 연결 끊김 문제 해결을 위한 설정
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -34,8 +37,28 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
 
+class LocalConfig(Config):
+    """Explicitly isolated preview; never inherit DATABASE_URL or delivery settings."""
+    DEBUG = False
+    TEMPLATES_AUTO_RELOAD = True
+    SECRET_KEY = 'local-preview-only-not-valid-in-production'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///local-preview.sqlite3'
+    SQLALCHEMY_ENGINE_OPTIONS = {}
+    SMS_ENABLED = False
+    SCHEDULER_ENABLED = False
+    ALIGO_API_KEY = None
+    ALIGO_USER_ID = None
+    ALIGO_SENDER = None
+    UPLOAD_URL_PREFIX = '/local-uploads'
+
+class TestingConfig(LocalConfig):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
+    'local': LocalConfig,
+    'testing': TestingConfig,
     'default': DevelopmentConfig
 }
