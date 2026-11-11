@@ -13,7 +13,19 @@ main_bp = Blueprint('main', __name__)
 @db_retry(max_retries=3, delay=1)
 def index():
     branches = sort_branches(Branch.query.all())
-    return render_template('public/index.html', branches=branches)
+    from sqlalchemy import func, case
+    from app.extensions import db
+
+    # Summaries describe currently available monthly rooms, not future vacancies.
+    rows = db.session.query(
+        Room.branch_id, func.count(Room.id),
+        func.min(case((Room.price > 0, Room.price), else_=None)),
+    ).filter(Room.room_type == 'monthly', Room.status == 'available').group_by(Room.branch_id).all()
+    summaries = {branch_id: {'available': count, 'price_from': price}
+                 for branch_id, count, price in rows}
+    featured_branch = next((branch for branch in branches if branch.image_url), None)
+    return render_template('public/index.html', branches=branches,
+                           branch_summaries=summaries, featured_branch=featured_branch)
 
 @main_bp.route('/about')
 def about():

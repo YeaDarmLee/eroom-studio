@@ -61,6 +61,12 @@
         z-index: 100;
     }
 
+    .public-room-box:focus-visible {
+        outline: 3px solid #1a202c;
+        outline-offset: 3px;
+        z-index: 100;
+    }
+
     .public-room-box.available {
         background-color: rgba(39, 174, 96, 0.25);
         border-color: #27AE60;
@@ -122,7 +128,7 @@
     }
 
     .public-room-label {
-        font-size: clamp(0.6rem, 1.3vw, 0.75rem);
+        font-size: clamp(0.75rem, 1.3vw, 0.875rem);
         font-weight: 700;
         color: #1e40af;
         pointer-events: none;
@@ -318,7 +324,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="w-4 h-4 rounded bg-[#F39C12]"></div>
-                        <span class="text-sm font-medium text-gray-700">만료 예정 <span class="text-[10px] text-orange-600">(예약 가능)</span></span>
+                        <span class="text-sm font-medium text-gray-700">만료 예정 <span class="text-xs text-orange-600">(예약 가능)</span></span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="w-4 h-4 rounded bg-[#7F8C8D]"></div>
@@ -361,7 +367,8 @@
                 </div>
 
                 <!-- Floor Plan Canvas -->
-                <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                <p id="floor-plan-scroll-help" class="mb-3 text-sm text-gray-700 md:hidden">도면을 좌우로 움직여 방을 확인하세요. 예약 가능한 방을 선택하면 상세 정보로 이동합니다.</p>
+                <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0" role="region" aria-label="연습실 도면" aria-describedby="floor-plan-scroll-help" tabindex="0">
                     <div class="public-floor-plan-wrapper py-8">
                         <div class="public-floor-plan-container" :class="{ 'no-image': !floorPlans[selectedFloor] }">
                             <!-- Floor Plan Background Image -->
@@ -377,7 +384,11 @@
 
                             <!-- Room Boxes -->
                             <template x-for="room in (roomsByFloor[selectedFloor] || [])" :key="room.id">
-                                <div class="public-room-box group" :class="[
+                                <div class="public-room-box group" role="button"
+                                    :tabindex="(room.status === 'available' || (room.status === 'occupied' && room.next_available_date)) && room.room_type !== 'manager' && room.room_type !== 'time_based' ? 0 : -1"
+                                    :aria-disabled="!((room.status === 'available' || (room.status === 'occupied' && room.next_available_date)) && room.room_type !== 'manager' && room.room_type !== 'time_based')"
+                                    :aria-label="room.name + ((room.status === 'available' || (room.status === 'occupied' && room.next_available_date)) && room.room_type !== 'manager' && room.room_type !== 'time_based' ? ' 상세 정보' : ' 선택 불가')"
+                                    @keydown.enter.prevent="$el.click()" @keydown.space.prevent="$el.click()" :class="[
                                     getRoomStatusClass(room), 
                                     room.room_type === 'time_based' ? 'time-based' : '',
                                     room.room_type === 'manager' ? 'manager' : ''
@@ -395,14 +406,14 @@
                                             <div class="font-bold" x-text="room.name"></div>
                                             <template x-if="room.room_type === 'time_based'">
                                                 <span
-                                                    class="px-1 py-0.5 bg-yellow-400 text-yellow-950 text-[10px] rounded font-black leading-none">시간제</span>
+                                                    class="px-1 py-0.5 bg-yellow-400 text-yellow-950 text-xs rounded font-black leading-none">시간제</span>
                                             </template>
                                             <template x-if="room.room_type === 'manager'">
                                                 <span
-                                                    class="px-1 py-0.5 bg-purple-500 text-white text-[10px] rounded font-black leading-none">총무방</span>
+                                                    class="px-1 py-0.5 bg-purple-500 text-white text-xs rounded font-black leading-none">총무방</span>
                                             </template>
                                         </div>
-                                        <div class="text-[10px] opacity-70 mb-1"
+                                        <div class="text-xs opacity-70 mb-1"
                                             x-text="(room.floor.includes('층') ? room.floor : room.floor + '층') + ' | ' + (room.area || '-') + '㎡'">
                                         </div>
 

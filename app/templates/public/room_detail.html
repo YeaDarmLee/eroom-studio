@@ -17,10 +17,11 @@
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <!-- Image Gallery Section -->
             <div class="lg:col-span-3">
+                {% set room_photos = room.images.all() if room.images else [] %}
                 <div class=""
-                    x-data="{ currentImage: 0, images: [{% for img in room.images %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}] }">
+                    x-data="{ currentImage: 0, images: [{% for img in room_photos %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}] }">
                     <!-- Main Image -->
-                    <div class="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-2xl mb-4">
+                    <div class="relative {% if room_photos %}aspect-[4/3] shadow-2xl{% else %}h-40 md:h-48{% endif %} rounded-2xl overflow-hidden bg-gray-100 mb-4">
                         <template x-if="images.length > 0">
                             <div class="relative w-full h-full">
                                 <img :src="images[currentImage].url"
@@ -37,8 +38,9 @@
                         <template x-if="images.length === 0">
                             <div class="w-full h-full flex items-center justify-center">
                                 <div class="text-center">
-                                    <i class="ri-image-line text-6xl text-gray-300 mb-3"></i>
-                                    <p class="text-gray-400 font-medium">등록된 이미지가 없습니다</p>
+                                    <i class="ri-image-line text-3xl text-gray-500 mb-3 block" aria-hidden="true"></i>
+                                    <p class="text-gray-700 font-medium">아직 등록된 방 사진이 없습니다</p>
+                                    <p class="mt-2 px-4 text-sm text-gray-600">룸 정보에서 가격과 면적을 확인하고, 궁금한 점은 문의해 주세요.</p>
                                 </div>
                             </div>
                         </template>
@@ -426,7 +428,7 @@
                                                     class="text-primary hover:underline">서비스 이용약관</a> 및
                                                 <a href="/privacy" target="_blank"
                                                     class="text-primary hover:underline">개인정보 처리방침</a>에 동의합니다.
-                                                <p class="text-[10px] text-gray-400 mt-1">계약 신청 시 IP와 기기 정보가 증빙을 위해
+                                                <p class="text-sm text-gray-600 mt-1">계약 신청 시 IP와 기기 정보가 증빙을 위해
                                                     기록됩니다.</p>
                                             </div>
                                         </label>
@@ -657,7 +659,7 @@
                                                 <span class="text-sm font-bold"
                                                     :class="paymentMethod === 'card' ? 'text-primary' : 'text-gray-600'">카드
                                                     결제</span>
-                                                <span class="text-[10px] text-gray-400 mt-1"
+                                                <span class="text-sm text-gray-600 mt-1"
                                                     x-show="paymentMethod === 'card'">부가세 10% 포함</span>
                                             </label>
                                         </div>
@@ -673,7 +675,7 @@
                                                 </div>
                                                 <div>
                                                     <span class="text-sm font-bold text-gray-900">세금계산서 신청</span>
-                                                    <p class="text-[10px] text-gray-500 mt-0.5">사업자 증빙이 필요한 경우 선택 (부가세
+                                                    <p class="text-sm text-gray-600 mt-0.5">사업자 증빙이 필요한 경우 선택 (부가세
                                                         10% 추가)</p>
                                                 </div>
                                             </div>
@@ -732,7 +734,7 @@
                                         <div class="flex items-center justify-between">
                                             <div class="text-left">
                                                 <span class="text-sm font-bold text-gray-900">첫 달 결제 금액</span>
-                                                <p class="text-[10px] text-gray-400 mt-0.5">(보증금 포함)</p>
+                                                <p class="text-sm text-gray-600 mt-0.5">(보증금 포함)</p>
                                             </div>
                                             <div class="text-xl font-bold text-primary">
                                                 ₩<span x-text="finalFirstPayment.toLocaleString()"></span>
@@ -745,7 +747,7 @@
                                                 <span class="text-sm font-bold text-gray-900">이후 월 납부액</span>
                                                 <template
                                                     x-if="couponApplied && couponData && couponData.cycle === 'once'">
-                                                    <span class="text-[10px] text-gray-400 ml-1">(쿠폰 미적용)</span>
+                                                    <span class="text-sm text-gray-600 ml-1">(쿠폰 미적용)</span>
                                                 </template>
                                             </div>
                                             <div class="text-xl font-bold text-gray-800">
@@ -758,7 +760,7 @@
                                         <span class="text-sm font-medium text-gray-500">
                                             총 계약 기간: <span class="text-gray-900 font-bold"><span
                                                     x-text="months"></span>개월</span>
-                                            <span class="text-[11px] text-gray-400 ml-1">(<span
+                                            <span class="text-sm text-gray-600 ml-1">(<span
                                                     x-text="startDate"></span> ~
                                                 <span class="text-primary font-bold" x-text="endDate"></span>)</span>
                                         </span>
@@ -779,7 +781,7 @@
                                                     class="text-primary hover:underline">서비스 이용약관</a> 및
                                                 <a href="/privacy" target="_blank"
                                                     class="text-primary hover:underline">개인정보 처리방침</a>에 동의합니다.
-                                                <p class="text-[10px] text-gray-400 mt-1">계약 신청 시 IP와 기기 정보가 증빙을 위해
+                                                <p class="text-sm text-gray-600 mt-1">계약 신청 시 IP와 기기 정보가 증빙을 위해
                                                     기록됩니다.</p>
                                             </div>
                                         </label>

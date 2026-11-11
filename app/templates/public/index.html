@@ -1,214 +1,164 @@
 {% extends "base.html" %}
-
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
 {% block content %}
-<!-- Hero Section -->
-<section class="relative h-[680px] flex items-center overflow-hidden"
-    style="background-image: url('https://readdy.ai/api/search-image?query=modern%20music%20studio%20interior%20with%20natural%20light%2C%20minimalist%20design%2C%20high-end%20equipment%2C%20clean%20and%20professional%20atmosphere%2C%20soft%20lighting%2C%20wooden%20elements%2C%20glass%20walls%2C%20perfect%20balance%20of%20aesthetics%20and%20functionality%2C%20left%20side%20has%20smooth%20gradient%20for%20text%20overlay%2C%20orange%20and%20green%20color%20accents&width=1920&height=680&seq=1&orientation=landscape'); background-size: cover; background-position: center;">
-    <div class="absolute inset-0 bg-gradient-to-r from-white/95 to-transparent"></div>
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="max-w-2xl">
-            <h1 class="text-5xl md:text-6xl font-bold mb-8 leading-tight">당신의 음악을 위한<br>프리미엄 연습 공간</h1>
-            <p class="text-xl text-gray-600 mb-10 leading-relaxed">전문 음향 시설과 최적의 연습 환경을 갖춘<br>이룸 스튜디오에서 음악의 꿈을 키워보세요</p>
-            <a href="#locations"
-                class="!rounded-button px-8 py-4 bg-primary text-white text-lg hover:bg-highlight transition-colors shadow-md flex items-center w-fit">
-                지점 살펴보기
-                <i class="ri-arrow-right-line ml-2"></i>
-            </a>
+<div class="studio-home">
+    {% if branches %}
+    <aside id="vacancy-sidebar" class="vacancy-widget" aria-label="지점별 공실 바로가기"
+        x-data="{ open: false }" :class="{ 'is-open': open }" @click.outside="open = false"
+        @keydown.escape="if (open) { open = false; $refs.vacancyToggle.focus() }">
+        <button type="button" class="vacancy-toggle" x-ref="vacancyToggle" @click="open = !open"
+            :aria-expanded="open.toString()" aria-controls="vacancy-panel">
+            <i class="ri-building-line" aria-hidden="true"></i>지점별 공실
+            <i :class="open ? 'ri-close-line' : 'ri-arrow-up-s-line'" aria-hidden="true"></i>
+        </button>
+        <div id="vacancy-panel" class="vacancy-panel">
+            <div class="vacancy-heading">
+                <h2><i class="ri-building-line" aria-hidden="true"></i>지점별 공실</h2>
+                <button type="button" class="vacancy-close" aria-label="공실 안내 닫기"
+                    @click="open = false; $refs.vacancyToggle.focus()"><i class="ri-close-line" aria-hidden="true"></i></button>
+            </div>
+            <ul class="vacancy-list">
+                {% for branch in branches %}
+                {% set count = branch_summaries.get(branch.id, {}).get('available', 0) %}
+                <li><a href="{{ url_for('main.branch_detail', branch_id=branch.id) }}">
+                    <span class="vacancy-name">{{ branch.name }}</span>
+                    <span class="vacancy-count {% if not count %}vacancy-count-empty{% endif %}">{% if count %}<span class="vacancy-dot" aria-hidden="true"></span>{{ count }}개{% else %}만실{% endif %}</span>
+                </a></li>
+                {% endfor %}
+            </ul>
+            <p class="vacancy-note">현재 월간 공실 기준</p>
+            <a class="vacancy-all" href="#locations" @click="open = false">전체 지점 보기<i class="ri-arrow-right-s-line" aria-hidden="true"></i></a>
         </div>
-    </div>
-</section>
-
-<!-- Benefits Section -->
-<section id="benefits" class="py-24 bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-10">
-            <div class="bg-white p-6 rounded-lg shadow-sm">
-                <div class="w-12 h-12 flex items-center justify-center bg-secondary/10 rounded-full mb-4">
-                    <i class="ri-calendar-line text-xl text-secondary"></i>
-                </div>
-                <h3 class="text-lg font-semibold mb-2">월 단위 대여</h3>
-                <p class="text-gray-600">최소 2개월부터 장기 계약까지<br>유연한 이용 기간 선택 가능</p>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-sm">
-                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full mb-4">
-                    <i class="ri-shield-check-line text-xl text-primary"></i>
-                </div>
-                <h3 class="text-lg font-semibold mb-2">기본 규정</h3>
-                <p class="text-gray-600">소음/출입/흡연 등에 대한<br>명확한 가이드라인 제공</p>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-sm">
-                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full mb-4">
-                    <i class="ri-bank-card-line text-xl text-primary"></i>
-                </div>
-                <h3 class="text-lg font-semibold mb-2">간편 결제</h3>
-                <p class="text-gray-600">신용카드, 계좌이체 등<br>다양한 결제 수단 지원</p>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-sm">
-                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full mb-4">
-                    <i class="ri-customer-service-line text-xl text-primary"></i>
-                </div>
-                <h3 class="text-lg font-semibold mb-2">24시간 고객 지원</h3>
-                <p class="text-gray-600">카카오톡, 전화, 이메일로<br>언제든 문의 가능</p>
+    </aside>
+    {% endif %}
+    <div class="home-hero-surface">
+    <section class="home-hero home-container" aria-labelledby="home-title">
+        <div class="home-intro">
+            <h1 id="home-title">연습할 공간을 찾는다면,<br>이룸 스튜디오.</h1>
+            <p>위치와 월 이용료, 입주 일정을 비교하고<br class="home-desktop-break"> 내게 맞는 연습실을 선택하세요.</p>
+            <div class="home-actions">
+                <a href="#locations" class="home-button home-button-primary">지점·공실 확인</a>
+                <a href="#process" class="home-text-link">계약 절차 보기</a>
             </div>
         </div>
-    </div>
-</section>
-
-<!-- Process Section -->
-<section id="process" class="py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-4xl font-bold text-center mb-20">이용 절차</h2>
-        <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-            <div class="text-center">
-                <div
-                    class="w-16 h-16 flex items-center justify-center bg-secondary text-white text-xl font-bold rounded-full mx-auto mb-6 shadow-sm">
-                    1</div>
-                <h3 class="text-lg font-semibold mb-3">방 선택</h3>
-                <p class="text-gray-600">원하는 지점과 연습실을<br>온라인으로 확인하세요</p>
-            </div>
-            <div class="text-center">
-                <div
-                    class="w-16 h-16 flex items-center justify-center bg-primary text-white text-xl font-bold rounded-full mx-auto mb-6">
-                    2</div>
-                <h3 class="text-lg font-semibold mb-3">계약 신청</h3>
-                <p class="text-gray-600">간단한 정보 입력으로<br>계약을 신청하세요</p>
-            </div>
-            <div class="text-center">
-                <div
-                    class="w-16 h-16 flex items-center justify-center bg-primary text-white text-xl font-bold rounded-full mx-auto mb-6">
-                    3</div>
-                <h3 class="text-lg font-semibold mb-3">심사/보증금</h3>
-                <p class="text-gray-600">기본 심사 후 보증금<br>입금을 진행합니다</p>
-            </div>
-            <div class="text-center">
-                <div
-                    class="w-16 h-16 flex items-center justify-center bg-primary text-white text-xl font-bold rounded-full mx-auto mb-6">
-                    4</div>
-                <h3 class="text-lg font-semibold mb-3">입실</h3>
-                <p class="text-gray-600">계약서 작성 후<br>즉시 입실 가능합니다</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Locations Section -->
-<section id="locations" class="py-28 bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-4xl font-bold text-center mb-20">지점 안내</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
-            <!-- Dynamic Branches if available, else static fallback -->
+        {% if featured_branch %}
+        <figure class="home-featured">
+            <img src="{{ featured_branch.image_url }}" alt="{{ featured_branch.name }}에 등록된 공간 사진" width="800" height="600" fetchpriority="high"
+                onerror="this.hidden = true; this.parentElement.classList.add('photo-unavailable')">
+            <div class="home-photo-fallback" aria-hidden="true"><i class="ri-building-line"></i><span>지점에서 공간을 확인해보세요</span></div>
+            <figcaption><span>{{ featured_branch.name }}</span><a href="{{ url_for('main.branch_detail', branch_id=featured_branch.id) }}">공간 자세히 보기</a></figcaption>
+        </figure>
+        {% else %}
+        <div class="home-directory">
             {% if branches %}
-            {% for branch in branches %}
-            <div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                {% if branch.image_url %}
-                <div class="h-48 relative"
-                    style="background-image: url('{{ branch.image_url }}'); background-size: cover; background-position: center;">
-                </div>
-                {% else %}
-                <div class="h-48 relative bg-gray-200 flex items-center justify-center">
-                    <i class="ri-image-line text-4xl text-gray-400"></i>
-                </div>
-                {% endif %}
-                <div class="p-6">
-                    <h3 class="text-xl font-bold mb-1 text-gray-900 group-hover:text-primary transition-colors">{{
-                        branch.name }}</h3>
-                        
-                    {% if branch.address %}
-                    <p class="text-xs text-gray-500 mb-4 flex items-center">
-                        <i class="ri-map-pin-line mr-1 text-gray-400"></i>
-                        {{ branch.address }}
-                    </p>
-                    {% else %}
-                    <div class="mb-4"></div>
-                    {% endif %}
-
-                    {% if branch.description %}
-                    <p
-                        class="text-xs text-gray-400 mb-4 line-clamp-2 italic leading-relaxed bg-gray-50 p-2 rounded-lg border border-gray-100">
-                        {{ branch.description }}
-                    </p>
-                    {% endif %}
-
-                    <div class="flex flex-wrap gap-2 mb-5">
-                        <div class="flex items-center text-xs font-bold text-primary bg-primary/5 px-3 py-1 rounded-full">
-                            <i class="ri-history-line mr-1.5"></i>
-                            24시간
-                        </div>
-                        <div class="flex items-center text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                            <i class="ri-building-4-line mr-1.5"></i>
-                            총 {{ branch.floors.count() }}개 층
-                        </div>
-                        <div class="flex items-center text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                            <i class="ri-door-line mr-1.5"></i>
-                            방 {{ branch.rooms.count() }}개
-                        </div>
-                    </div>
-                    <a href="/branches/{{ branch.id }}" class="block">
-                        <button
-                            class="w-full !rounded-button py-2 text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors">자세히
-                            보기</button>
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
+            <h2>지점 바로가기</h2>
+            <ul>{% for branch in branches %}<li><a href="#branch-{{ branch.id }}"><span>{{ branch.name }}</span><span>지점 정보 확인 <i class="ri-arrow-down-line" aria-hidden="true"></i></span></a></li>{% endfor %}</ul>
             {% else %}
-            <!-- Fallback Static Content if no branches in DB -->
-            <div class="col-span-3 text-center text-gray-500">
-                등록된 지점이 없습니다. 관리자 페이지에서 지점을 등록해주세요.
-            </div>
+            <h2>입주 문의</h2><p>지점과 이용 가능한 방을 전화로 안내해드립니다.</p><a class="home-phone" href="tel:01094885093">010-9488-5093</a>
             {% endif %}
         </div>
+        {% endif %}
+    </section>
     </div>
-</section>
 
-<!-- Floating Vacancy Sidebar (Remote Control Style) -->
-<div class="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 transition-all duration-300 hover:-translate-x-1" id="vacancy-sidebar">
-    <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 p-3 md:p-5 w-40 md:w-56 overflow-hidden relative">
-        <!-- Decorative background glow -->
-        <div class="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
-        <div class="absolute -bottom-10 -left-10 w-24 h-24 bg-secondary/10 rounded-full blur-2xl"></div>
-        
-        <div class="relative z-10">
-            <h3 class="font-bold text-gray-800 mb-2 md:mb-4 text-xs md:text-sm flex items-center border-b border-gray-100 pb-2 md:pb-3">
-                <div class="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary/10 flex items-center justify-center mr-1.5 md:mr-2">
-                    <i class="ri-building-4-line text-primary text-[10px] md:text-xs"></i>
-                </div>
-                지점별 공실
-            </h3>
-            
-            <div class="space-y-2 md:space-y-3">
-                {% if branches %}
-                    {% for branch in branches %}
-                    <a href="/branches/{{ branch.id }}" class="group block">
-                        <div class="flex justify-between items-center text-xs md:text-sm transition-all p-1.5 md:p-2 -mx-1.5 md:-mx-2 rounded-lg hover:bg-gray-50">
-                            <span class="text-gray-600 truncate mr-1 md:mr-2 font-medium group-hover:text-gray-900 transition-colors">{{ branch.name }}</span>
-                            {% set available_count = branch.available_rooms_count %}
-                            {% if available_count > 0 %}
-                            <span class="flex items-center">
-                                <span class="flex h-1.5 w-1.5 md:h-2 md:w-2 relative mr-1 md:mr-1.5">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-green-500"></span>
-                                </span>
-                                <span class="font-bold text-green-600 bg-green-50 px-1.5 md:px-2 py-0 md:py-0.5 rounded md:rounded-md text-[10px] md:text-xs border border-green-100 shadow-sm">{{ available_count }}개</span>
-                            </span>
-                            {% else %}
-                            <span class="font-medium text-gray-400 bg-gray-50 px-1.5 md:px-2 py-0 md:py-0.5 rounded md:rounded-md text-[10px] md:text-xs border border-gray-100">만실</span>
-                            {% endif %}
-                        </div>
-                    </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-[10px] md:text-xs text-gray-400 text-center py-1 md:py-2">등록된 지점이 없습니다.</div>
-                {% endif %}
+    <section id="locations" class="home-locations home-section" aria-labelledby="locations-title">
+        <div class="home-container">
+            <div class="home-section-heading">
+                <div><h2 id="locations-title">지점 안내</h2><p>위치를 살펴보고, 현재 비어 있는 월간 이용 방을 확인하세요.</p></div>
+                {% if branches %}<span class="home-count">{{ branches|length }}개 지점</span>{% endif %}
             </div>
-            
-            <div class="mt-2 md:mt-4 pt-2 md:pt-3 border-t border-gray-100 text-center">
-                <a href="#locations" class="text-[10px] md:text-[11px] text-gray-400 hover:text-primary transition-colors flex items-center justify-center">
-                    자세히 보기 <i class="ri-arrow-right-s-line ml-0.5"></i>
-                </a>
+            {% if branches %}
+            <div class="home-branch-grid">
+                {% for branch in branches %}
+                {% set summary = branch_summaries.get(branch.id, {}) %}
+                {% set available = summary.get('available', 0) %}
+                <article id="branch-{{ branch.id }}" class="home-branch {% if not branch.image_url %}home-branch-no-photo{% endif %}">
+                    {% if branch.image_url %}
+                    <div class="home-branch-photo">
+                        <img src="{{ branch.image_url }}" alt="{{ branch.name }}에 등록된 공간 사진" width="480" height="600" loading="lazy" decoding="async"
+                            onerror="this.hidden = true; this.parentElement.classList.add('photo-unavailable')">
+                        <div class="home-photo-fallback"><i class="ri-building-line" aria-hidden="true"></i><span>사진 준비 중</span></div>
+                    </div>
+                    {% endif %}
+                    <div class="home-branch-body">
+                        <div class="home-branch-heading"><h3>{{ branch.name }}</h3></div>
+                        <p class="home-address"><i class="ri-map-pin-line" aria-hidden="true"></i>{{ branch.address or '위치는 지점에 문의해주세요' }}</p>
+                        {% if branch.description %}<p class="home-description">{{ branch.description }}</p>{% endif %}
+                        <p class="home-vacancy {% if not available %}home-vacancy-empty{% endif %}">월간 공실 {{ available }}개</p>
+                        <div class="home-room-summary">
+                            {% if summary.get('price_from') %}
+                            <p>현재 공실 월 이용료 <strong>{{ '{:,}'.format(summary.price_from) }}<span>원부터</span></strong></p>
+                            {% else %}
+                            <p>{{ '현재 월간 공실이 없습니다' if not available else '이용료는 지점에 문의해주세요' }}</p>
+                            {% endif %}
+                            <p class="home-summary-note">{{ branch.operating_hours or '운영시간은 지점 상세에서 확인' }}</p>
+                        </div>
+                        <a class="home-branch-link" href="{{ url_for('main.branch_detail', branch_id=branch.id) }}">{{ '방과 이용 조건 보기' if available else '지점·입주 예정 방 보기' }}<i class="ri-arrow-right-line" aria-hidden="true"></i><span class="sr-only"> — {{ branch.name }}</span></a>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            <p class="home-data-note">공실은 현재 비어 있는 월간 이용 방 기준입니다. 입주 예정 방과 보증금·최종 이용 조건은 지점 및 룸 상세에서 확인해주세요.</p>
+            {% else %}
+            <div class="home-empty"><h3>지점 정보를 준비하고 있습니다</h3><p>이용 가능한 연습실과 위치가 궁금하시면 전화로 문의해주세요.</p><a class="home-button home-button-primary" href="tel:01094885093">010-9488-5093 전화 문의</a></div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section id="benefits" class="home-section home-container" aria-labelledby="benefits-title">
+        <div class="home-section-heading"><div><h2 id="benefits-title">이용 안내</h2><p>신청 전 확인할 내용과 이용 중 필요한 기능입니다.</p></div><a href="/about" class="home-text-link">이룸 스튜디오 소개</a></div>
+        <dl class="home-guide">
+            <div class="home-guide-before">
+                <dt><i class="ri-door-open-line" aria-hidden="true"></i>신청 전 확인</dt>
+                <dd>
+                    <p>룸 상세에서 내게 맞는 이용 조건을 살펴보세요.</p>
+                    <ul class="home-guide-list" role="list">
+                        <li><strong>공간</strong><span>방 사진과 면적</span></li>
+                        <li><strong>비용</strong><span>월 이용료와 보증금</span></li>
+                        <li><strong>일정</strong><span>입주일과 계약 기간</span></li>
+                    </ul>
+                    <p class="home-guide-note">입주일과 기간을 선택한 후 최종 조건을 확인해주세요.</p>
+                    <a href="#locations" class="home-guide-button">지점·방 살펴보기<i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+                </dd>
+            </div>
+            <div class="home-guide-during">
+                <dt><i class="ri-user-settings-line" aria-hidden="true"></i>이용 중 관리</dt>
+                <dd>
+                    <p>이용 중 필요한 정보와 요청은 마이페이지에서 관리하세요.</p>
+                    <ul class="home-guide-list" role="list">
+                        <li><strong>계약</strong><span>계약 상태와 계약서 확인</span></li>
+                        <li><strong>요청</strong><span>수리·연장·퇴실 요청</span></li>
+                        <li><strong>문의</strong><span>문의 내역과 답변 확인</span></li>
+                    </ul>
+                    <a href="/my/room" class="home-guide-button">마이페이지로 이동<i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+                </dd>
+            </div>
+        </dl>
+    </section>
+
+    <section id="process" class="home-process home-section" aria-labelledby="process-title">
+        <div class="home-container">
+            <div class="home-section-heading"><div><h2 id="process-title">이용 절차</h2><p>온라인으로 신청한 뒤 담당자 안내에 따라 계약을 진행합니다.</p></div></div>
+            <ol class="home-steps" role="list">
+                <li><span aria-hidden="true">1</span><div><h3>지점과 방 선택</h3><p>위치·공실·이용료를 확인하세요.</p></div></li>
+                <li><span aria-hidden="true">2</span><div><h3>계약 신청</h3><p>입주일과 이용 조건을 입력하세요.</p></div></li>
+                <li><span aria-hidden="true">3</span><div><h3>담당자 확인·서명</h3><p>안내에 따라 계약서를 확인하고 서명하세요.</p></div></li>
+                <li><span aria-hidden="true">4</span><div><h3>납부·입실 안내</h3><p>납부와 입실 일정은 담당자 안내를 확인하세요.</p></div></li>
+            </ol>
+        </div>
+    </section>
+
+    <section id="help" class="home-section home-container" aria-labelledby="help-title">
+        <div class="home-help-layout">
+            <div><h2 id="help-title">자주 묻는 질문</h2><p>다른 궁금한 점은 전화로 문의해주세요.</p><a href="tel:01094885093" class="home-phone">010-9488-5093</a><a href="/my/room#inquiries" class="home-text-link">마이페이지 문의 내역</a></div>
+            <div class="home-faq">
+                <details><summary>월 이용료와 보증금은 어디서 확인하나요?</summary><p>지점 상세에서 방별 월 이용료와 보증금을 확인할 수 있습니다. 메인의 시작 요금은 현재 공실 기준이며, 할인·납부 방식 등 최종 조건은 신청 화면에서 확인해주세요.</p></details>
+                <details><summary>공실이 없는 지점도 확인할 수 있나요?</summary><p>지점 상세에서 입주 예정 방이 있는지 확인해주세요. 표시된 입주일과 실제 계약 가능 여부는 담당자 확인이 필요합니다.</p></details>
+                <details><summary>신청하면 바로 입실할 수 있나요?</summary><p>신청 후 담당자의 확인과 계약 절차가 필요합니다. 계약서 서명, 납부 및 입실 일정은 개별 안내를 확인해주세요.</p></details>
             </div>
         </div>
-    </div>
+    </section>
 </div>
-
 {% endblock %}

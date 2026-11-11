@@ -14,11 +14,11 @@
     <meta name="robots" content="index, follow">
     <meta name="googlebot" content="index, follow">
     <meta name="language" content="Korean">
-    <link rel="canonical" href="https://eroom-studio.com{{ request.path }}">
+    <link rel="canonical" href="https://eroom-studio.co.kr{{ request.path }}">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://eroom-studio.com{{ request.path }}">
+    <meta property="og:url" content="https://eroom-studio.co.kr{{ request.path }}">
     <meta property="og:title" content="이룸 스튜디오 - 프리미엄 음악 연습실">
     <meta property="og:description" content="최고급 음향 시설과 편안한 환경을 갖춘 프리미엄 음악 연습실. 24시간 이용 가능, 합리적인 가격으로 음악인들의 꿈을 응원합니다.">
     <meta property="og:image" content="{{ url_for('static', filename='logo/eroom_studio_x.jpg', _external=True) }}">
@@ -27,7 +27,7 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://eroom-studio.com{{ request.path }}">
+    <meta name="twitter:url" content="https://eroom-studio.co.kr{{ request.path }}">
     <meta name="twitter:title" content="이룸 스튜디오 - 프리미엄 음악 연습실">
     <meta name="twitter:description" content="최고급 음향 시설과 편안한 환경을 갖춘 프리미엄 음악 연습실. 24시간 이용 가능, 합리적인 가격으로 음악인들의 꿈을 응원합니다.">
     <meta name="twitter:image" content="{{ url_for('static', filename='logo/eroom_studio_x.jpg', _external=True) }}">
@@ -79,6 +79,35 @@
 
         [x-cloak] {
             display: none !important;
+        }
+
+        html { scroll-padding-top: 96px; }
+        :focus-visible { outline: 3px solid #805000; outline-offset: 4px; }
+        ::selection { background: #f8d395; color: #1a202c; }
+        input, textarea { caret-color: #805000; }
+        .site-header { background: #fff; border-bottom: 1px solid #d7dbd3; }
+        .site-nav { align-items: center; gap: 28px; }
+        .site-nav a { display: inline-flex; align-items: center; min-height: 48px; color: #414b43; font-size: 15px; text-underline-offset: 7px; transition: color .18s ease; }
+        .site-nav a:hover { color: #252a26; text-decoration: underline; }
+        .site-header a, .site-header button { transition: color .18s ease, background-color .18s ease, border-color .18s ease; }
+        .site-header a:hover, .site-header button:hover { transform: none; }
+        #mobile-navigation > a { display: flex; align-items: center; min-height: 44px; }
+        #mobile-navigation { max-height: calc(100dvh - 80px); overflow-y: auto; overscroll-behavior: contain; }
+        .brand-lockup { display: inline-flex; align-items: center; gap: 10px; min-height: 52px; color: #1a202c; }
+        .brand-lockup img { width: 52px; height: 52px; object-fit: contain; }
+        .brand-wordmark { font-size: 14px; font-weight: 800; letter-spacing: .055em; white-space: nowrap; }
+        @media (max-width: 639px) {
+            .brand-lockup { gap: 8px; }
+            .brand-lockup img { width: 44px; height: 44px; }
+            .brand-wordmark { font-size: 12px; }
+        }
+        .bg-primary.text-white, [class~="bg-primary/90"].text-white { color: #1a202c; }
+        body .text-primary, body .hover\:text-primary:hover { color: #805000; }
+        .footer-links .text-gray-400, .footer-legal .text-gray-400, .footer-legal .text-gray-500 { color: #cbd5e0; }
+        .footer-legal .hover\:text-primary:hover { color: #f8d395; }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
 
         /* Flatpickr Customization (Orange Theme) */
@@ -140,9 +169,9 @@
                             100: '#F7FAFC',
                             200: '#EDF2F7',
                             300: '#E2E8F0',
-                            400: '#CBD5E0',
-                            500: '#A0AEC0',
-                            600: '#718096',
+                            400: '#657184',
+                            500: '#5F6B7A',
+                            600: '#526070',
                             700: '#4A5568',
                             800: '#2D3748',
                             900: '#1A202C'
@@ -158,29 +187,29 @@
             }
         }
     </script>
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="bg-white" x-data="headerData()">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[10000] focus:bg-white focus:p-4 focus:rounded-lg">본문으로 바로가기</a>
     {% if local_preview %}<div role="status" class="fixed bottom-0 inset-x-0 z-[9999] bg-amber-100 text-amber-950 px-4 py-2 text-center text-sm font-bold">로컬 검증 전용 · SQLite 테스트 데이터 · 실제 문자 및 자동 배치 중지</div>{% endif %}
     <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm z-50 border-b border-gray-100">
+    {% set home_navigation = [('locations', '지점 안내'), ('benefits', '이용 안내'), ('process', '이용 절차'), ('help', '자주 묻는 질문')] %}
+    <header class="site-header fixed top-0 left-0 right-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
-                <a href="/" class="transition-transform hover:scale-105">
-                    <img src="{{ url_for('static', filename='logo/eroom_studio_x.jpg') }}" alt="Eroom Studio"
-                        class="h-16 w-auto mix-blend-multiply">
+                <a href="/" class="brand-lockup" aria-label="이룸 스튜디오 홈">
+                    <img src="{{ url_for('static', filename='logo/eroom_logo_removebg.png') }}" alt="" width="52" height="52">
+                    <span class="brand-wordmark" aria-hidden="true">EROOM STUDIO</span>
                 </a>
 
                 <!-- Desktop Nav -->
-                <nav class="hidden md:flex space-x-8">
-                    <a href="/about" class="text-gray-700 hover:text-primary transition-all">소개</a>
-                    <a href="/#benefits" class="text-gray-700 hover:text-primary transition-all">혜택</a>
-                    <a href="/#process" class="text-gray-700 hover:text-primary transition-all">이용절차</a>
-                    <a href="/#locations" class="text-gray-700 hover:text-primary transition-all">지점안내</a>
+                <nav class="site-nav hidden lg:flex" aria-label="주요 메뉴">
+                    {% for anchor, label in home_navigation %}<a href="/#{{ anchor }}">{{ label }}</a>{% endfor %}
                 </nav>
 
                 <!-- Auth Buttons / User Menu -->
-                <div class="hidden md:flex items-center space-x-3">
+                <div class="hidden lg:flex items-center space-x-3">
                     <!-- Logged In -->
                     <template x-if="isLoggedIn">
                         <div class="flex items-center space-x-3">
@@ -210,9 +239,9 @@
                 </div>
 
                 <!-- Mobile Menu Button -->
-                <div class="md:hidden">
-                    <button x-on:click="mobileMenuOpen = !mobileMenuOpen"
-                        class="text-gray-700 hover:text-primary transition-all">
+                <div class="lg:hidden">
+                    <button x-on:click="mobileMenuOpen = !mobileMenuOpen" :aria-expanded="mobileMenuOpen.toString()" aria-controls="mobile-navigation" :aria-label="mobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'"
+                        class="w-11 h-11 flex items-center justify-center text-gray-700 hover:text-primary transition-all">
                         <i class="ri-menu-line text-2xl"></i>
                     </button>
                 </div>
@@ -220,13 +249,10 @@
         </div>
 
         <!-- Mobile Menu -->
-        <div x-show="mobileMenuOpen" x-cloak x-transition:enter="transition ease-out duration-300"
+        <nav id="mobile-navigation" aria-label="모바일 메뉴" x-show="mobileMenuOpen" x-cloak x-on:click="if ($event.target.closest('a')) mobileMenuOpen = false" x-on:keydown.escape="mobileMenuOpen = false" x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-            class="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 shadow-lg">
-            <a href="/about" class="block text-gray-700 hover:text-primary transition-all">소개</a>
-            <a href="/#benefits" class="block text-gray-700 hover:text-primary transition-all">혜택</a>
-            <a href="/#process" class="block text-gray-700 hover:text-primary transition-all">이용절차</a>
-            <a href="/#locations" class="block text-gray-700 hover:text-primary transition-all">지점안내</a>
+            class="lg:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-2 shadow-lg">
+            {% for anchor, label in home_navigation %}<a href="/#{{ anchor }}" class="text-gray-700 hover:text-primary">{{ label }}</a>{% endfor %}
 
             <div class="border-t border-gray-100 pt-4 space-y-2">
                 <template x-if="isLoggedIn">
@@ -253,18 +279,18 @@
                     </div>
                 </template>
             </div>
-        </div>
+        </nav>
     </header>
 
     <!-- Main Content -->
-    <main class="pt-16">
+    <main id="main-content" class="pt-20" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
     <footer class="bg-gray-900 text-white py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="footer-links grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
                     <h3 class="text-xl font-bold mb-4">이룸 스튜디오</h3>
                     <p class="text-gray-400">프리미엄 음악 연습실</p>
@@ -272,16 +298,16 @@
                 <div>
                     <h4 class="font-semibold mb-4">고객 지원</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li>이용 안내</li>
-                        <li>자주 묻는 질문</li>
-                        <li>공지사항</li>
+                        <li><a href="/#process" class="inline-flex items-center min-h-11 hover:underline">이용 절차</a></li>
+                        <li><a href="/#help" class="inline-flex items-center min-h-11 hover:underline">자주 묻는 질문</a></li>
+                        <li><a href="/my/room#inquiries" class="inline-flex items-center min-h-11 hover:underline">문의 내역</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">연락처</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li>전화: 010-9488-5093</li>
-                        <li>이메일: contact@eroom.kr</li>
+                        <li><a href="tel:01094885093" class="inline-flex items-center min-h-11 hover:underline">전화: 010-9488-5093</a></li>
+                        <li><a href="mailto:contact@eroom.kr" class="inline-flex items-center min-h-11 hover:underline">이메일: contact@eroom.kr</a></li>
                         <li>카카오톡: @이룸스튜디오</li>
                     </ul>
                 </div>
@@ -289,20 +315,14 @@
                     <h4 class="font-semibold mb-4">소셜 미디어</h4>
                     <div class="flex space-x-4">
                         <a href="https://www.instagram.com/eroom.studio/" target="_blank" rel="noopener noreferrer"
-                            class="text-gray-400 hover:text-white transition-all hover:scale-125">
-                            <i class="ri-instagram-line text-xl"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
-                            <i class="ri-facebook-line text-xl"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition-all hover:scale-125">
-                            <i class="ri-youtube-line text-xl"></i>
+                            class="inline-flex gap-2 items-center min-h-11 text-gray-400 hover:text-white transition-all">
+                            <i class="ri-instagram-line text-xl" aria-hidden="true"></i><span>인스타그램 <span class="sr-only">(새 창)</span></span>
                         </a>
                     </div>
                 </div>
             </div>
             <!-- 법적 고지 및 사업자 정보 -->
-            <div class="border-t border-gray-800 mt-10 pt-8">
+            <div class="footer-legal border-t border-gray-800 mt-10 pt-8">
                 <!-- 법적 링크 (강조) -->
                 <div class="flex flex-wrap justify-center gap-3 mb-8">
                     <button @click="openPolicyModal('terms')"
@@ -552,12 +572,10 @@
                                     <li>처리정지 요구</li>
                                 </ul>
 
-                                <h3 class="text-xl font-bold mb-4 mt-6">6. 개인정보 보호책임자</h3>
-                                <p class="mb-2">회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제를 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다:</p>
+                                <h3 class="text-xl font-bold mb-4 mt-6">6. 개인정보 관련 문의</h3>
+                                <p class="mb-2">개인정보 관련 문의와 요청은 아래 연락처로 접수하실 수 있습니다:</p>
                                 <ul class="list-none mb-4 space-y-1 ml-4">
-                                    <li>성명: 홍길동</li>
-                                    <li>직책: 개인정보 보호책임자</li>
-                                    <li>연락처: 1544-0000, contact@eroom.kr</li>
+                                    <li>개인정보 관련 문의: 010-9488-5093, contact@eroom.kr</li>
                                 </ul>
 
                                 <p class="mt-6 text-sm text-gray-500">본 개인정보처리방침은 2024년 1월 1일부터 적용됩니다.</p>
@@ -580,7 +598,7 @@
                                 <p class="mb-4">환불을 원하시는 경우 다음의 방법으로 신청하실 수 있습니다:</p>
                                 <ul class="list-disc list-inside mb-4 space-y-1">
                                     <li>웹사이트 마이페이지에서 직접 취소</li>
-                                    <li>고객센터 전화: 1544-0000</li>
+                                    <li>고객센터 전화: 010-9488-5093</li>
                                     <li>이메일: contact@eroom.kr</li>
                                     <li>카카오톡 채널: @이룸스튜디오</li>
                                 </ul>
@@ -611,7 +629,7 @@
                                 </ul>
 
                                 <h3 class="text-xl font-bold mb-4 mt-6">7. 문의</h3>
-                                <p class="mb-4">환불 관련 문의사항은 고객센터(1544-0000) 또는 contact@eroom.kr로 연락주시기 바랍니다.</p>
+                                <p class="mb-4">환불 관련 문의사항은 고객센터(010-9488-5093) 또는 contact@eroom.kr로 연락주시기 바랍니다.</p>
 
                                 <p class="mt-6 text-sm text-gray-500">본 환불정책은 2024년 1월 1일부터 적용됩니다.</p>
                             `

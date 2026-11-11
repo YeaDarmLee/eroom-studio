@@ -1,73 +1,19 @@
 {% extends "base.html" %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/branch-detail.css') }}">
+{% endblock %}
+
 {% block content %}
-<style>
-    .slider-container {
-        scroll-snap-type: x mandatory;
-    }
-
-    .slider-item {
-        scroll-snap-align: start;
-    }
-
-    .room-status-available {
-        background: rgba(39, 174, 96, 0.1);
-        color: #27AE60;
-    }
-
-    .room-status-pending {
-        background: rgba(243, 156, 18, 0.1);
-        color: #F39C12;
-    }
-
-    .room-status-occupied {
-        background: rgba(189, 195, 199, 0.1);
-        color: #7F8C8D;
-    }
-
-    #floorPlan svg {
-        width: 100%;
-        height: 100%;
-    }
-
-    #floorPlan .room {
-        stroke: #fff;
-        stroke-width: 2;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    #floorPlan .room:hover {
-        filter: brightness(0.9);
-    }
-
-    #floorPlan .room.available {
-        fill: rgba(39, 174, 96, 0.2);
-    }
-
-    #floorPlan .room.pending {
-        fill: rgba(243, 156, 18, 0.2);
-    }
-
-    #floorPlan .room.occupied {
-        fill: rgba(127, 140, 141, 0.2);
-    }
-
-    #floorPlan text {
-        fill: #4b5563;
-        font-size: 14px;
-        pointer-events: none;
-    }
-</style>
 
 <!-- Sub Header / Branch Nav -->
-<div class="bg-white border-b border-gray-100 sticky top-20 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <a href="/" class="flex items-center text-gray-700 hover:text-primary">
-            <i class="ri-arrow-left-line text-xl mr-2"></i>
-            <span class="hidden md:inline">메인으로</span>
+<div class="branch-subnav">
+    <div class="branch-container branch-subnav-inner">
+        <a href="/#locations" class="branch-back-link">
+            <i class="ri-arrow-left-line" aria-hidden="true"></i>
+            <span>지점 안내</span>
         </a>
-        <div class="flex space-x-1 bg-gray-100 p-1 rounded-full overflow-x-auto" x-data="{
+        <nav class="branch-switcher" aria-label="지점 선택" x-data="{
             branches: [],
             currentBranchId: {{ branch.id }},
             async init() {
@@ -79,111 +25,85 @@
                 } catch (error) {
                     console.error('Error loading branches:', error);
                 }
-            },
-            navigateToBranch(branchId) {
-                if (branchId !== this.currentBranchId) {
-                    window.location.href = `/branches/${branchId}`;
-                }
             }
         }">
             <template x-for="b in branches" :key="b.id">
-                <button @click="navigateToBranch(b.id)"
-                    :class="b.id === currentBranchId ? 'bg-white text-gray-900 shadow-sm font-medium' : 'text-gray-600 hover:text-gray-900'"
-                    class="px-4 py-1.5 rounded-full whitespace-nowrap text-sm transition-all" x-text="b.name">
-                </button>
+                <a :href="'/branches/' + b.id" :aria-current="b.id === currentBranchId ? 'page' : null"
+                    :class="{ 'is-current': b.id === currentBranchId }" x-text="b.name"></a>
             </template>
-        </div>
+        </nav>
     </div>
 </div>
 
-<!-- Hero Slider -->
-<div class="relative h-[480px] overflow-hidden" x-data="{
-    currentSlide: 0,
-    images: [{% if branch.images %}{% for img in branch.images.all() %}{'id': {{ img.id }}, 'url': '{{ img.image_url }}'}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}],
-    init() {
-        if (this.images.length === 0 && {{ (branch.image_url or '')|tojson|forceescape }}) {
-            this.images.push({ id: 0, url: {{ (branch.image_url or '')|tojson|forceescape }} });
-        }
-        // Fallback images if no images at all
-        if (this.images.length === 0) {
-            this.images = [
-                { id: -1, url: 'https://readdy.ai/api/search-image?query=professional%20music%20practice%20room%20with%20high-end%20equipment%2C%20acoustic%20panels%2C%20modern%20lighting%2C%20clean%20and%20minimalist%20design%2C%20warm%20atmosphere%2C%20perfect%20for%20musicians&width=1920&height=480&seq=8&orientation=landscape' },
-                { id: -2, url: 'https://readdy.ai/api/search-image?query=recording%20studio%20control%20room%20with%20mixing%20console%2C%20monitors%2C%20acoustic%20treatment%2C%20modern%20design%2C%20professional%20equipment&width=1920&height=480&seq=9&orientation=landscape' },
-                { id: -3, url: 'https://readdy.ai/api/search-image?query=vocal%20recording%20booth%20with%20high-end%20microphone%2C%20acoustic%20panels%2C%20modern%20lighting%2C%20professional%20setup&width=1920&height=480&seq=10&orientation=landscape' }
-            ];
-        }
-        
-        // Auto slide
-        setInterval(() => {
-            this.currentSlide = (this.currentSlide + 1) % this.images.length;
-        }, 5000);
-    }
-}">
-    <div class="slider-container flex w-full h-full overflow-hidden relative">
-        <template x-for="(img, index) in images" :key="img.id">
-            <div class="slider-item w-full h-full flex-shrink-0 absolute top-0 left-0 transition-opacity duration-1000 ease-in-out"
-                :class="currentSlide === index ? 'opacity-100 z-10' : 'opacity-0 z-0'"
-                :style="`background-image: url('${img.url}'); background-size: cover; background-position: center;`">
-                <!-- Dark overlay for better text visibility if needed -->
-                <div class="absolute inset-0 bg-black/20"></div>
-            </div>
-        </template>
+<!-- Branch overview and registered photos -->
+{% set branch_photos = branch.images.all() if branch.images else [] %}
+{% set branch_photo_urls = branch_photos|map(attribute='image_url')|select|list %}
+{% if not branch_photo_urls and branch.image_url %}
+{% set branch_photo_urls = [branch.image_url] %}
+{% endif %}
+<section class="branch-overview branch-container" aria-labelledby="branch-title">
+    <div class="branch-overview-info">
+        <h1 id="branch-title">{{ branch.name }}</h1>
+        <p class="branch-address">{{ branch.address or '주소는 지점으로 문의해주세요.' }}</p>
+        <dl class="branch-facts">
+            <div><dt>운영시간</dt><dd>{{ branch.operating_hours or '24시간' }}</dd></div>
+            <div><dt>연락처</dt><dd><a href="tel:{{ branch.contact or '010-9488-5093' }}">{{ branch.contact or '010-9488-5093' }}</a></dd></div>
+        </dl>
+        <div class="branch-overview-actions">
+            <a href="#room-list" class="branch-room-link">방과 이용료 보기 <i class="ri-arrow-down-line" aria-hidden="true"></i></a>
+            <a href="#traffic-guide" class="branch-traffic-link">교통·주차 안내</a>
+        </div>
     </div>
-
-    <!-- Navigation Dots -->
-    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
-        <template x-for="(img, index) in images" :key="index">
-            <button @click="currentSlide = index" class="w-2 h-2 rounded-full transition-all duration-300"
-                :class="currentSlide === index ? 'bg-white w-6' : 'bg-white/50 hover:bg-white/80'">
+    {% if branch_photo_urls %}
+    <div class="branch-gallery" role="region" aria-roledescription="캐러셀" aria-label="지점 사진" aria-describedby="branch-gallery-help"
+        tabindex="0" x-data="{
+            currentSlide: 0,
+            images: {{ branch_photo_urls|tojson|forceescape }},
+            failedImages: {},
+            previousPhoto() { this.currentSlide = (this.currentSlide - 1 + this.images.length) % this.images.length; },
+            nextPhoto() { this.currentSlide = (this.currentSlide + 1) % this.images.length; }
+        }"
+        @keydown.arrow-left.prevent="previousPhoto()" @keydown.arrow-right.prevent="nextPhoto()"
+        @keydown.home.prevent="currentSlide = 0" @keydown.end.prevent="currentSlide = images.length - 1">
+        <p id="branch-gallery-help" class="sr-only">좌우 방향키로 사진을 넘길 수 있습니다.</p>
+        <div class="branch-gallery-frame">
+            <template x-for="(image, index) in images" :key="index">
+                <img :src="image" :alt="{{ branch.name|tojson|forceescape }} + ' 지점 사진 ' + (index + 1)"
+                    x-show="currentSlide === index && !failedImages[index]" x-cloak
+                    @error="failedImages[index] = true" decoding="async">
+            </template>
+            <div class="branch-photo-error" x-show="failedImages[currentSlide]" x-cloak>
+                <i class="ri-image-line" aria-hidden="true"></i>
+                <p>사진을 불러오지 못했습니다.</p>
+                <p>지점 정보와 아래 방 목록을 확인해주세요.</p>
+            </div>
+        </div>
+        <div class="branch-gallery-controls">
+            <button type="button" @click="previousPhoto()" x-show="images.length > 1" aria-label="이전 지점 사진">
+                <i class="ri-arrow-left-s-line" aria-hidden="true"></i><span>이전</span>
             </button>
-        </template>
-    </div>
-
-    <!-- Navigation Arrows -->
-    <button @click="currentSlide = (currentSlide - 1 + images.length) % images.length"
-        class="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:scale-110">
-        <i class="ri-arrow-left-s-line text-2xl"></i>
-    </button>
-    <button @click="currentSlide = (currentSlide + 1) % images.length"
-        class="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:scale-110">
-        <i class="ri-arrow-right-s-line text-2xl"></i>
-    </button>
-</div>
-
-<div class="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-4 md:py-8 lg:py-12">
-    <!-- Branch Info -->
-    <div class="mb-12">
-        <h1 class="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4">{{ branch.name }}</h1>
-        <p class="text-gray-600 mb-8">{{ branch.address }}</p>
-
-        <div class="grid grid-cols-2 gap-6 mb-12">
-            <div class="flex items-center">
-                <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full mr-3">
-                    <i class="ri-time-line text-gray-600"></i>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">운영시간</p>
-                    <p class="font-medium">{{ branch.operating_hours or '24시간' }}</p>
-                </div>
-            </div>
-            <div class="flex items-center">
-                <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full mr-3">
-                    <i class="ri-phone-line text-gray-600"></i>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">연락처</p>
-                    <p class="font-medium">{{ branch.contact or '032-123-4567' }}</p>
-                </div>
-            </div>
+            <p aria-live="polite" aria-atomic="true"><span class="sr-only">지점 사진 </span><span x-text="currentSlide + 1">1</span> / {{ branch_photo_urls|length }}</p>
+            <button type="button" @click="nextPhoto()" x-show="images.length > 1" aria-label="다음 지점 사진">
+                <span>다음</span><i class="ri-arrow-right-s-line" aria-hidden="true"></i>
+            </button>
         </div>
+    </div>
+    {% else %}
+    <div class="branch-no-photo">
+        <p>아직 등록된 지점 사진이 없습니다.</p>
+        <p>아래에서 배치도와 방별 이용 조건을 확인해주세요.</p>
+    </div>
+    {% endif %}
+</section>
 
-
+<div class="branch-content branch-container">
+    <div class="mb-12">
         <!-- Floor Plan Section (Real Admin-Configured Data) -->
         {% include 'public/public_floor_plan_component.html' %}
 
 
         <!-- Room List Cards with Tabs -->
-        <div class="mb-16" x-data="{ activeRoomTab: 'monthly' }">
+        <div id="room-list" class="mb-16 branch-anchor" x-data="{ activeRoomTab: 'monthly' }">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <h2 class="text-2xl font-bold">룸 타입 및 가격</h2>
 
@@ -346,7 +266,7 @@
         </div>
 
         <!-- Traffic & Parking -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+        <div id="traffic-guide" class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16 branch-anchor">
             <div>
                 <h2 class="text-2xl font-bold mb-6">교통 안내</h2>
                 <div
@@ -399,68 +319,13 @@
                         </div>
                         <div class="flex items-center text-gray-500">
                             <i class="ri-information-line mr-2"></i>
-                            <span>문의처: {{ branch.contact or '032-123-4567' }}</span>
+                            <span>문의처: {{ branch.contact or '010-9488-5093' }}</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Scripts -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Slider Logic
-            const sliderContainer = document.querySelector('.slider-container');
-            const sliderItems = document.querySelectorAll('.slider-item');
-            const dots = document.querySelectorAll('.bottom-4 button');
-            let currentSlide = 0;
-
-            function updateDots() {
-                dots.forEach((dot, index) => {
-                    dot.classList.toggle('opacity-50', index !== currentSlide);
-                });
-            }
-
-            function showSlide(index) {
-                sliderContainer.scrollTo({
-                    left: sliderItems[index].offsetLeft,
-                    behavior: 'smooth'
-                });
-                currentSlide = index;
-                updateDots();
-            }
-
-            dots.forEach((dot, index) => {
-                dot.addEventListener('click', () => showSlide(index));
-            });
-
-            setInterval(() => {
-                currentSlide = (currentSlide + 1) % sliderItems.length;
-                showSlide(currentSlide);
-            }, 5000);
-
-            // Floor Plan Logic - Handled by Alpine.js component (public_floor_plan_component.html)
-            // Legacy code removed to prevent TypeError: Cannot read properties of null
-
-
-            // Modals (Simplified for Demo)
-            const modalHtml = `
-    <div id="contractModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg w-full max-w-lg mx-4">
-            <div class="p-6 border-b border-gray-100"><h3 class="text-xl font-medium">계약 신청</h3></div>
-            <div class="p-6"><p>계약 신청 기능은 로그인이 필요합니다.</p></div>
-            <div class="p-6 border-t border-gray-100 flex justify-end gap-3">
-                <button onclick="document.getElementById('contractModal').classList.add('hidden')" class="!rounded-button px-6 py-2 border border-gray-300">닫기</button>
-                <a href="/login" class="!rounded-button px-6 py-2 bg-primary text-white">로그인</a>
-            </div>
-        </div>
-    </div>`;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-            document.getElementById('contractBtn')?.addEventListener('click', () => {
-                document.getElementById('contractModal').classList.remove('hidden');
-            });
-        });
-    </script>
-    {% endblock %}
+{% endblock %}
