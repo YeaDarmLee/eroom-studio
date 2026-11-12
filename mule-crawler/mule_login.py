@@ -106,9 +106,10 @@ def generate_seo_text(branch, data):
     branch_ko = BRANCH_NAMES_KO.get(branch.lower(), f"{branch.upper()}점")
     rooms = data.get("available_rooms", [])
     is_occupied = data.get("is_fully_occupied", False) or len(rooms) == 0
-    next_date = data.get("next_available_date") or "2026-07-01"
+    next_date = data.get("next_available_date") or "대기 문의"
     
     # 공실 목록 텍스트화
+    room_list_html = ""
     if is_occupied:
         room_list_html = f"<li>현재 모든 룸이 만실 상태입니다. (가장 빠른 입실 가능 예정일: {next_date})</li>"
     else:
@@ -122,8 +123,10 @@ def generate_seo_text(branch, data):
                 area_str = str(area_val)
             room_list_html += f"<li>{r['floor']} {r['name']} (약 {area_str}㎡) - {desc}</li>"
             
-    # 인천점 특별 프로모션 문구 (조건부)
-    incheon_promo = ""
+    deposit_str = "20만 원" if branch.lower() == "incheon" else "30만 원"
+    
+    # 장기 계약 혜택 문구 (홍대점 등 렌트프리 언급 제거 반영)
+    rent_free_text = "" if branch.lower() == "hongdae" else " <strong>+ 1개월 추가 무료 (렌트프리) 제공!</strong>"
 
     # 예약 및 문의 카드와 서비스 정보
     seo_html = f"""
@@ -131,7 +134,6 @@ def generate_seo_text(branch, data):
 <hr>
 <h3>이룸스튜디오 {branch_ko} 실시간 공실 현황 & 서비스 안내</h3>
 <br>
-{incheon_promo}
 <p><strong>[실시간 이용 가능한 룸 정보]</strong></p>
 <ul>
   {room_list_html}
@@ -139,16 +141,16 @@ def generate_seo_text(branch, data):
 <br>
 <p><strong>[이룸스튜디오 {branch_ko} 특별 할인 혜택]</strong></p>
 <ul>
-  <li><strong>6개월 계약 시</strong>: 매월 특별 할인가 적용 혜택</li>
-  <li><strong>12개월 계약 시</strong>: 매월 특별 할인가 적용 혜택 <strong>+ 1개월 추가 무료 (렌트프리) 제공!</strong></li>
-  <li>※ 6개월/12개월 장기 계약 고객분들께 최대 혜택을 집중하여 제공해 드립니다.</li>
+  <li><strong>6개월 계약 시</strong>: 매월 특별 할인가 적용 혜택 (-3만 원)</li>
+  <li><strong>12개월 계약 시</strong>: 매월 특별 할인가 적용 혜택 (-5만 원){rent_free_text}</li>
+  <li>※ 장기 계약 고객분들께 최대 혜택을 집중하여 제공해 드립니다. (보증금 {deposit_str})</li>
 </ul>
 <br>
 <p><strong>[시설 및 프리미엄 서비스 안내]</strong></p>
 <ul>
   <li>각 방 개별 디지털 도어락 완비로 철저한 프라이버시 보장</li>
-  <li>완벽한 냉난방 시스템 (개별 에어컨 설치)</li>
-  <li>초고속 기가 인터넷 및 Wi-Fi 제공으로 안정적인 미디 및 작업 환경 지원</li>
+  <li>전문 더블레이어 이중 방음 설계로 소음 간섭 최소화</li>
+  <li>24시간 온수 샤워 시설 및 쾌적한 휴게 공간 지원</li>
   <li>더 자세한 사진 및 정보는 공식 웹사이트에서 확인하실 수 있습니다.</li>
 </ul>
 <br>
