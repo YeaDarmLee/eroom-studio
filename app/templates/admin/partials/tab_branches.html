@@ -638,17 +638,17 @@
                         </button>
                     </div>
 
-                    <div class="flex-1 overflow-auto bg-gray-100 relative py-16 flex items-center justify-center"
+                    <div class="flex-1 overflow-auto bg-gray-100 relative py-16 flex"
                         @mousemove="onDrag($event); onResize($event)" @mouseup="endDrag($event); endResize()">
                         <template x-if="floorPlans[selectedFloor]">
                             <div
-                                class="relative w-full max-w-4xl aspect-[4/3] bg-white shadow-2xl select-none ring-1 ring-black/5 overflow-hidden">
+                                class="relative w-full max-w-4xl aspect-[4/3] shrink-0 m-auto bg-white shadow-2xl select-none ring-1 ring-black/5 overflow-hidden">
                                 <div class="absolute inset-0">
                                     <img :src="floorPlans[selectedFloor]"
                                         class="absolute inset-0 w-full h-full object-contain pointer-events-none"
                                         alt="Floor Plan">
                                     <template x-for="room in roomsByFloor[selectedFloor] || []" :key="room.id">
-                                        <div class="absolute border-2 flex items-center justify-center cursor-grab group transition-all hover:z-10 rounded-sm backdrop-blur-[2px] will-change-[left,top,width,height]"
+                                        <div class="absolute border-2 flex items-center justify-center cursor-grab group transition-all hover:z-10 rounded-sm will-change-[left,top,width,height]"
                                             :class="{
                                             'border-primary z-20 ring-2 ring-primary/50 shadow-lg !transition-none': draggedRoomId === room.id, 
                                             'border-green-500 bg-green-500/10': draggedRoomId !== room.id && room.status === 'available',
