@@ -47,6 +47,7 @@ def get_branch(branch_id):
             'area': room.area,
             'floor': floor,
             'position_x': room.position_x,
+            'shape': room.shape,
             'position_y': room.position_y,
             'width': room.width,
             'height': room.height,

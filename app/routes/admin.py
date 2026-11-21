@@ -1,3 +1,4 @@
+import re
 from flask import Blueprint, request, jsonify, current_app, render_template
 from app.extensions import db
 from app.models.contract import Contract, TermsDocument
@@ -1231,6 +1232,7 @@ def get_branch(current_user, id):
             'description': room.description,
             'floor': floor,
             'position_x': room.position_x,
+            'shape': room.shape,
             'position_y': room.position_y,
             'width': room.width,
             'height': room.height,
@@ -1462,6 +1464,12 @@ def update_room(current_user, id):
         room.area = data['area']
     if 'description' in data:
         room.description = data['description']
+    if 'shape' in data:
+        shape = (data['shape'] or '').strip()
+        # CSS clip-path polygon 좌표만 허용 (숫자, %, 공백, 쉼표)
+        if shape and not re.fullmatch(r'[0-9.% ,\-]{1,255}', shape):
+            return jsonify({'error': 'Invalid shape'}), 400
+        room.shape = shape or None
     
     db.session.commit()
     return jsonify({'message': 'Room updated', 'id': room.id})

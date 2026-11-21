@@ -654,7 +654,7 @@
                                             'border-green-500 bg-green-500/10': draggedRoomId !== room.id && room.status === 'available',
                                             'border-gray-400 bg-gray-400/10': draggedRoomId !== room.id && room.status === 'occupied',
                                             'border-primary/50 bg-primary/10': draggedRoomId !== room.id && !room.status
-                                        }" :style="`left: ${room.position_x}%; top: ${room.position_y}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
+                                        }" :style="`left: ${room.position_x}%; top: ${room.position_y}%; width: ${room.width || 10}%; height: ${room.height || 10}%;${room.shape ? ` clip-path: polygon(${room.shape});` : ''}`"
                                             @mousedown="startDrag(room, $event)">
                                             <div class="flex flex-col items-center pointer-events-none select-none">
                                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm"

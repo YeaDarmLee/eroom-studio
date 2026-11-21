@@ -75,6 +75,8 @@ class Room(db.Model):
     position_y = db.Column(db.Float, default=0)
     width = db.Column(db.Float, default=10)
     height = db.Column(db.Float, default=10)
+    # 비직사각형 방: 박스 기준 CSS polygon 좌표 (예: "35% 0, 100% 0, 100% 100%, 0 100%, 0 35%"). 없으면 사각형
+    shape = db.Column(db.String(255))
     
     contracts = db.relationship('Contract', backref='room', lazy='dynamic')
     images = db.relationship('RoomImage', backref='room', lazy='dynamic', cascade='all, delete-orphan', order_by='RoomImage.order_index')

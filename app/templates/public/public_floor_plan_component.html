@@ -392,7 +392,7 @@
                                     getRoomStatusClass(room), 
                                     room.room_type === 'time_based' ? 'time-based' : '',
                                     room.room_type === 'manager' ? 'manager' : ''
-                                ]" :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
+                                ]" :style="`left: ${room.position_x || 0}%; top: ${room.position_y || 0}%; width: ${room.width || 10}%; height: ${room.height || 10}%;${room.shape ? ` clip-path: polygon(${room.shape});` : ''}`"
                                     @click="(room.status === 'available' || (room.status === 'occupied' && room.next_available_date)) && room.room_type !== 'manager' && room.room_type !== 'time_based' ? viewRoomDetail(room.id) : null">
 
                                     <!-- Hover Tooltip (CSS 기반 - 간단한 방식) -->
