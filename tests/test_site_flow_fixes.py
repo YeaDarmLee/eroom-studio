@@ -218,6 +218,20 @@ class SiteFlowFixesTest(unittest.TestCase):
                 rows = self.client.get('/admin/api/rent-management-contracts?month=2027-02', headers=self.a).json
                 self.assertNotIn(c.id, [row['id'] for row in rows])
 
+    def test_end_month_billed_only_if_due_day_is_on_or_before_end(self):
+        # Rent is prepaid: due day after the end date means the last rent was due the month before.
+        early = self.contract(start_date=date(2026, 7, 15), end_date=date(2026, 11, 11),
+                              payment_day=15, status='terminated', termination_effective_date=date(2026, 11, 11))
+        late = self.contract(start_date=date(2026, 7, 1), end_date=date(2026, 11, 11),
+                             payment_day=5, status='terminated', termination_effective_date=date(2026, 11, 11))
+        def ids(month):
+            return [r['id'] for r in self.client.get('/admin/api/rent-management-contracts?month=' + month, headers=self.a).json]
+        self.assertNotIn(early.id, ids('2026-11')); self.assertIn(early.id, ids('2026-10'))
+        self.assertIn(late.id, ids('2026-11'))
+        response = self.client.post(f'/admin/api/contracts/{early.id}/rent-payment', headers=self.a,
+                                    json={'month': '2026-11', 'is_paid': True})
+        self.assertEqual(response.status_code, 400)
+
     def test_active_indefinite_contract_remains_billable(self):
         c = self.contract(end_date=date(2099, 12, 31), is_indefinite=True)
         rows = self.client.get('/admin/api/rent-management-contracts?month=2027-02', headers=self.a).json

@@ -2,7 +2,7 @@
 import calendar
 from datetime import date, datetime, timedelta, timezone
 from werkzeug.exceptions import BadRequest, Conflict
-from sqlalchemy import and_, case, func
+from sqlalchemy import and_, case, extract, func, or_
 from app.models.contract import Contract
 from app.models.branch import Room
 
@@ -71,14 +71,20 @@ def month_range(value=None):
 
 def rent_period_filter(first, last):
     """Keep dated termination history without billing legacy open-ended exits."""
+    # Not nullif(): on MySQL it yields a string, and '2026-11-01' < '2026-11-01 00:00:00'
+    # drops contracts ending exactly on the first/last day of the month.
+    finite_end = case((Contract.end_date == date(2099, 12, 31), None), else_=Contract.end_date)
     end = case(
-        (Contract.status == 'terminated', func.coalesce(
-            Contract.termination_effective_date,
-            func.nullif(Contract.end_date, date(2099, 12, 31)))),
+        (Contract.status == 'terminated', func.coalesce(Contract.termination_effective_date, finite_end)),
         else_=Contract.end_date,
     )
+    # Rent is collected in advance: in the month the contract ends, bill only if
+    # that month's due day is on/before the end date (last rent was due earlier).
+    pay_day = func.coalesce(Contract.payment_day, 1)
+    due_day = case((pay_day > last.day, last.day), else_=pay_day)
     return and_(Contract.status.in_(('active', 'terminate_requested', 'terminated')),
-                Contract.start_date <= last, end >= first)
+                Contract.start_date <= last, end >= first,
+                or_(end > last, due_day <= extract('day', end)))
 
 
 def rent_amount(contract, month):
