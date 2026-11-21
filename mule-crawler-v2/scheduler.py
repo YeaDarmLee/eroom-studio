@@ -51,7 +51,7 @@ def main():
             save(st)
             env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
             rc = subprocess.run([sys.executable, "mule_login.py"], cwd=BASE, env=env,
-                                stdin=subprocess.DEVNULL).returncode
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             if rc == 0:
                 st["success"] = datetime.now()
                 save(st)
