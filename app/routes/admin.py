@@ -1135,6 +1135,7 @@ def get_branches(current_user):
         'parking_info': b.parking_info,
         'map_info': b.map_info,
         'is_corporate': b.is_corporate,
+        'is_published': b.is_published,
         'registration_number': b.registration_number,
         'owner_name': b.owner_name,
         'owner_address': b.owner_address,
@@ -1187,7 +1188,8 @@ def create_branch(current_user):
         owner_birth_date=request.form.get('owner_birth_date'),
         owner_contact=request.form.get('owner_contact'),
         registration_number=request.form.get('registration_number'),
-        is_corporate=request.form.get('is_corporate', 'false').lower() in ('true', '1')
+        is_corporate=request.form.get('is_corporate', 'false').lower() in ('true', '1'),
+        is_published=request.form.get('is_published', 'false').lower() in ('true', '1')
     )
     
     # Handle branch images
@@ -1252,6 +1254,7 @@ def get_branch(current_user, id):
         'parking_info': branch.parking_info,
         'map_info': branch.map_info,
         'is_corporate': branch.is_corporate,
+        'is_published': branch.is_published,
         'registration_number': branch.registration_number,
         'owner_name': branch.owner_name,
         'owner_address': branch.owner_address,
@@ -1322,6 +1325,9 @@ def update_branch(current_user, id):
             val = request.form['is_corporate'].lower()
             branch.is_corporate = (val == 'true' or val == '1')
         
+        if 'is_published' in request.form:
+            branch.is_published = request.form['is_published'].lower() in ('true', '1')
+
         # Handle branch image upload
         if 'image' in request.files:
             file = request.files['image']

@@ -19,6 +19,8 @@ class Branch(db.Model):
     # Owner Info for Contracts
     owner_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # ID of the user who owns the branch
     is_corporate = db.Column(db.Boolean, default=False)
+    # 공개 여부: False면 사이트/공개 API/크롤러에서 제외 (신규 지점은 미게시로 시작)
+    is_published = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     registration_number = db.Column(db.String(50)) # Business or Corporate Registration Number
     owner_name = db.Column(db.String(64), default='김훈태')
     owner_address = db.Column(db.String(255))

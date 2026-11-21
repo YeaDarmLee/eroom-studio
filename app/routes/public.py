@@ -10,7 +10,7 @@ public_bp = Blueprint('public', __name__, url_prefix='/api/public')
 @public_bp.route('/branches', methods=['GET'])
 @db_retry(max_retries=3, delay=1)
 def get_branches():
-    branches = sort_branches(Branch.query.all())
+    branches = sort_branches(Branch.query.filter_by(is_published=True).all())
     result = []
     for branch in branches:
         result.append({
@@ -26,7 +26,7 @@ def get_branches():
 @public_bp.route('/branches/<int:branch_id>', methods=['GET'])
 @db_retry(max_retries=3, delay=1)
 def get_branch(branch_id):
-    branch = Branch.query.get_or_404(branch_id)
+    branch = Branch.query.filter_by(id=branch_id, is_published=True).first_or_404()
     
     # Group rooms by floor
     rooms_by_floor = {}
@@ -72,7 +72,7 @@ def get_branch(branch_id):
 @public_bp.route('/branches/<int:branch_id>/rooms', methods=['GET'])
 @db_retry(max_retries=3, delay=1)
 def get_branch_rooms(branch_id):
-    branch = Branch.query.get_or_404(branch_id)
+    branch = Branch.query.filter_by(id=branch_id, is_published=True).first_or_404()
     rooms = branch.rooms.all()
     result = []
     for room in rooms:
@@ -152,12 +152,12 @@ def get_branch_rooms_status(branch_name):
     search_names = mapping.get(branch_name.lower())
     if search_names:
         for name in search_names:
-            branch = Branch.query.filter(Branch.name.like(f"%{name}%")).first()
+            branch = Branch.query.filter(Branch.is_published.is_(True), Branch.name.like(f"%{name}%")).first()
             if branch:
                 break
                 
     if not branch:
-        branch = Branch.query.filter(Branch.name.like(f"%{branch_name}%")).first()
+        branch = Branch.query.filter(Branch.is_published.is_(True), Branch.name.like(f"%{branch_name}%")).first()
         
     if not branch:
         return jsonify({'error': 'Branch not found'}), 404

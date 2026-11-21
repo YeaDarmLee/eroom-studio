@@ -111,6 +111,29 @@ function registerBranchesPage() {
                 }
             },
 
+            async togglePublish(branch) {
+                const next = !branch.is_published
+                const msg = next
+                    ? `'${branch.name}'을(를) 게시할까요? 사이트에 바로 노출됩니다.`
+                    : `'${branch.name}'을(를) 미게시로 전환할까요? 사이트와 뮬 크롤러에서 제외됩니다.`
+                if (!confirm(msg)) return
+                const token = localStorage.getItem('token')
+                const fd = new FormData()
+                fd.append('is_published', next ? 'true' : 'false')
+                try {
+                    const response = await fetch(`/admin/api/branches/${branch.id}`, {
+                        method: 'PUT',
+                        headers: { Authorization: 'Bearer ' + token },
+                        body: fd
+                    })
+                    if (response.ok) branch.is_published = next
+                    else alert('게시 상태 변경에 실패했습니다.')
+                } catch (error) {
+                    console.error('Error toggling publish:', error)
+                    alert('게시 상태 변경에 실패했습니다.')
+                }
+            },
+
             openCreateModal() {
                 this.editMode = false
                 this.formData = {
@@ -123,7 +146,8 @@ function registerBranchesPage() {
                     traffic_info: '',
                     parking_info: '',
                     map_info: '',
-                    image_url: ''
+                    image_url: '',
+                    is_published: false
                 }
                 this.imageFile = null
                 this.imagePreview = null
@@ -138,6 +162,7 @@ function registerBranchesPage() {
                 this.formData = {
                     ...branch,
                     is_corporate: !!branch.is_corporate,
+                    is_published: !!branch.is_published,
                     registration_number: branch.registration_number || '',
                     owner_name: branch.owner_name || '',
                     owner_address: branch.owner_address || '',
@@ -175,6 +200,7 @@ function registerBranchesPage() {
 
                     // Corporate & Owner Fields
                     formData.append('is_corporate', this.formData.is_corporate ? 'true' : 'false')
+                    formData.append('is_published', this.formData.is_published ? 'true' : 'false')
                     formData.append('registration_number', this.formData.registration_number || '')
                     formData.append('owner_name', this.formData.owner_name || '')
                     formData.append('owner_address', this.formData.owner_address || '')

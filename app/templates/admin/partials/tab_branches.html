@@ -58,7 +58,12 @@
                         <div class="flex-1 p-4 md:p-6">
                             <!-- Action Buttons (always visible on mobile) -->
                             <div class="flex items-start justify-between mb-2">
-                                <h4 class="text-sm md:text-lg font-bold text-gray-900" x-text="branch.name"></h4>
+                                <h4 class="text-sm md:text-lg font-bold text-gray-900">
+                                    <span x-text="branch.name"></span>
+                                    <span class="ml-1 align-middle text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                        :class="branch.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'"
+                                        x-text="branch.is_published ? '게시중' : '미게시'"></span>
+                                </h4>
                                 <div class="flex items-center gap-1 ml-2">
                                     <button @click.stop="openEditModal(branch)"
                                         class="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
@@ -74,6 +79,12 @@
                                 <i class="ri-map-pin-line mr-1 text-xs shrink-0"></i>
                                 <span x-text="branch.address || '주소 없음'" class="truncate"></span>
                             </p>
+                            <button @click.stop="togglePublish(branch)"
+                                class="w-full mb-2 py-2 px-3 text-xs font-medium rounded-xl border transition-all duration-200 flex items-center justify-center gap-1"
+                                :class="branch.is_published ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'border-green-500 text-green-700 hover:bg-green-50'">
+                                <i :class="branch.is_published ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                <span x-text="branch.is_published ? '게시 중단' : '게시하기'"></span>
+                            </button>
                             <button @click.stop="loadBranchRooms(branch)"
                                 class="w-full py-2 px-3 bg-gray-50 text-gray-700 text-xs font-medium rounded-xl hover:bg-primary hover:text-white transition-all duration-200 flex items-center justify-center gap-1">
                                 <i class="ri-layout-grid-line"></i>방 관리
