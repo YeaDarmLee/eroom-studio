@@ -75,6 +75,10 @@ if sys.platform == "win32":
         pass
 
 MULE_URL = "https://www.mule.co.kr"
+def login_mode_for(branch):
+    """지점별 MULE_LOGIN_MODE_<BRANCH> (password|kakao), 없으면 MULE_LOGIN_MODE, 기본 password"""
+    v = os.getenv(f"MULE_LOGIN_MODE_{branch.upper()}") or os.getenv("MULE_LOGIN_MODE") or "password"
+    return v.strip().lower()
 CDP_PORT = 9224
 CDP_URL = f"http://127.0.0.1:{CDP_PORT}"
 
@@ -389,6 +393,36 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
         }
     """)
 
+    if login_mode_for(branch_name) == "kakao":
+        # [v2] 카카오 세션은 크롬 프로필에 저장됨. 직전 지점이 ID/PW 계정일 수 있으니 항상 로그아웃 후 카카오 버튼 클릭.
+        if is_logged_in:
+            try:
+                await page.evaluate("document.querySelector('li.l-logout').click()")
+                await page.wait_for_timeout(3000)
+                await page.goto(MULE_URL, wait_until="domcontentloaded")
+                await page.wait_for_timeout(2000)
+            except Exception:
+                pass
+        try:
+            await page.evaluate("document.querySelector('li.l-login').click()")
+            await page.wait_for_timeout(1500)
+            await page.locator("a.login-bt", has_text="카카오로 로그인").first.click(timeout=5000)  # 네이버/카카오 버튼 클래스가 같아 텍스트로 구분
+        except Exception as e:
+            set_stage_status(3, "오류", f"[{branch_name.upper()}] 카카오 로그인 버튼 클릭 실패: {e}")
+            return False
+        set_stage_status(3, "완료")
+        for _ in range(20):  # 최대 ~40초 (카카오 인증 후 리다이렉트 대기)
+            await page.wait_for_timeout(2000)
+            try:
+                if "mule.co.kr" in page.url and await page.evaluate(
+                        "() => { const b = document.querySelector('li.l-logout'); return !!b && getComputedStyle(b).display !== 'none'; }"):
+                    set_stage_status(4, "완료", f"[{branch_name.upper()}] 카카오 로그인 성공")
+                    return True
+            except Exception:
+                pass
+        set_stage_status(4, "오류", f"[{branch_name.upper()}] 카카오 로그인 실패. 크롬에서 카카오 세션을 먼저 로그인해 두세요.")
+        return False
+
     if is_logged_in:
         set_notice(f"[{branch_name.upper()}] 이전 로그인 계정이 감지되었습니다. 전환을 위해 로그아웃 중...")
         try:
@@ -560,7 +594,10 @@ async def main():
 
                 branch_id = os.getenv(f"MULE_ID_{branch.upper()}")
                 branch_pw = os.getenv(f"MULE_PW_{branch.upper()}")
-            
+                if login_mode_for(branch) == "kakao":
+                    branch_id = branch_id or "kakao"
+                    branch_pw = branch_pw or "kakao"
+
                 if not branch_id or not branch_pw:
                     print(f"[경고] [{branch.upper()}] 계정 정보(MULE_ID_{branch.upper()})가 .env에 존재하지 않아 건너뜁니다.")
                     await asyncio.sleep(1)
