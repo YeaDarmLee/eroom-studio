@@ -111,12 +111,21 @@ function registerBranchesPage() {
                 }
             },
 
-            async togglePublish(branch) {
+            togglePublish(branch) {
                 const next = !branch.is_published
+                const title = next ? '지점 게시' : '게시 중단'
                 const msg = next
-                    ? `'${branch.name}'을(를) 게시할까요? 사이트에 바로 노출됩니다.`
-                    : `'${branch.name}'을(를) 미게시로 전환할까요? 사이트와 뮬 크롤러에서 제외됩니다.`
-                if (!confirm(msg)) return
+                    ? `'${branch.name}'을(를) 게시할까요?
+사이트에 바로 노출됩니다.`
+                    : `'${branch.name}'을(를) 미게시로 전환할까요?
+사이트와 뮬 크롤러에서 제외됩니다.`
+                const run = () => this.setPublished(branch, next)
+                // 앱 내 브라우저에서는 confirm()이 무반응이라 관리자 공용 모달을 우선 사용
+                if (window.showAlert) window.showAlert(title, msg, 'warning', run)
+                else if (confirm(msg)) run()
+            },
+
+            async setPublished(branch, next) {
                 const token = localStorage.getItem('token')
                 const fd = new FormData()
                 fd.append('is_published', next ? 'true' : 'false')
