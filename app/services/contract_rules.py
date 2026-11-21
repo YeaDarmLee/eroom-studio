@@ -2,6 +2,7 @@
 import calendar
 from datetime import date, datetime, timedelta, timezone
 from werkzeug.exceptions import BadRequest, Conflict
+from sqlalchemy import and_, case, func
 from app.models.contract import Contract
 from app.models.branch import Room
 
@@ -67,6 +68,18 @@ def month_range(value=None):
     except (ValueError, TypeError):
         raise BadRequest('조회월을 YYYY-MM 형식으로 입력해주세요.')
     return first, first.replace(day=calendar.monthrange(first.year, first.month)[1])
+
+def rent_period_filter(first, last):
+    """Keep dated termination history without billing legacy open-ended exits."""
+    end = case(
+        (Contract.status == 'terminated', func.coalesce(
+            Contract.termination_effective_date,
+            func.nullif(Contract.end_date, date(2099, 12, 31)))),
+        else_=Contract.end_date,
+    )
+    return and_(Contract.status.in_(('active', 'terminate_requested', 'terminated')),
+                Contract.start_date <= last, end >= first)
+
 
 def rent_amount(contract, month):
     from app.models.custom_discount import CustomDiscount

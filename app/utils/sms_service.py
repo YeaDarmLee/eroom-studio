@@ -186,8 +186,14 @@ class SmsService:
 
         # 4. 수신 번호 확인 (Context에 있는 경우 우선)
         target_number = to_number or context.get('user_phone')
-        if not target_number:
-            return False, "Receiver phone number missing"
+        if not target_number or not any(char.isdigit() for char in str(target_number)):
+            message = '등록된 전화번호가 없습니다. 계약의 연락처를 확인해주세요.'
+            self._create_log(
+                contract_id=contract_id, msg_type=msg_type, dedup_key=dedup_key,
+                related_date=r_date, content=content_template, context=context,
+                status='FAILED', error_message=message,
+            )
+            return False, message
 
         # 5. 렌더링 및 검증 (Decision 5 & 6)
         logger.info(f"[SMS Debug] Sending {msg_type} to {target_number}. Context keys: {list(context.keys())}")

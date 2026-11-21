@@ -187,6 +187,59 @@ class SiteFlowFixesTest(unittest.TestCase):
         self.assertEqual(len(rows),1);self.assertEqual(rows[0]['price'],400000)
         self.assertEqual(self.client.get('/admin/api/rent-management-contracts?month=2027-03',headers=self.a).json,[])
 
+    def test_legacy_terminated_contract_is_not_billable(self):
+        c = self.contract(status='terminated', end_date=date(2099, 12, 31),
+                          paid_months=['2026-12'])
+        for month in ('2026-12', '2027-01'):
+            rows = self.client.get('/admin/api/rent-management-contracts?month=' + month, headers=self.a)
+            self.assertEqual(rows.json, [])
+            grouped = self.client.get('/admin/api/monthly-payments?month=' + month, headers=self.a).json
+            self.assertFalse(any(grouped.values()))
+        with patch.object(sms_service, 'send_sms') as send:
+            response = self.client.post('/admin/api/sms/manual', headers=self.a, json={
+                'contract_id': c.id, 'type': 'PAYMENT_OVERDUE_STAGE1', 'target_month': '2026-12'})
+            self.assertEqual(response.status_code, 400)
+            send.assert_not_called()
+        response = self.client.post(f'/admin/api/contracts/{c.id}/rent-payment', headers=self.a,
+                                    json={'month': '2026-12', 'is_paid': False})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(c.paid_months, ['2026-12'])
+
+    def test_dated_termination_preserves_rent_history(self):
+        for end, effective in ((date(2027, 1, 10), None),
+                               (date(2099, 12, 31), date(2027, 1, 10))):
+            with self.subTest(end=end, effective=effective):
+                c = self.contract(status='terminated', end_date=end, termination_effective_date=effective)
+                for month in ('2026-12', '2027-01'):
+                    rows = self.client.get('/admin/api/rent-management-contracts?month=' + month, headers=self.a).json
+                    self.assertIn(c.id, [row['id'] for row in rows])
+                    grouped = self.client.get('/admin/api/monthly-payments?month=' + month, headers=self.a).json
+                    self.assertIn(c.id, [row['id'] for group in grouped.values() for row in group])
+                rows = self.client.get('/admin/api/rent-management-contracts?month=2027-02', headers=self.a).json
+                self.assertNotIn(c.id, [row['id'] for row in rows])
+
+    def test_active_indefinite_contract_remains_billable(self):
+        c = self.contract(end_date=date(2099, 12, 31), is_indefinite=True)
+        rows = self.client.get('/admin/api/rent-management-contracts?month=2027-02', headers=self.a).json
+        self.assertEqual([row['id'] for row in rows], [c.id])
+
+    def test_missing_phone_is_logged_and_retryable(self):
+        c = self.contract()
+        db.session.add(SmsTemplate(type='TEST', title='테스트', content='안내', is_active=True))
+        db.session.commit()
+        provider = Mock()
+        provider.send.return_value = 'retry-success'
+        with patch.dict(self.app.config, {'SMS_ENABLED': True}):
+            success, message = sms_service.send_sms(c.id, 'TEST', {'user_phone': '   '})
+            self.assertFalse(success)
+            self.assertIn('전화번호', message)
+            self.assertEqual(SmsLog.query.one().status, 'FAILED')
+            self.provider.assert_not_called()
+            with patch.object(sms_service, '_get_provider', return_value=(provider, 'TEST')):
+                self.assertTrue(sms_service.send_sms(c.id, 'TEST', {'user_phone': self.user.phone})[0])
+        self.assertEqual(SmsLog.query.count(), 1)
+        self.assertEqual(SmsLog.query.one().status, 'SENT(TEST)')
+
     def test_history_deletes_return_clear_client_errors(self):
         c=self.contract(status='terminated')
         self.assertEqual(self.client.delete(f'/admin/api/rooms/{self.room.id}',headers=self.a).status_code,400)

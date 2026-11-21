@@ -27,7 +27,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import func, case
 from app.utils.korean_utils import match_search_fields
 from app.utils.branch_utils import sort_branches, get_branch_sort_key
-from app.services.contract_rules import ensure_available, positive_int, month_range, rent_amount, parse_date
+from app.services.contract_rules import ensure_available, positive_int, month_range, rent_amount, parse_date, rent_period_filter
 from werkzeug.exceptions import BadRequest, Conflict
 from app.utils.uploads import save_image, remove_image
 
@@ -293,7 +293,7 @@ def toggle_rent_payment(current_user, id):
     if not month_str:
         return jsonify({'error': 'Month is required'}), 400
     first, last = month_range(month_str)
-    if contract.start_date > last or contract.end_date < first:
+    if not Contract.query.filter(Contract.id == id, rent_period_filter(first, last)).first():
         return jsonify({'error': '계약 기간에 해당하는 월만 납부 처리할 수 있습니다.'}), 400
     if not isinstance(is_paid, bool):
         return jsonify({'error': '납부 여부는 참/거짓 값이어야 합니다.'}), 400
@@ -330,8 +330,7 @@ def toggle_rent_payment(current_user, id):
 def get_rent_management_contracts(current_user):
     first, last = month_range(request.args.get('month'))
     month = first.strftime('%Y-%m')
-    active_contracts = Contract.query.filter(Contract.status.in_(['active', 'terminate_requested', 'terminated']),
-        Contract.start_date <= last, Contract.end_date >= first).join(Room).filter(Room.room_type != 'time_based').options(
+    active_contracts = Contract.query.filter(rent_period_filter(first, last)).join(Room).filter(Room.room_type != 'time_based').options(
         joinedload(Contract.user),
         joinedload(Contract.room).joinedload(Room.branch)
     ).all()
@@ -690,8 +689,7 @@ def update_contract(current_user, id):
 def get_monthly_payments(current_user):
     """Get active contracts grouped by payment day"""
     first, last = month_range(request.args.get('month'))
-    active_contracts = Contract.query.filter(Contract.status.in_(['active', 'terminate_requested', 'terminated']),
-        Contract.start_date <= last, Contract.end_date >= first).join(Room).filter(Room.room_type != 'time_based').all()
+    active_contracts = Contract.query.filter(rent_period_filter(first, last)).join(Room).filter(Room.room_type != 'time_based').all()
     
     day1 = []
     day15 = []
@@ -2199,7 +2197,7 @@ def send_manual_sms(current_user):
     context_args = {}
     if msg_type.startswith('PAYMENT_'):
         first, last = month_range(data.get('target_month'))
-        if contract.start_date > last or contract.end_date < first:
+        if not Contract.query.filter(Contract.id == contract.id, rent_period_filter(first, last)).first():
             raise BadRequest('해당 월에 유효한 계약이 아닙니다.')
         context_args['due_date'] = first.replace(day=min(contract.payment_day or 1, last.day)).isoformat()
     context = build_sms_context(contract, msg_type, **context_args)
