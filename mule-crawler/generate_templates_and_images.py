@@ -116,24 +116,33 @@ MOCK_DATA = {
     }
 }
 
+def _http_get_json(url):
+    """urllib 우선, SSL 등으로 실패하면 curl.exe(윈도우 인증서 저장소)로 재시도."""
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'EroomTemplateBuilder/1.0'})
+        with urllib.request.urlopen(req, timeout=10.0) as response:
+            return json.loads(response.read().decode('utf-8'))
+    except Exception as e:
+        print(f"  urllib 실패 ({type(e).__name__}: {e}) -> curl로 재시도")
+        import subprocess
+        out = subprocess.run(["curl", "-s", "-f", "-m", "15", url], capture_output=True, timeout=20, check=True).stdout
+        return json.loads(out.decode('utf-8'))
+
 def fetch_branch_data(branch):
-    """서버 API로부터 지점 정보를 가져옵니다. 실패 시 Mock 데이터를 사용합니다."""
+    """서버 API로부터 지점 정보를 가져옵니다. 실패 시 예외 (오래된 데이터 게시 방지)."""
     url = f"{API_BASE_URL}/api/public/branches/{branch}/rooms-status"
     print(f"[{branch.upper()}] API 호출 시도: {url}")
-    
-    try:
-        # 2초 타임아웃으로 API 요청
-        req = urllib.request.Request(url, headers={'User-Agent': 'EroomTemplateBuilder/1.0'})
-        with urllib.request.urlopen(req, timeout=2.0) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            print(f"[{branch.upper()}] API 연동 성공!")
-            # API 응답 구조에 맞게 파싱 (예: {"status": "success", "data": {...}} 또는 {...} 직접 전달)
-            if "data" in data:
-                return data["data"]
-            return data
-    except Exception as e:
-        print(f"[{branch.upper()}] API 호출 실패 ({type(e).__name__}: {e}). Mock 데이터를 사용합니다.")
-        return MOCK_DATA[branch]
+    data = None
+    for attempt in range(2):
+        try:
+            data = _http_get_json(url)
+            break
+        except Exception as e:
+            print(f"[{branch.upper()}] API 호출 실패 {attempt+1}/2 ({type(e).__name__}: {e})")
+    if data is None:
+        raise RuntimeError(f"[{branch.upper()}] API 조회 실패")
+    print(f"[{branch.upper()}] API 연동 성공!")
+    return data["data"] if "data" in data else data
 
 def generate_rooms_html(rooms):
     """공실 목록을 세로형 프리미엄 카드 리스트 마크업으로 변환"""
@@ -215,7 +224,15 @@ def build_templates():
             print(f"[ERROR] 소스 템플릿 파일을 찾을 수 없습니다: {source_path}")
             continue
             
-        data = fetch_branch_data(branch)
+        stale_img = os.path.join(RESULT_DIR, f"promo_{branch}.png")
+        try:
+            data = fetch_branch_data(branch)
+        except Exception as e:
+            # 오래된 이미지가 게시되지 않도록 삭제 후 건너뜀
+            if os.path.exists(stale_img):
+                os.remove(stale_img)
+            print(f"[ERROR] [{branch.upper()}] 데이터 조회 실패로 건너뜁니다: {e}")
+            continue
         rooms = data.get("available_rooms", [])
         is_occupied = data.get("is_fully_occupied", False) or len(rooms) == 0
         next_date = data.get("next_available_date")

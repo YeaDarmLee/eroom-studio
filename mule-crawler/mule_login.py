@@ -553,6 +553,11 @@ async def main():
             print(f"\n--- [{idx+1}/6] {branch.upper()} 지점 로그인 처리 ---")
             
             try:
+                # 이미지 생성 실패(API 조회 실패 등) 시 오래된 내용 게시 방지
+                if not os.path.exists(os.path.join(USER_DIR, "result", f"promo_{branch.lower()}.png")):
+                    print(f"[경고] [{branch.upper()}] 홍보 이미지가 생성되지 않아 건너뜁니다.")
+                    continue
+
                 branch_id = os.getenv(f"MULE_ID_{branch.upper()}")
                 branch_pw = os.getenv(f"MULE_PW_{branch.upper()}")
             
