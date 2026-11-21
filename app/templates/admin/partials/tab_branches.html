@@ -653,9 +653,17 @@
                                             'border-primary z-20 ring-2 ring-primary/50 shadow-lg !transition-none': draggedRoomId === room.id, 
                                             'border-green-500 bg-green-500/10': draggedRoomId !== room.id && room.status === 'available',
                                             'border-gray-400 bg-gray-400/10': draggedRoomId !== room.id && room.status === 'occupied',
-                                            'border-primary/50 bg-primary/10': draggedRoomId !== room.id && !room.status
-                                        }" :style="`left: ${room.position_x}%; top: ${room.position_y}%; width: ${room.width || 10}%; height: ${room.height || 10}%;${room.shape ? ` clip-path: polygon(${room.shape});` : ''}`"
+                                            'border-primary/50 bg-primary/10': draggedRoomId !== room.id && !room.status,
+                                            '!border-transparent !bg-transparent': room.shape
+                                        }" :style="`left: ${room.position_x}%; top: ${room.position_y}%; width: ${room.width || 10}%; height: ${room.height || 10}%;`"
                                             @mousedown="startDrag(room, $event)">
+                                            <svg x-show="room.shape" class="pointer-events-none" style="position:absolute;left:-2px;top:-2px;width:calc(100% + 4px);height:calc(100% + 4px);overflow:visible"
+                                                viewBox="0 0 100 100" preserveAspectRatio="none"
+                                                :class="draggedRoomId === room.id ? 'text-primary' : (room.status === 'available' ? 'text-green-500' : (room.status === 'occupied' ? 'text-gray-400' : 'text-primary/50'))">
+                                                <polygon :points="(room.shape || '').split(',').map(p => p.trim().split(/\s+/).map(parseFloat).join(' ')).join(' ')"
+                                                    fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="2"
+                                                    stroke-linejoin="round" vector-effect="non-scaling-stroke"></polygon>
+                                            </svg>
                                             <div class="flex flex-col items-center pointer-events-none select-none">
                                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm"
                                                     :class="{
