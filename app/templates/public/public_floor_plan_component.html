@@ -163,12 +163,13 @@
         color: #7F8C8D;
     }
 
-    /* 층 선택기: 큰 탭 + 가능 방 수 뱃지. 모바일에서는 가로 스크롤 + 상단 고정 */
+    /* 층 선택기: 큰 탭 + 가능 방 수 뱃지. 데스크톱은 사이트 헤더(80px) + 지점 서브내비(60px) 아래에 고정 */
     .public-floor-selector {
         position: sticky;
-        top: 60px;
-        z-index: 20;
+        top: 141px;
+        z-index: 30;
     }
+
 
     .public-floor-tabs {
         display: flex;
@@ -232,6 +233,23 @@
     .public-floor-tab.active .public-floor-badge.none {
         background-color: #414b43;
         color: #fff;
+    }
+
+    /* 모바일: 고정 바가 이미 두 줄이라 고정 해제, 탭은 라벨 위/뱃지 아래로 쌓아 스크롤 없이 4개 층까지 표시 */
+    @media (max-width: 767px) {
+        .public-floor-selector { position: static; }
+        .public-floor-tabs { gap: 0.375rem; padding-bottom: 0; }
+        .public-floor-tab {
+            flex: 1 0 auto;
+            min-width: 64px;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.125rem;
+            padding: 0.5rem 0.375rem;
+            min-height: 56px;
+            white-space: nowrap;
+        }
+        .public-floor-badge { font-size: 12px; }
     }
 
 
