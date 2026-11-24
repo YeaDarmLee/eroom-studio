@@ -5,6 +5,7 @@
 
 import asyncio
 import subprocess
+import json
 import os
 import sys
 
@@ -79,6 +80,25 @@ def login_mode_for(branch):
     """지점별 MULE_LOGIN_MODE_<BRANCH> (password|kakao), 없으면 MULE_LOGIN_MODE, 기본 password"""
     v = os.getenv(f"MULE_LOGIN_MODE_{branch.upper()}") or os.getenv("MULE_LOGIN_MODE") or "password"
     return v.strip().lower()
+def pick_title(branch):
+    """MULE_TITLE_<BRANCH>에 '||'로 여러 제목을 넣으면 실행할 때마다 순서대로 돌려 쓴다. (제목 1개면 그대로)"""
+    titles = [t.strip() for t in os.getenv(f"MULE_TITLE_{branch.upper()}", "").split("||") if t.strip()]
+    if not titles:
+        return f"이룸스튜디오 {branch.upper()}점"
+    path = os.path.join(USER_DIR, "title_idx.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            state = json.load(f)
+    except Exception:
+        state = {}
+    n = state.get(branch, -1) + 1
+    state[branch] = n
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
+    return titles[n % len(titles)]
 CDP_PORT = 9224
 CDP_URL = f"http://127.0.0.1:{CDP_PORT}"
 
@@ -222,33 +242,12 @@ def find_chrome() -> str | None:
 
 
 def copy_chrome_session() -> bool:
-    """사용자의 실제 Chrome 프로필에서 로그인 정보 복사"""
+    """봇 프로필 폴더만 준비한다.
+    예전엔 실제 크롬 프로필의 쿠키를 복사했지만, 봇 크롬은 BOT_PROFILE_DIR/Default 를 쓰고
+    쿠키는 Local State 키로 암호화돼 있어 복사본이 효과가 없었다. 카카오 세션은 봇 크롬(chrome-debug-profile)에
+    직접 한 번 로그인해 두면 유지된다."""
     set_stage_status(0, "진행")
     os.makedirs(BOT_PROFILE_DIR, exist_ok=True)
-    
-    items_to_copy = [
-        "Preferences",
-        "Cookies",
-        "Cookies-journal",
-        "Network",
-        "Local Storage",
-    ]
-
-    for item in items_to_copy:
-        src = os.path.join(REAL_PROFILE_PATH, item)
-        dst = os.path.join(BOT_PROFILE_DIR, item)
-        
-        if not os.path.exists(src):
-            continue
-            
-        try:
-            if os.path.isdir(src):
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-            else:
-                shutil.copy2(src, dst)
-        except Exception:
-            pass
-
     set_stage_status(0, "완료")
     return True
 
@@ -381,6 +380,12 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
         set_stage_status(3, "오류", f"[{branch_name.upper()}] .env 파일에 로그인 설정이 존재하지 않습니다.")
         return False
 
+    # 이전 지점이 카카오/캡챠 화면에서 멈춰 있어도 li.l-login 을 찾을 수 있게 항상 메인으로 복귀
+    try:
+        await page.goto(MULE_URL, wait_until="domcontentloaded")
+    except Exception as e:
+        set_stage_status(3, "오류", f"[{branch_name.upper()}] 뮬 메인 페이지 이동 실패: {e}")
+        return False
     await page.wait_for_timeout(2000)
 
     # 로그인 상태 분석
@@ -411,8 +416,26 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
             set_stage_status(3, "오류", f"[{branch_name.upper()}] 카카오 로그인 버튼 클릭 실패: {e}")
             return False
         set_stage_status(3, "완료")
+        # 카카오 세션이 만료돼 로그인 폼이 뜨면, .env 에 카카오 계정이 있을 때만 1회 자동 입력
+        kakao_id = os.getenv(f"KAKAO_ID_{branch_name.upper()}") or os.getenv("KAKAO_ID")
+        kakao_pw = os.getenv(f"KAKAO_PW_{branch_name.upper()}") or os.getenv("KAKAO_PW")
+        kakao_tried = False
         for _ in range(20):  # 최대 ~40초 (카카오 인증 후 리다이렉트 대기)
             await page.wait_for_timeout(2000)
+            try:
+                if (not kakao_tried and kakao_id and kakao_pw and "accounts.kakao.com" in page.url
+                        and await page.locator("input[name='loginId']").count() > 0):
+                    kakao_tried = True
+                    set_notice(f"[{branch_name.upper()}] 카카오 세션 만료 -> 카카오 계정으로 재로그인 시도")
+                    await page.fill("input[name='loginId']", kakao_id)
+                    await page.fill("input[name='password']", kakao_pw)
+                    save = page.locator("input[name='saveSignedIn']")
+                    if await save.count() > 0 and not await save.is_checked():
+                        await save.check(force=True)  # 로그인 유지 -> 다음 실행부터 세션 재사용
+                    await page.locator("button.submit").first.click()
+                    continue
+            except Exception as ke:
+                print(f"  >>> [{branch_name.upper()}] 카카오 자동 재로그인 중 오류: {ke}")
             try:
                 if "mule.co.kr" in page.url and await page.evaluate(
                         "() => { const b = document.querySelector('li.l-logout'); return !!b && getComputedStyle(b).display !== 'none'; }"):
@@ -420,7 +443,7 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
                     return True
             except Exception:
                 pass
-        set_stage_status(4, "오류", f"[{branch_name.upper()}] 카카오 로그인 실패. 크롬에서 카카오 세션을 먼저 로그인해 두세요.")
+        set_stage_status(4, "오류", f"[{branch_name.upper()}] 카카오 로그인 실패 (세션 만료, 2차 인증/캡챠 가능성). 봇 크롬에서 카카오에 직접 로그인해 두세요.")
         return False
 
     if is_logged_in:
@@ -509,6 +532,11 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
         return True
     else:
         set_stage_status(4, "오류")
+        # 스케줄러(stdin 없음)에서는 수동 입력을 기다릴 수 없으므로 실패 처리 -> 스케줄러가 재시도
+        # Windows 에서 stdin=NUL 도 isatty()==True 라서 스케줄러가 MULE_UNATTENDED=1 로 명시
+        if os.getenv("MULE_UNATTENDED") == "1" or not (sys.stdin and sys.stdin.isatty()):
+            set_notice(f"[{branch_name.upper()}] 보안 확인(캡챠)을 통과하지 못해 로그인 실패 처리합니다 (무인 실행).")
+            return False
         set_notice(f"[{branch_name.upper()}] 보안 확인을 바로 통과하지 못했습니다. 크롬 창을 보시고 캡챠를 눌러서 직접 로그인을 완료해 주십시오.")
         print(f"  👉 수동 로그인을 마친 뒤, 이 창에서 [Enter] 키를 누르면 다음 작업을 속개합니다...")
         await asyncio.get_event_loop().run_in_executor(None, input)
@@ -566,6 +594,7 @@ async def main():
     print(" [3단계] 뮬(mule.co.kr) 지점별 순환 로그인 시작")
     print("=" * 70)
 
+    failed = []  # 로그인/작업 실패 지점 -> 종료코드와 재시도 대상에 사용
     playwright = await async_playwright().start()
     try:
         browser, context, page = await get_mule_page(playwright)
@@ -664,10 +693,8 @@ async def main():
 
                         # 4. 제목 기입 (새로운 제목으로 덮어쓰기)
                         branch_upper = branch.upper()
-                        title_text = os.getenv(
-                            f"MULE_TITLE_{branch_upper}",
-                            f"이룸스튜디오 {branch_upper}점"  # .env에 없을 경우 기본값
-                        )
+                        title_text = pick_title(branch)
+                        print(f"  >>> [{branch_upper}] 제목: {title_text}")
                         await page.fill("input#input-title", title_text)
 
                         # 5. 기존 에디터 내용 비우기 (초기화)
@@ -775,13 +802,16 @@ async def main():
                         print(f"  >>> 저장 및 최신글 갱신 완료. 5초 대기 후 다음 계정 전환...")
                     except Exception as ge:
                         print(f"  >>> 페이지 이동 및 기입 중 예외 발생: {ge}")
+                        failed.append(branch)
                     await asyncio.sleep(5)
                 else:
                     print(f"✖ [{branch.upper()}] 계정({branch_id}) 로그인 실패! 3초 대기 후 전환...")
+                    failed.append(branch)
                     await asyncio.sleep(3)
             except Exception as loop_err:
                 print(f"✖ [{branch.upper()}] 지점 작업 중 예외 발생하여 스킵합니다: {loop_err}")
                 logger.error(f"[{branch.upper()}] 지점 상세 예외 정보:", exc_info=True)
+                failed.append(branch)
 
         print("\n" + "=" * 70)
         print(" [4단계] 모든 작업 완료 및 크롬 브라우저 연결 종료")
@@ -798,6 +828,18 @@ async def main():
         kill_existing_chrome()
         print("[완료] Playwright 엔진을 종료하고 브라우저 프로세스를 킬하여 완전히 종료하였습니다.")
 
+    # 스케줄러 재시도용: 실패 지점만 기록 (없으면 파일 삭제)
+    fb_path = os.path.join(USER_DIR, "failed_branches.txt")
+    try:
+        if failed:
+            with open(fb_path, "w", encoding="utf-8") as f:
+                f.write(",".join(dict.fromkeys(failed)))
+        elif os.path.exists(fb_path):
+            os.remove(fb_path)
+    except Exception:
+        pass
+    return failed
+
 
 if __name__ == "__main__":
     # 1단계: 실시간 템플릿 및 이미지 자동 생성 (동기 실행으로 비동기 루프 충돌 우려 해소)
@@ -812,4 +854,7 @@ if __name__ == "__main__":
         print(f"✖ 에셋 생성 중 예외 발생: {e}\n")
 
     # 비동기 메인 루프 시작
-    asyncio.run(main())
+    failed = asyncio.run(main())
+    if failed:
+        print(f"[실패] 실패 지점: {', '.join(dict.fromkeys(failed))}")
+        sys.exit(1)

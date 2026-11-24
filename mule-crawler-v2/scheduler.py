@@ -49,7 +49,15 @@ def main():
             log(f"실행 시작 (마지막 성공: {st.get('success', '없음')})")
             st["attempt"] = now
             save(st)
-            env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+            env = {**os.environ, "PYTHONIOENCODING": "utf-8", "MULE_UNATTENDED": "1"}
+            try:  # 직전 실행에서 실패한 지점만 재시도 (성공한 지점 중복 갱신 방지)
+                with open(os.path.join(BASE, "failed_branches.txt"), encoding="utf-8") as f:
+                    only = f.read().strip()
+                if only:
+                    env["MULE_TARGET_BRANCHES"] = only
+                    log(f"재시도 대상 지점: {only}")
+            except OSError:
+                pass
             rc = subprocess.run([sys.executable, "mule_login.py"], cwd=BASE, env=env,
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             if rc == 0:
