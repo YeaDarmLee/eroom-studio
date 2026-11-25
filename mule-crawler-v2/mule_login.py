@@ -420,8 +420,21 @@ async def do_login(page: Page, mule_id: str, mule_pw: str, branch_name: str) -> 
         kakao_id = os.getenv(f"KAKAO_ID_{branch_name.upper()}") or os.getenv("KAKAO_ID")
         kakao_pw = os.getenv(f"KAKAO_PW_{branch_name.upper()}") or os.getenv("KAKAO_PW")
         kakao_tried = False
+        simple_tried = False
         for _ in range(20):  # 최대 ~40초 (카카오 인증 후 리다이렉트 대기)
             await page.wait_for_timeout(2000)
+            try:
+                # 카카오 '간편로그인' 계정 선택 화면: 저장된 계정 카드를 누르면 비밀번호 없이 로그인됨
+                if not simple_tried and "accounts.kakao.com/login/simple" in page.url:
+                    cards = page.locator("a.wrap_profile").filter(has_not_text="새로운 계정")
+                    if await cards.count() > 0:
+                        simple_tried = True
+                        card = cards.filter(has_text=kakao_id).first if kakao_id and await cards.filter(has_text=kakao_id).count() > 0 else cards.first
+                        set_notice(f"[{branch_name.upper()}] 카카오 간편로그인 계정 선택 화면 -> 저장된 계정 클릭")
+                        await card.click(timeout=5000)
+                        continue
+            except Exception as se:
+                print(f"  >>> [{branch_name.upper()}] 카카오 간편로그인 클릭 중 오류: {se}")
             try:
                 if (not kakao_tried and kakao_id and kakao_pw and "accounts.kakao.com" in page.url
                         and await page.locator("input[name='loginId']").count() > 0):
