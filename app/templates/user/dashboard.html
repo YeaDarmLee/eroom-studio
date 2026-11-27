@@ -551,6 +551,21 @@
                                             class="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 font-bold focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all">
                                     </div>
                                 </div>
+                                <fieldset class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <legend class="mb-2 text-sm font-bold text-gray-700">계약용 사업자 정보 (선택)</legend>
+                                    <div>
+                                        <label for="profile-business-name" class="block text-sm font-medium text-gray-700">상호</label>
+                                        <input id="profile-business-name" type="text" x-model="profileForm.business_name"
+                                            maxlength="120" autocomplete="organization"
+                                            class="mt-1 w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4 focus:border-primary focus:ring-primary">
+                                    </div>
+                                    <div>
+                                        <label for="profile-business-number" class="block text-sm font-medium text-gray-700">사업자등록번호</label>
+                                        <input id="profile-business-number" type="text" x-model="profileForm.registration_number"
+                                            maxlength="12" inputmode="numeric" placeholder="000-00-00000"
+                                            class="mt-1 w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4 focus:border-primary focus:ring-primary">
+                                    </div>
+                                </fieldset>
                                 <div class="flex justify-end pt-4">
                                     <button @click="updateProfileInfo()" :disabled="updatingProfile"
                                         class="px-8 py-4 bg-gray-900 text-white font-black rounded-2xl shadow-xl hover:scale-105 transition-all disabled:opacity-50 flex items-center">
@@ -863,7 +878,9 @@
             profileForm: {
                 name: '',
                 email: '',
-                phone: ''
+                phone: '',
+                business_name: '',
+                registration_number: ''
             },
             passwordForm: {
                 current: '',
@@ -891,6 +908,8 @@
                         this.profileForm.name = this.userName;
                         this.profileForm.email = userData.email;
                         this.profileForm.phone = userData.phone || '';
+                        this.profileForm.business_name = userData.business_name || '';
+                        this.profileForm.registration_number = userData.registration_number || '';
                     }
 
                     // Fetch Contracts
@@ -1033,6 +1052,7 @@
             signatureForm: {
                 address: '',
                 birth_date: '',
+                businessDetails: null,
                 signatureData: null
             },
 
@@ -1046,6 +1066,7 @@
                 this.signatureForm = {
                     address: '',
                     birth_date: '',
+                    businessDetails: null,
                     signatureData: null
                 };
 
@@ -1055,6 +1076,7 @@
                     });
                     const data = await response.json();
                     if (data.html) {
+                        this.signatureForm.businessDetails = data.business_details ?? null;
                         this.contractHtml = data.html;
                         this.signatureModalOpen = true;
                         // We do not initialize the signature pad here anymore.
@@ -1177,8 +1199,11 @@
                     window.showAlert?.('경고', '서명을 입력해주세요.', 'warning');
                     return;
                 }
-                if (!this.signatureForm.address || !this.signatureForm.birth_date) {
-                    window.showAlert?.('경고', '계약서 내에 주소와 생년월일(8자리)을 입력해주세요.', 'warning');
+                const isBusiness = Boolean(this.signatureForm.businessDetails);
+                if (!this.signatureForm.address.trim() || (!isBusiness && !this.signatureForm.birth_date)) {
+                    const message = isBusiness ? '계약서 내에 사업장 주소를 입력해주세요.' :
+                        '계약서 내에 주소와 생년월일(8자리)을 입력해주세요.';
+                    window.showAlert?.('경고', message, 'warning');
                     return;
                 }
 
@@ -1193,7 +1218,8 @@
                         body: JSON.stringify({
                             signature_data: this.signatureForm.signatureData,
                             address: this.signatureForm.address,
-                            birth_date: this.signatureForm.birth_date
+                            birth_date: this.signatureForm.birth_date,
+                            business_details: this.signatureForm.businessDetails
                         })
                     });
 
@@ -1301,11 +1327,7 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({
-                            name: this.profileForm.name,
-                            email: this.profileForm.email,
-                            phone: this.profileForm.phone
-                        })
+                        body: JSON.stringify(this.profileForm)
                     });
 
                     const data = await response.json();

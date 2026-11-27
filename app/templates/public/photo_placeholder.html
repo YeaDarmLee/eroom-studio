@@ -1,0 +1,8 @@
+<div class="w-full h-full flex flex-col items-center justify-center gap-3 px-4 py-6 text-center">
+    <img src="{{ url_for('static', filename='logo/eroom_logo_removebg.png') }}" alt="이룸 스튜디오"
+        width="64" height="64" class="w-16 h-16 object-contain">
+    <p class="text-sm font-medium text-gray-700">사진등록 전 입니다</p>
+    {% if photo_placeholder_detail|default(false) %}
+    <p class="text-sm text-gray-600">룸 정보에서 가격과 면적을 확인하고, 궁금한 점은 문의해 주세요.</p>
+    {% endif %}
+</div>

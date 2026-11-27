@@ -58,18 +58,29 @@
     <div class="branch-gallery" role="region" aria-roledescription="캐러셀" aria-label="지점 사진" aria-describedby="branch-gallery-help"
         tabindex="0" x-data="{
             currentSlide: 0,
+            direction: 1,
+            transitioning: false,
             images: {{ branch_photo_urls|tojson|forceescape }},
             failedImages: {},
-            previousPhoto() { this.currentSlide = (this.currentSlide - 1 + this.images.length) % this.images.length; },
-            nextPhoto() { this.currentSlide = (this.currentSlide + 1) % this.images.length; }
+            showPhoto(index, direction) {
+                if (this.transitioning || index === this.currentSlide) return;
+                this.direction = direction;
+                this.currentSlide = index;
+                this.transitioning = true;
+                setTimeout(() => this.transitioning = false, 350);
+            },
+            previousPhoto() { this.showPhoto((this.currentSlide - 1 + this.images.length) % this.images.length, -1); },
+            nextPhoto() { this.showPhoto((this.currentSlide + 1) % this.images.length, 1); }
         }"
         @keydown.arrow-left.prevent="previousPhoto()" @keydown.arrow-right.prevent="nextPhoto()"
-        @keydown.home.prevent="currentSlide = 0" @keydown.end.prevent="currentSlide = images.length - 1">
+        @keydown.home.prevent="showPhoto(0, -1)" @keydown.end.prevent="showPhoto(images.length - 1, 1)">
         <p id="branch-gallery-help" class="sr-only">좌우 방향키로 사진을 넘길 수 있습니다.</p>
-        <div class="branch-gallery-frame">
+        <div class="branch-gallery-frame" :style="'--slide-offset: ' + (direction * 100) + '%'">
             <template x-for="(image, index) in images" :key="index">
                 <img :src="image" :alt="{{ branch.name|tojson|forceescape }} + ' 지점 사진 ' + (index + 1)"
                     x-show="currentSlide === index && !failedImages[index]" x-cloak
+                    x-transition:enter="branch-slide-motion" x-transition:enter-start="branch-slide-enter" x-transition:enter-end="branch-slide-center"
+                    x-transition:leave="branch-slide-motion" x-transition:leave-start="branch-slide-center" x-transition:leave-end="branch-slide-leave"
                     @error="failedImages[index] = true" decoding="async">
             </template>
             <div class="branch-photo-error" x-show="failedImages[currentSlide]" x-cloak>
@@ -137,9 +148,7 @@
                             <img src="{{ room_images[0].image_url }}" alt="{{ room.name }}"
                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                             {% else %}
-                            <div class="w-full h-full flex items-center justify-center">
-                                <i class="ri-image-line text-4xl text-gray-400"></i>
-                            </div>
+                            {% include 'public/photo_placeholder.html' %}
                             {% endif %}
                             <!-- Status Badge -->
                             <div class="absolute top-3 right-3">
@@ -214,9 +223,7 @@
                             <img src="{{ room_images[0].image_url }}" alt="{{ room.name }}"
                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                             {% else %}
-                            <div class="w-full h-full flex items-center justify-center">
-                                <i class="ri-image-line text-4xl text-gray-400"></i>
-                            </div>
+                            {% include 'public/photo_placeholder.html' %}
                             {% endif %}
                             
                             <div class="absolute top-3 right-3">

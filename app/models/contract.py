@@ -81,6 +81,8 @@ class Contract(db.Model):
     user_address_snapshot = db.Column(db.String(255))
     user_birth_date_snapshot = db.Column(db.String(20))
     user_registration_number_snapshot = db.Column(db.String(20)) # 사업자등록번호 스냅샷
+    user_business_name_snapshot = db.Column(db.String(120))
+    owner_address_snapshot = db.Column(db.String(255))  # 서명 시점 임대인 주소 (이후 지점 주소가 바뀌어도 유지)
     signature_data = db.Column(db.Text) # Base64 encoded signature image
     signed_at = db.Column(db.DateTime)
     rejection_reason = db.Column(db.Text)
@@ -224,7 +226,9 @@ class Contract(db.Model):
             self.end_date = today if immediate else target_date
             self.termination_effective_date = self.end_date
         else:
-            self.status = 'active'
+            # Confirming an end date must not activate an unsigned contract.
+            if self.status == 'terminate_requested':
+                self.status = 'active'
             self.auto_extend_status = 'will_terminate'
             if target_date:
                 self.end_date = target_date

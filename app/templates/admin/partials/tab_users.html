@@ -298,6 +298,17 @@
                                     class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                             </div>
                             <div>
+                                <label for="edit-user-business-name" class="block text-sm font-medium text-gray-700">상호 (선택)</label>
+                                <input id="edit-user-business-name" type="text" x-model="editingUser.business_name" maxlength="120"
+                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="edit-user-business-number" class="block text-sm font-medium text-gray-700">사업자등록번호 (선택)</label>
+                                <input id="edit-user-business-number" type="text" x-model="editingUser.registration_number"
+                                    maxlength="12" inputmode="numeric" placeholder="000-00-00000"
+                                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700">역할</label>
                                 <select x-model="editingUser.role"
                                     class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">

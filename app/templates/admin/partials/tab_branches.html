@@ -571,17 +571,29 @@
                                 <!-- Room Images Preview -->
                                 <div class="mt-3">
                                     <template x-if="room.images && room.images.length > 0">
-                                        <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                                        <div>
+                                        <p class="text-xs text-gray-600 mb-2">사진을 누르면 크게 볼 수 있습니다.</p>
+                                        <div class="flex gap-2 overflow-x-auto pb-1">
                                             <template x-for="(img, idx) in room.images" :key="img.id">
-                                                <div class="relative flex-shrink-0 w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden group">
-                                                    <img :src="img.url" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
+                                                <button type="button" @click="openRoomPhotos(room, idx)"
+                                                    :aria-label="room.name + ' 사진 ' + (idx + 1) + ' 크게 보기'"
+                                                    class="relative flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700">
+                                                    <img :src="img.url" :alt="room.name + ' 사진 ' + (idx + 1)" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
                                                     <div class="absolute bottom-0 right-0 bg-black/60 text-white text-[9px] px-1 rounded-tl" x-text="idx + 1"></div>
-                                                </div>
+                                                </button>
                                             </template>
+                                        </div>
                                         </div>
                                     </template>
                                     <template x-if="!room.images || room.images.length === 0">
-                                        <div class="text-[11px] text-gray-400 italic bg-gray-50 rounded-lg p-2 text-center border border-dashed border-gray-200">등록된 이미지가 없습니다</div>
+                                        <button type="button" @click="openEditRoomModal(room)"
+                                            :aria-label="room.name + ' 사진 등록하기'"
+                                            class="w-full rounded-lg bg-gray-50 p-3 text-center hover:bg-amber-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 transition-colors">
+                                            <img src="{{ url_for('static', filename='logo/eroom_logo_removebg.png') }}"
+                                                alt="이룸 스튜디오" width="40" height="40" class="w-10 h-10 object-contain mx-auto mb-2">
+                                            <span class="block text-sm font-semibold text-amber-800">사진 미등록</span>
+                                            <span class="block mt-1 text-sm text-gray-700">사진 등록하기 <i class="ri-arrow-right-line" aria-hidden="true"></i></span>
+                                        </button>
                                     </template>
                                 </div>
 
@@ -721,6 +733,38 @@
         </div>
     </div>
 
+    <!-- Registered room photo viewer -->
+    <div x-show="showRoomPhotoViewer" x-cloak
+        class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80"
+        @click.self="showRoomPhotoViewer = false"
+        @keydown.arrow-left.prevent="changeRoomPhoto(-1)" @keydown.arrow-right.prevent="changeRoomPhoto(1)">
+        <div class="w-full max-w-5xl rounded-xl bg-white overflow-hidden">
+            <div class="flex items-center justify-between gap-4 px-4 py-3">
+                <h3 class="text-base font-bold text-gray-900" x-text="roomPhotoName + ' 등록 사진'"></h3>
+                <button type="button" @click="showRoomPhotoViewer = false" aria-label="사진 확대 닫기"
+                    class="w-11 h-11 rounded-lg hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">
+                    <i class="ri-close-line text-2xl" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="bg-gray-100 flex items-center justify-center min-h-48">
+                <template x-if="roomPhotoImages.length > 0">
+                    <img :src="roomPhotoImages[roomPhotoIndex].url" :alt="roomPhotoName + ' 사진 ' + (roomPhotoIndex + 1)"
+                        x-show="!roomPhotoFailed" @error="roomPhotoFailed = true" @load="roomPhotoFailed = false"
+                        class="w-full object-contain" style="height: min(65vh, 640px)">
+                </template>
+                <p x-show="roomPhotoFailed" class="p-6 text-sm text-gray-700">사진을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</p>
+            </div>
+            <div class="flex items-center justify-between gap-3 px-4 py-2">
+                <button type="button" @click="changeRoomPhoto(-1)" :disabled="roomPhotoImages.length < 2"
+                    class="min-h-11 px-3 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default">이전 사진</button>
+                <p class="text-sm text-gray-700" aria-live="polite" aria-atomic="true"
+                    x-text="(roomPhotoIndex + 1) + ' / ' + roomPhotoImages.length"></p>
+                <button type="button" @click="changeRoomPhoto(1)" :disabled="roomPhotoImages.length < 2"
+                    class="min-h-11 px-3 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default">다음 사진</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Room Form Modal -->
     <div x-show="showRoomFormModal" class="fixed inset-0 z-[60] overflow-y-auto" x-cloak>
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -791,6 +835,14 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">방
                                 이미지</label>
+
+                            <div x-show="existingRoomImages.length === 0 && roomImages.length === 0"
+                                class="mb-3 rounded-lg bg-gray-50 px-4 py-4 text-center">
+                                <img src="{{ url_for('static', filename='logo/eroom_logo_removebg.png') }}"
+                                    alt="이룸 스튜디오" width="48" height="48" class="w-12 h-12 object-contain mx-auto mb-2">
+                                <p class="text-sm font-semibold text-amber-800">사진 미등록</p>
+                                <p class="mt-1 text-sm text-gray-700">사용자 화면에는 이룸 로고와 “사진등록 전 입니다” 안내가 표시됩니다.</p>
+                            </div>
 
                             <!-- Drag and Drop Zone -->
                             <div class="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl transition-all duration-200 mb-3"

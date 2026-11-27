@@ -367,10 +367,18 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async togglePayment(contract) {
-            const currentlyPaid = this.isPaid(contract);
-            const newStatus = !currentlyPaid;
-            
+        // 오클릭 방지: 누른 대상(지점·호실·입주자·월)을 보여주고 확인 후 저장
+        togglePayment(contract) {
+            const next = !this.isPaid(contract);
+            const msg = `${contract.branch_name} ${contract.room_name} · ${contract.user_name}\n${this.displayMonth} 월세를 ` +
+                (next ? '납부완료로 변경할까요?' : '미납으로 되돌릴까요?');
+            const run = () => this.setPayment(contract, next);
+            // 앱 내 브라우저에서는 confirm()이 무반응이라 관리자 공용 모달을 우선 사용
+            if (window.showAlert) window.showAlert(next ? '납부 확인' : '납부 취소', msg, 'warning', run);
+            else if (confirm(msg)) run();
+        },
+
+        async setPayment(contract, newStatus) {
             // Optimistic Update
             if (newStatus) {
                 contract.paid_months.push(this.currentMonthStr);

@@ -78,6 +78,66 @@ class SiteFlowFixesTest(unittest.TestCase):
         for path in ('mock-login','mock-admin-login'):
             self.assertEqual(self.client.post('/api/auth/'+path).status_code,404)
 
+    def test_business_signup_and_signature_freeze_the_contract_identity(self):
+        signup = dict(name='대표자', email='business@example.test', phone='01099998888',
+                      password='test-password', business_name='테스트 상호')
+        response = self.client.post('/api/auth/email-register', json=signup)
+        self.assertEqual(response.status_code, 400)
+        response = self.client.post('/api/auth/email-register', json={
+            **signup, 'registration_number': '1234567890'
+        })
+        self.assertEqual(response.status_code, 201)
+        account = response.json
+        headers = {'Authorization': 'Bearer ' + account['access_token']}
+        contract = self.contract(user_id=account['user']['id'], status='waiting_signature')
+        path = f'/api/contracts/{contract.id}'
+        view = self.client.get(path + '/view?mode=sign', headers=headers).json
+        self.assertEqual(view['business_details'], ['테스트 상호', '123-45-67890'])
+        self.assertIn('사업장 주소', view['html'])
+        self.assertNotIn('signatureForm.birth_date', view['html'])
+
+        payload = {'signature_data': 'data:image/png;base64,TEST', 'address': '테스트 사업장 주소'}
+        self.assertEqual(self.client.post(path + '/sign', headers=headers, json=payload).status_code, 409)
+        payload['business_details'] = view['business_details']
+        self.assertEqual(self.client.post(path + '/sign', headers=headers, json=payload).status_code, 200)
+        self.assertIsNone(contract.user_birth_date_snapshot)
+        self.assertEqual(self.client.put('/api/auth/profile', headers=headers, json={
+            'business_name': '새 상호', 'registration_number': '111-22-33333'
+        }).status_code, 200)
+        html = self.client.get(path + '/view', headers=headers).json['html']
+        self.assertIn('테스트 상호', html)
+        self.assertIn('123-45-67890', html)
+        self.assertIn('테스트 사업장 주소', html)
+        self.assertNotIn('새 상호', html)
+
+    def test_lessor_address_freezes_at_signing_only(self):
+        self.branch.owner_address = '구 주소'
+        signed = self.contract(status='waiting_signature')
+        pending = self.contract(status='waiting_signature', room_id=self.hourly.id, start_date=date(2026,12,1), end_date=date(2026,12,1), start_time='09:00', end_time='12:00')
+        payload = {'signature_data': 'data:image/png;base64,TEST', 'address': '주소', 'birth_date': '19900101'}
+        self.assertEqual(self.client.post(f'/api/contracts/{signed.id}/sign', headers=self.u, json=payload).status_code, 200)
+        self.branch.owner_address = '새 주소'; db.session.commit()
+        view = lambda c: self.client.get(f'/api/contracts/{c.id}/view', headers=self.u).json['html']
+        self.assertIn('구 주소', view(signed)); self.assertNotIn('새 주소', view(signed))
+        self.assertIn('새 주소', view(pending)); self.assertNotIn('구 주소', view(pending))
+        self.assertEqual(self.client.put(f'/admin/api/contracts/{signed.id}', headers=self.a, json={'invalidate_signature': True}).status_code, 200)
+        self.assertIsNone(signed.owner_address_snapshot)
+        self.assertIn('새 주소', view(signed))
+
+    def test_admin_business_conversion_updates_pending_contracts(self):
+        signed = self.contract(signed_at=datetime.now(timezone.utc))
+        pending = self.contract(status='waiting_signature')
+        user_path = f'/admin/api/users/{self.user.id}'
+        response = self.client.put(user_path, headers=self.a, json={
+            'business_name': '변경 상호', 'registration_number': '123-45-67890'
+        })
+        self.assertEqual(response.status_code, 200)
+        pending_view = self.client.get(f'/api/contracts/{pending.id}/view?mode=sign', headers=self.u).json
+        self.assertEqual(pending_view['business_details'], ['변경 상호', '123-45-67890'])
+        signed_view = self.client.get(f'/api/contracts/{signed.id}/view', headers=self.u).json['html']
+        self.assertIn('생년월일', signed_view)
+        self.assertNotIn('변경 상호', signed_view)
+
     def test_contract_claim_requires_admin_verification(self):
         c=self.contract(user_id=None,temp_user_phone='01099998888')
         r=self.client.post('/api/auth/email-register',json=dict(name='신규',email='new@example.test',phone='01099998888',password='test-password'))

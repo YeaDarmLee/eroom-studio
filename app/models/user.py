@@ -13,6 +13,7 @@ class User(db.Model):
     address = db.Column(db.String(255), nullable=True)
     birth_date = db.Column(db.String(20), nullable=True) # YYYYMMDD
     registration_number = db.Column(db.String(20), nullable=True) # 사업자등록번호
+    business_name = db.Column(db.String(120))
     role = db.Column(db.String(20), default='user')  # user, admin
     onboarding_status = db.Column(db.String(20), default='not_started')
     # not_started, new_user_done, existing_pending, existing_linked

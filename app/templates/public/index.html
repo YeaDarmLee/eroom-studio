@@ -44,11 +44,12 @@
             </div>
         </div>
         {% if featured_branch %}
+        {% set featured = branch_summaries[featured_branch.id] %}
         <figure class="home-featured">
-            <img src="{{ featured_branch.image_url }}" alt="{{ featured_branch.name }}에 등록된 공간 사진" width="800" height="600" fetchpriority="high"
+            <img src="{{ featured.image_url }}" alt="{{ featured_branch.name }} {{ featured.room_name }} — 현재 월간 공실 사진" width="800" height="600" fetchpriority="high"
                 onerror="this.hidden = true; this.parentElement.classList.add('photo-unavailable')">
             <div class="home-photo-fallback" aria-hidden="true"><i class="ri-building-line"></i><span>지점에서 공간을 확인해보세요</span></div>
-            <figcaption><span>{{ featured_branch.name }}</span><a href="{{ url_for('main.branch_detail', branch_id=featured_branch.id) }}">공간 자세히 보기</a></figcaption>
+            <figcaption><span>{{ featured_branch.name }} {{ featured.room_name }} · 현재 공실</span><a href="{{ url_for('main.room_detail', room_id=featured.room_id) }}">방 자세히 보기</a></figcaption>
         </figure>
         {% else %}
         <div class="home-directory">
@@ -74,22 +75,24 @@
                 {% for branch in branches %}
                 {% set summary = branch_summaries.get(branch.id, {}) %}
                 {% set available = summary.get('available', 0) %}
-                <article id="branch-{{ branch.id }}" class="home-branch {% if not branch.image_url %}home-branch-no-photo{% endif %}">
-                    {% if branch.image_url %}
-                    <div class="home-branch-photo">
-                        <img src="{{ branch.image_url }}" alt="{{ branch.name }}에 등록된 공간 사진" width="480" height="600" loading="lazy" decoding="async"
+                <article id="branch-{{ branch.id }}" class="home-branch">
+                    <div class="home-branch-photo {% if not summary.get('image_url') %}photo-unavailable{% endif %}">
+                        {% if summary.get('image_url') %}
+                        <img src="{{ summary.image_url }}" alt="{{ branch.name }} {{ summary.room_name }} — 현재 월간 공실 사진" width="480" height="600" loading="lazy" decoding="async"
                             onerror="this.hidden = true; this.parentElement.classList.add('photo-unavailable')">
-                        <div class="home-photo-fallback"><i class="ri-building-line" aria-hidden="true"></i><span>사진 준비 중</span></div>
+                        {% endif %}
+                        <div class="home-photo-fallback"><i class="ri-building-line" aria-hidden="true"></i><span>{{ '공실 사진 준비 중' if available else '현재 월간 공실 없음' }}</span></div>
+                        {% if summary.get('image_url') %}<p class="home-summary-note">{{ summary.room_name }} · 현재 공실</p>{% endif %}
                     </div>
-                    {% endif %}
                     <div class="home-branch-body">
                         <div class="home-branch-heading"><h3>{{ branch.name }}</h3></div>
                         <p class="home-address"><i class="ri-map-pin-line" aria-hidden="true"></i>{{ branch.address or '위치는 지점에 문의해주세요' }}</p>
                         {% if branch.description %}<p class="home-description">{{ branch.description }}</p>{% endif %}
                         <p class="home-vacancy {% if not available %}home-vacancy-empty{% endif %}">월간 공실 {{ available }}개</p>
                         <div class="home-room-summary">
-                            {% if summary.get('price_from') %}
-                            <p>현재 공실 월 이용료 <strong>{{ '{:,}'.format(summary.price_from) }}<span>원부터</span></strong></p>
+                            {% if summary.get('price_from') is not none %}
+                            <p>장기계약 할인 월 이용료 <strong>{{ '{:,}'.format(summary.price_from) }}<span>원부터</span></strong></p>
+                            <p class="home-summary-note">12개월 이상 계약 기준 · 월 5만 원 할인</p>
                             {% else %}
                             <p>{{ '현재 월간 공실이 없습니다' if not available else '이용료는 지점에 문의해주세요' }}</p>
                             {% endif %}
@@ -100,7 +103,7 @@
                 </article>
                 {% endfor %}
             </div>
-            <p class="home-data-note">공실은 현재 비어 있는 월간 이용 방 기준입니다. 입주 예정 방과 보증금·최종 이용 조건은 지점 및 룸 상세에서 확인해주세요.</p>
+            <p class="home-data-note">사진과 공실 수는 현재 비어 있는 월간 이용 방 기준입니다. 표시 이용료는 공실 중 최저가에 12개월 이상 장기계약 할인을 적용한 월 금액입니다. 보증금·최종 이용 조건은 지점 및 룸 상세에서 확인해주세요.</p>
             {% else %}
             <div class="home-empty"><h3>지점 정보를 준비하고 있습니다</h3><p>이용 가능한 연습실과 위치가 궁금하시면 전화로 문의해주세요.</p><a class="home-button home-button-primary" href="tel:01094885093">010-9488-5093 전화 문의</a></div>
             {% endif %}

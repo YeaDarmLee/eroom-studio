@@ -29,6 +29,7 @@ from sqlalchemy import func, case
 from app.utils.korean_utils import match_search_fields
 from app.utils.branch_utils import sort_branches, get_branch_sort_key
 from app.services.contract_rules import ensure_available, positive_int, month_range, rent_amount, parse_date, rent_period_filter
+from app.services.business_details import parse_business_details
 from werkzeug.exceptions import BadRequest, Conflict
 from app.utils.uploads import save_image, remove_image
 
@@ -548,7 +549,10 @@ def create_contract(current_user):
         contract.user_registration_number_snapshot = data.get('registration_number')
         # Optionally update user's registration number if not already set
         user = User.query.get(data['user_id'])
-        if user and data.get('registration_number') and not user.registration_number:
+        if user and user.business_name:
+            contract.user_business_name_snapshot = user.business_name
+            contract.user_registration_number_snapshot = user.registration_number
+        elif user and data.get('registration_number') and not user.registration_number:
             user.registration_number = data.get('registration_number')
         
     db.session.add(contract)
@@ -609,7 +613,7 @@ def update_contract(current_user, id):
     if 'price' in data:
         contract.price = data['price']
 
-    if 'registration_number' in data:
+    if 'registration_number' in data and not contract.user_business_name_snapshot:
         contract.user_registration_number_snapshot = data['registration_number']
         if contract.user and not contract.user.registration_number:
             contract.user.registration_number = data['registration_number']
@@ -670,6 +674,7 @@ def update_contract(current_user, id):
         contract.contract_pdf_hash = None
         contract.user_address_snapshot = None
         contract.user_birth_date_snapshot = None
+        contract.owner_address_snapshot = None  # 재서명 시 현재 지점 주소로 다시 고정
         # 사업자번호는 유지 (상단에서 이미 업데이트 로직 있음)
         
         log_contract_status_change(
@@ -918,7 +923,7 @@ def update_contract_status(current_user, id):
                 print(f"SMS trigger error (CONTRACT_REJECTED): {e}")
 
         # 3. Sync room status with contract status
-        if contract.room:
+        if contract.room and contract.room.status != 'maintenance':
             if effective_status == 'active':
                 contract.room.status = 'occupied'
             elif effective_status == 'waiting_signature':
@@ -1770,6 +1775,8 @@ def get_users(current_user):
             'name': u.name,
             'email': u.email,
             'phone': u.phone,
+            'business_name': u.business_name,
+            'registration_number': u.registration_number if u.business_name else None,
             'kakao_id': u.kakao_id,
             'role': u.role,
             'onboarding_status': u.onboarding_status,
@@ -1822,6 +1829,11 @@ def update_user(current_user, id):
     """회원 정보 수정"""
     user = User.query.get_or_404(id)
     data = request.get_json()
+    if 'business_name' in data:
+        business_name, registration_number = parse_business_details(data)
+        if business_name or user.business_name:
+            user.business_name = business_name
+            user.registration_number = registration_number
     
     if 'name' in data:
         user.name = data['name']

@@ -19,6 +19,9 @@ document.addEventListener('alpine:init', () => {
         detailModalOpen: false,
         selectedContract: null,
         terminationDate: '',
+        terminationModalOpen: false,
+        terminationImmediate: false,
+        terminationError: '',
         submittingUpdate: false,
 
         // Custom Discount state
@@ -527,18 +530,35 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        openTerminationModal() {
+            this.terminationDate = this.selectedContract.termination_effective_date || this.selectedContract.end_date || '';
+            this.terminationImmediate = false;
+            this.terminationError = '';
+            this.terminationModalOpen = true;
+        },
+
+        closeTerminationModal() {
+            if (!this.submittingUpdate) this.terminationModalOpen = false;
+        },
+
         async updateStatus(id, newStatus, immediate = false) {
+            if (this.submittingUpdate) return;
+            this.terminationError = '';
             const payload = { status: newStatus };
             if (newStatus === 'terminated') {
-                if (this.selectedContract?.status === 'terminate_requested' && !immediate) {
+                if (!immediate) {
                     if (!this.terminationDate) {
-                        window.showAlert?.('해지일 필요', '확정할 해지일을 선택해주세요.', 'warning');
+                        this.terminationError = '확정할 종료일을 선택해주세요.';
+                        window.showAlert?.('종료일 필요', '확정할 종료일을 선택해주세요.', 'warning');
+                        return;
+                    }
+                    if (this.selectedContract?.start_date && this.terminationDate < this.selectedContract.start_date) {
+                        this.terminationError = '종료일은 계약 시작일보다 빠를 수 없습니다.';
+                        window.showAlert?.('종료일 확인', '종료일은 계약 시작일보다 빠를 수 없습니다.', 'warning');
                         return;
                     }
                     payload.termination_date = this.terminationDate;
-                    if (!confirm(`${this.terminationDate}까지 사용 후 해지하도록 승인하시겠습니까?`)) return;
                 } else {
-                    if (!confirm('오늘 날짜로 계약을 즉시 종료하시겠습니까?')) return;
                     payload.immediate = true;
                 }
             }
@@ -563,6 +583,7 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 if (response.ok) {
+                    this.terminationModalOpen = false;
                     await this.loadContracts();
                     if (this.detailModalOpen) {
                         this.detailModalOpen = false;
@@ -570,10 +591,12 @@ document.addEventListener('alpine:init', () => {
                     }
                 } else {
                     const error = await response.json();
+                    if (newStatus === 'terminated') this.terminationError = error.error || '계약 상태 변경에 실패했습니다.';
                     window.showAlert?.('업데이트 실패', error.error || '계약 상태 변경에 실패했습니다.', 'error');
                 }
             } catch (error) {
                 console.error('Error updating status:', error);
+                if (newStatus === 'terminated') this.terminationError = '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
                 window.showAlert?.('오류', '오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
             } finally {
                 this.submittingUpdate = false;

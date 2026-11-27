@@ -108,10 +108,17 @@ if (!window.getBranchSortIndex) {
                 return item.paid_months && item.paid_months.includes(this.currentMonthStr);
             },
             
-            async togglePayment(item) {
-                const currentlyPaid = this.isPaid(item);
-                const newStatus = !currentlyPaid;
-                
+            // 오클릭 방지: 누른 대상(지점·호실·입주자·월)을 보여주고 확인 후 저장
+            togglePayment(item) {
+                const next = !this.isPaid(item);
+                const msg = `${item.branch_name} ${item.room_name} · ${item.user_name}\n${this.currentMonthStr} 월세를 ` +
+                    (next ? '납부완료로 변경할까요?' : '미납으로 되돌릴까요?');
+                const run = () => this.setPayment(item, next);
+                if (window.showAlert) window.showAlert(next ? '납부 확인' : '납부 취소', msg, 'warning', run);
+                else if (confirm(msg)) run();
+            },
+
+            async setPayment(item, newStatus) {
                 // Optimistic Update
                 if (newStatus) {
                     item.paid_months.push(this.currentMonthStr);

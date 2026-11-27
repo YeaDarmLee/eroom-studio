@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, abort, request as flask_request
-from app.models.branch import Branch, Room
+from app.models.branch import Branch, Room, RoomImage
+from app.routes.contract import calculate_coupon_discount
 from app.routes.auth import admin_required
 from app.utils.db_utils import db_retry
 from app.utils.branch_utils import sort_branches
@@ -19,11 +20,24 @@ def index():
     # Summaries describe currently available monthly rooms, not future vacancies.
     rows = db.session.query(
         Room.branch_id, func.count(Room.id),
-        func.min(case((Room.price > 0, Room.price), else_=None)),
+        func.min(case((Room.price > 0, Room.price), else_=None)).label('price'),
     ).filter(Room.room_type == 'monthly', Room.status == 'available').group_by(Room.branch_id).all()
-    summaries = {branch_id: {'available': count, 'price_from': price}
-                 for branch_id, count, price in rows}
-    featured_branch = next((branch for branch in branches if branch.image_url), None)
+    # Use the same 12-month pricing as the contract form, without a coupon.
+    summaries = {row.branch_id: {
+        'available': row[1],
+        'price_from': (calculate_coupon_discount(row, 12, None)[0]['final_monthly_price']
+                       if row.price is not None else None),
+    } for row in rows}
+    photos = db.session.query(Room, RoomImage).join(RoomImage).filter(
+        Room.room_type == 'monthly', Room.status == 'available',
+        RoomImage.image_url.isnot(None), RoomImage.image_url != '',
+    ).order_by(Room.price, Room.id, RoomImage.order_index, RoomImage.id).all()
+    for room, photo in photos:
+        summary = summaries[room.branch_id]
+        if 'image_url' not in summary:
+            summary.update(image_url=photo.image_url, room_name=room.name, room_id=room.id)
+    featured_branch = next((branch for branch in branches
+                            if summaries.get(branch.id, {}).get('image_url')), None)
     return render_template('public/index.html', branches=branches,
                            branch_summaries=summaries, featured_branch=featured_branch)
 

@@ -69,6 +69,23 @@ function registerBranchesPage() {
             },
             roomImages: [], // Array of {file: File, preview: string}
             existingRoomImages: [], // Array of {id: number, url: string}
+            showRoomPhotoViewer: false,
+            roomPhotoImages: [],
+            roomPhotoIndex: 0,
+            roomPhotoName: '',
+            roomPhotoFailed: false,
+            openRoomPhotos(room, index = 0) {
+                this.roomPhotoImages = room.images || [];
+                if (!this.roomPhotoImages.length) return;
+                this.roomPhotoName = room.name;
+                this.roomPhotoIndex = index;
+                this.roomPhotoFailed = false;
+                this.showRoomPhotoViewer = true;
+            },
+            changeRoomPhoto(step) {
+                this.roomPhotoIndex = (this.roomPhotoIndex + step + this.roomPhotoImages.length) % this.roomPhotoImages.length;
+                this.roomPhotoFailed = false;
+            },
             isDraggingRoomImage: false,
 
             // Floor Plan Management
@@ -700,6 +717,8 @@ function registerBranchesPage() {
 
             openCreateRoomModal() {
                 this.roomEditMode = false
+                this.roomImages = []
+                this.existingRoomImages = []
                 this.roomFormData = {
                     name: '',
                     room_type: 'monthly',

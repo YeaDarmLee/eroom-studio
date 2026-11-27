@@ -404,7 +404,7 @@ def get_my_contracts(current_user):
 @contract_bp.route('/<int:id>/sign', methods=['POST'])
 @token_required
 def sign_contract(current_user, id):
-    contract = Contract.query.get_or_404(id)
+    contract = Contract.query.filter_by(id=id).with_for_update().first_or_404()
     if contract.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -415,23 +415,39 @@ def sign_contract(current_user, id):
     signature_data = data.get('signature_data')
     address = data.get('address')
     birth_date = data.get('birth_date')
-    registration_number = data.get('registration_number') # New field
-    
-    if not signature_data or not address or not birth_date:
+    registration_number = data.get('registration_number')
+    business_name = current_user.business_name
+    business_details = [business_name, current_user.registration_number] if business_name else None
+    if data.get('business_details') != business_details:
+        return jsonify({'error': '사업자 정보가 변경되었습니다. 계약서를 다시 열어 확인해주세요.'}), 409
+
+    if business_name and (not signature_data or not isinstance(address, str) or not address.strip()):
+        return jsonify({'error': '서명과 사업장 주소는 필수입니다.'}), 400
+    if not business_name and (not signature_data or not address or not birth_date):
         return jsonify({'error': '서명, 주소, 생년월일은 필수입니다.'}), 400
     
     # Update User Info
-    if not current_user.address:
-        current_user.address = address
-    if not current_user.birth_date:
-        current_user.birth_date = birth_date
-    if registration_number and not current_user.registration_number:
-        current_user.registration_number = registration_number
+    if business_name:
+        address = address.strip()
+        if len(address) > 255:
+            return jsonify({'error': '사업장 주소를 255자 이내로 입력해주세요.'}), 400
+        birth_date = None
+        registration_number = current_user.registration_number
+    else:
+        if not current_user.address:
+            current_user.address = address
+        if not current_user.birth_date:
+            current_user.birth_date = birth_date
+        if registration_number and not current_user.registration_number:
+            current_user.registration_number = registration_number
         
     # Capture Snapshots
     contract.user_address_snapshot = address
     contract.user_birth_date_snapshot = birth_date
     contract.user_registration_number_snapshot = registration_number
+    contract.user_business_name_snapshot = business_name
+    branch = contract.room.branch if contract.room else None
+    contract.owner_address_snapshot = branch.owner_address if branch else None
     contract.signature_data = signature_data
     contract.signed_at = datetime.datetime.utcnow()
     
@@ -536,6 +552,13 @@ def get_contract_view(current_user, id):
     room = contract.room
     branch = room.branch if room else None
     tenant = contract.user
+    business_name = contract.user_business_name_snapshot
+    business_number = contract.user_registration_number_snapshot
+    if tenant and not contract.signed_at and contract.status in (
+        'requested', 'approved', 'waiting_signature', 'signature_rejected'
+    ):
+        business_name = tenant.business_name
+        business_number = tenant.registration_number
     
     # Format Phone Number
     def format_phone(p):
@@ -658,15 +681,16 @@ def get_contract_view(current_user, id):
         is_corporate=branch.is_corporate if branch else False,
         registration_number=branch.registration_number if branch else '',
         owner_name=branch.owner_name if branch else '이룸 스튜디오',
-        owner_address=branch.owner_address if branch else '',
+        owner_address=contract.owner_address_snapshot or (branch.owner_address if branch else ''),
         owner_contact=owner_contact_formatted,
         owner_seal_image=branch.owner_seal_image if branch else '',
         # Lessee Info (Using tenant instead of viewer)
-        user_name=tenant.name if tenant else '',
-        user_address=contract.user_address_snapshot or (tenant.address or '' if tenant else ''),
+        user_name=business_name or (tenant.name if tenant else ''),
+        user_business_name=business_name,
+        user_address=contract.user_address_snapshot or (tenant.address or '' if tenant and not business_name else ''),
         user_phone=user_phone_formatted,
         user_birth_date=contract.user_birth_date_snapshot or user_birth_date_formatted,
-        user_registration_number=contract.user_registration_number_snapshot or (tenant.registration_number or '' if tenant else ''),
+        user_registration_number=business_number,
         signature_data=contract.signature_data,
         current_date=datetime.now().strftime('%Y-%m-%d'),
         is_signing=is_signing,
@@ -674,5 +698,8 @@ def get_contract_view(current_user, id):
         history_list=history_list
     )
     
-    return jsonify({'html': html})
+    result = {'html': html}
+    if is_signing:
+        result['business_details'] = [business_name, business_number] if business_name else None
+    return jsonify(result)
 

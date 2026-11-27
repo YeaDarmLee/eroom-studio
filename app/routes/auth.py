@@ -7,6 +7,7 @@ import os
 from flask import current_app
 from app.models.user import User
 from app.extensions import db
+from app.services.business_details import parse_business_details
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -78,6 +79,7 @@ def email_register():
     phone = data.get('phone')
     password = data.get('password')
     name = data.get('name', '')
+    business_name, registration_number = parse_business_details(data)
     
     # Validation
     if not email or not password or not phone:
@@ -99,6 +101,8 @@ def email_register():
         email=email,
         phone=None if placeholder else phone,
         name=name,
+        business_name=business_name,
+        registration_number=registration_number,
         role='user',
         onboarding_status='existing_pending' if placeholder else 'new_user_done'
     )
@@ -181,6 +185,8 @@ def get_me(current_user):
         'name': current_user.name,
         'email': current_user.email,
         'phone': current_user.phone,
+        'business_name': current_user.business_name,
+        'registration_number': current_user.registration_number if current_user.business_name else None,
         'role': current_user.role,
         'onboarding_status': current_user.onboarding_status
     })
@@ -196,6 +202,11 @@ def update_profile(current_user):
     phone = data.get('phone')
     current_password = data.get('current_password')
     new_password = data.get('new_password')
+    if 'business_name' in data:
+        business_name, registration_number = parse_business_details(data)
+        if business_name or current_user.business_name:
+            current_user.business_name = business_name
+            current_user.registration_number = registration_number
     
     # 1. Update Name
     if name:

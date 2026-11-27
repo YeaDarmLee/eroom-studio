@@ -495,10 +495,12 @@
                         </td>
                     </tr>
                     <tr>
-                        <th style="background-color: #f5f5f5;">주 소</th>
+                        <th style="background-color: #f5f5f5;">{{ '사업장 주소' if user_business_name else '주 소' }}</th>
                         <td style="text-align: left; padding-left: 15px; background-color: #fff;">
                             {% if is_signing %}
-                            <input type="text" x-model="signatureForm.address" placeholder="주민등록상 주소를 입력해주세요"
+                            <input type="text" x-model="signatureForm.address" maxlength="255"
+                                aria-label="{{ '사업장 주소' if user_business_name else '주민등록상 주소' }}"
+                                placeholder="{{ '사업장 주소를 입력해주세요' if user_business_name else '주민등록상 주소를 입력해주세요' }}"
                                 class="input-field">
                             {% else %}
                             {{ user_address or '' }}
@@ -510,6 +512,12 @@
                         <td style="text-align: left; padding-left: 15px; background-color: #fff;">{{ user_phone or '' }}
                         </td>
                     </tr>
+                    {% if user_business_name %}
+                    <tr>
+                        <th style="background-color: #f5f5f5;">사업자등록번호</th>
+                        <td style="text-align: left; padding-left: 15px; background-color: #fff;">{{ user_registration_number or '' }}</td>
+                    </tr>
+                    {% else %}
                     <tr>
                         <th style="background-color: #f5f5f5;">생년월일</th>
                         <td style="text-align: left; padding-left: 15px; background-color: #fff;">
@@ -521,6 +529,7 @@
                             {% endif %}
                         </td>
                     </tr>
+                    {% endif %}
                 </table>
             </div>
         </div>
